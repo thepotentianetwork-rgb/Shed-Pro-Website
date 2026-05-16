@@ -349,144 +349,115 @@ function build(){
   const wallTop=H;      // y of wall top (walls sit on y=0)
   const trimW=W*.025;   // trim board width
 
-  // ── FOUNDATION / SKIRT ──
-  addM(new THREE.BoxGeometry(W+trimW*2,.06,L+trimW*2),new THREE.MeshLambertMaterial({color:0xb0aca6}),0,.03,0);
+  // ── SCALE ──
+  const W=S.w*.22, L=S.l*.22, H=S.h*.22;
+  const ov=W*.1, rh=W*.42, tw=W*.025;
+
+  // ── FOUNDATION ──
+  addM(new THREE.BoxGeometry(W+tw*2,.06,L+tw*2),
+    new THREE.MeshLambertMaterial({color:0xb0aca6}),0,.03,0);
 
   // ── WALLS ──
-  // Front wall
   addM(new THREE.BoxGeometry(W,H,.03),mS,0,H/2,L/2);
-  // Back wall
   addM(new THREE.BoxGeometry(W,H,.03),mS,0,H/2,-L/2);
-  // Left wall
   addM(new THREE.BoxGeometry(.03,H,L),mS,-W/2,H/2,0);
-  // Right wall
-  addM(new THREE.BoxGeometry(.03,H,L),mS,W/2,H/2,0);
+  addM(new THREE.BoxGeometry(.03,H,L),mS, W/2,H/2,0);
 
   // ── CORNER TRIM ──
-  const ct=trimW,ch=H+.03;
-  [[-W/2,L/2],[W/2,L/2],[-W/2,-L/2],[W/2,-L/2]].forEach(([cx,cz])=>{
-    addM(new THREE.BoxGeometry(ct,ch,ct),mT,cx,ch/2,cz);
+  const ch=H+.03;
+  [[-W/2,L/2],[W/2,L/2],[-W/2,-L/2],[W/2,-L/2]].forEach(function(c){
+    addM(new THREE.BoxGeometry(tw,ch,tw),mT,c[0],ch/2,c[1]);
   });
-  // Top plate (horizontal trim at wall top)
-  addM(new THREE.BoxGeometry(W+ct*2,ct,ct),mT,0,wallTop+ct/2, L/2);
-  addM(new THREE.BoxGeometry(W+ct*2,ct,ct),mT,0,wallTop+ct/2,-L/2);
-  addM(new THREE.BoxGeometry(ct,ct,L),mT,-W/2,wallTop+ct/2,0);
-  addM(new THREE.BoxGeometry(ct,ct,L),mT, W/2,wallTop+ct/2,0);
 
-  // ── ROOF (A-Frame / Gable) ──
-  // Build using a Shape extruded along Z — guaranteed seamless connection
-  const roofShape=new THREE.Shape();
-  roofShape.moveTo(-W/2-ov, 0);          // left eave bottom
-  roofShape.lineTo( W/2+ov, 0);          // right eave bottom
-  roofShape.lineTo( W/2+ov, trimW);      // right eave top outer
-  roofShape.lineTo( W/2,    trimW);      // right wall outer top
-  roofShape.lineTo( 0,      roofH+trimW);// ridge top
-  roofShape.lineTo(-W/2,    trimW);      // left wall outer top
-  roofShape.lineTo(-W/2-ov, trimW);      // left eave top outer
-  roofShape.closePath();
+  // ── TOP PLATES ──
+  addM(new THREE.BoxGeometry(W+tw*2,tw,tw),mT,0,H+tw/2, L/2);
+  addM(new THREE.BoxGeometry(W+tw*2,tw,tw),mT,0,H+tw/2,-L/2);
+  addM(new THREE.BoxGeometry(tw,tw,L),mT,-W/2,H+tw/2,0);
+  addM(new THREE.BoxGeometry(tw,tw,L),mT, W/2,H+tw/2,0);
 
-  const roofGeo=new THREE.ExtrudeGeometry(roofShape,{steps:1,depth:L+ov*2,bevelEnabled:false,bevelSize:0,bevelThickness:0});
-  const roofMesh=new THREE.Mesh(roofGeo,mR);
-  roofMesh.position.set(0,wallTop,-(L/2+ov));
-  roofMesh.castShadow=true;roofMesh.receiveShadow=true;
-  shed.add(roofMesh);
+  // ── ROOF PANELS (two angled boxes) ──
+  var ang=Math.atan2(rh,W/2);
+  var panLen=Math.sqrt((W/2+ov)*(W/2+ov)+rh*rh);
+
+  // Left panel
+  var lp=new THREE.Mesh(new THREE.BoxGeometry(panLen,tw,L+ov*2),mR);
+  lp.position.set(-(W/4-ov*.1), H+rh/2, 0);
+  lp.rotation.z=ang;
+  lp.castShadow=true; lp.receiveShadow=true;
+  shed.add(lp);
+
+  // Right panel
+  var rp=new THREE.Mesh(new THREE.BoxGeometry(panLen,tw,L+ov*2),mR);
+  rp.position.set(W/4-ov*.1, H+rh/2, 0);
+  rp.rotation.z=-ang;
+  rp.castShadow=true; rp.receiveShadow=true;
+  shed.add(rp);
 
   // ── RIDGE CAP ──
-  addM(new THREE.BoxGeometry(trimW*.8,trimW*.6,L+ov*2+trimW),mT,0,wallTop+roofH+trimW,0);
+  addM(new THREE.BoxGeometry(tw,tw,L+ov*2),mT,0,H+rh,0);
 
-  // ── GABLE ENDS (triangular wall fill above wall top) ──
-  const gableShape=new THREE.Shape();
-  gableShape.moveTo(-W/2,0);
-  gableShape.lineTo( W/2,0);
-  gableShape.lineTo( 0,roofH);
-  gableShape.closePath();
+  // ── FASCIA ──
+  addM(new THREE.BoxGeometry(W+ov*2,tw*1.2,tw),mT,0,H+tw*.5, L/2+ov);
+  addM(new THREE.BoxGeometry(W+ov*2,tw*1.2,tw),mT,0,H+tw*.5,-L/2-ov);
 
-  for(const s of[-1,1]){
-    const gm=new THREE.Mesh(new THREE.ShapeGeometry(gableShape),mS);
-    gm.position.set(0,wallTop,s*(L/2+.005));
-    if(s===-1)gm.rotation.y=Math.PI;
-    gm.castShadow=true;shed.add(gm);
-    // Gable trim (rake boards along roof edge)
-    // Left rake
-    const rakeLen=Math.sqrt((W/2+ov)*(W/2+ov)+roofH*roofH)+.02;
-    const rakeAng=Math.atan2(roofH,W/2+ov);
-    for(const side of[-1,1]){
-      const rake=new THREE.Mesh(new THREE.BoxGeometry(rakeLen,trimW,trimW*.8),mT);
-      rake.position.set(side*(W/4+ov/2),wallTop+roofH/2,s*(L/2+ov+.005));
-      rake.rotation.z=side*rakeAng;
-      rake.castShadow=true;shed.add(rake);
-    }
+  // ── GABLE TRIANGLES ──
+  // Use a simple pyramid-like shape with boxes stacked
+  var steps=8;
+  for(var i=0;i<steps;i++){
+    var t=i/steps;
+    var sw2=W*(1-t)/2+tw;
+    var sy=H+rh*t;
+    var sh2=rh/steps+tw*.5;
+    addM(new THREE.BoxGeometry(sw2*2,sh2,.02),mS,0,sy+sh2/2, L/2+.001);
+    addM(new THREE.BoxGeometry(sw2*2,sh2,.02),mS,0,sy+sh2/2,-L/2-.001);
   }
 
-  // ── FASCIA BOARDS (at eave) ──
-  addM(new THREE.BoxGeometry(W+ov*2+trimW,trimW*1.2,trimW*.8),mT,0,wallTop+trimW*.4, L/2+ov);
-  addM(new THREE.BoxGeometry(W+ov*2+trimW,trimW*1.2,trimW*.8),mT,0,wallTop+trimW*.4,-L/2-ov);
-
   // ── DOOR ──
-  const doorX = S.extras.gdoor ? W*.12 : 0;
-  if(S.extras.door&&!S.extras.gdoor||S.extras.door&&S.extras.gdoor){
-    const dw=S.extras.dbl?W*.38:W*.2, dh=H*.8;
-    // Door panel
-    addM(new THREE.BoxGeometry(dw,dh,.04),mD,doorX-(S.extras.gdoor?W*.15:0),dh/2,L/2+.02);
-    // Door center line for double
+  if(S.extras.door){
+    var dw=S.extras.dbl?W*.38:W*.2, dh=H*.8;
+    var dox=S.extras.gdoor?-W*.15:0;
+    addM(new THREE.BoxGeometry(dw,dh,.04),mD,dox,dh/2,L/2+.02);
+    addM(new THREE.BoxGeometry(dw+tw*2,dh+tw,.03),mT,dox,dh/2,L/2+.01);
     if(S.extras.dbl){
-      addM(new THREE.BoxGeometry(trimW*.5,dh,.045),mT,doorX-(S.extras.gdoor?W*.15:0),dh/2,L/2+.025);
+      addM(new THREE.BoxGeometry(tw*.4,dh,.05),mT,dox,dh/2,L/2+.03);
     }
-    // Door frame
-    addM(new THREE.BoxGeometry(dw+trimW*2,dh+trimW,trimW*.5),mT,doorX-(S.extras.gdoor?W*.15:0),dh/2,L/2+.01);
-    // Door glass (for single)
-    if(!S.extras.dbl){
-      addM(new THREE.BoxGeometry(dw*.5,dh*.22,trimW*.3),mG,doorX-(S.extras.gdoor?W*.15:0),dh*.75,L/2+.03);
-    }
-    // Hinges
-    const hx=doorX-(S.extras.gdoor?W*.15:0)+(S.extras.dbl?dw/4:-dw*.35);
-    [[.2,.8],[.5,.2]].forEach(([fy,side])=>{
-      addM(new THREE.BoxGeometry(.02,.06,.06),new THREE.MeshLambertMaterial({color:0x222222}),hx,dh*fy,L/2+.04);
-      if(S.extras.dbl) addM(new THREE.BoxGeometry(.02,.06,.06),new THREE.MeshLambertMaterial({color:0x222222}),doorX-(S.extras.gdoor?W*.15:0)-dw*.35,dh*fy,L/2+.04);
-    });
   }
 
   // ── GARAGE DOOR ──
   if(S.extras.gdoor){
-    const gw=W*.5,gh=H*.82;
-    const gdMat=new THREE.MeshLambertMaterial({color:0xdddddd});
-    const gox=S.extras.door?W*.15:0;
-    addM(new THREE.BoxGeometry(gw,gh,.03),gdMat,gox,gh/2,L/2+.02);
-    // Panels
-    for(let i=1;i<=5;i++) addM(new THREE.BoxGeometry(gw-.04,.015,.04),new THREE.MeshLambertMaterial({color:0xbbbbbb}),gox,gh*i/6,L/2+.04);
-    // Frame
-    addM(new THREE.BoxGeometry(gw+trimW*2,gh+trimW,trimW*.5),mT,gox,gh/2,L/2+.01);
+    var gw=W*.5, gh=H*.82;
+    var gox=S.extras.door?W*.15:0;
+    var gdm=new THREE.MeshLambertMaterial({color:0xdddddd});
+    addM(new THREE.BoxGeometry(gw,gh,.03),gdm,gox,gh/2,L/2+.02);
+    for(var gi=1;gi<=5;gi++)
+      addM(new THREE.BoxGeometry(gw,.015,.04),
+        new THREE.MeshLambertMaterial({color:0xbbbbbb}),gox,gh*gi/6,L/2+.04);
+    addM(new THREE.BoxGeometry(gw+tw*2,gh+tw,.03),mT,gox,gh/2,L/2+.01);
   }
 
   // ── WINDOWS ──
   if(S.extras.win){
-    const wy=H*.62, ww=W*.18, wh=H*.24;
-    [[-W/2-.02,L*.28,-Math.PI/2],[-W/2-.02,-L*.28,-Math.PI/2],[W/2+.02,L*.28,Math.PI/2],[W/2+.02,-L*.28,Math.PI/2]].forEach(([wx,wz,wr])=>{
-      // Glass
-      addM(new THREE.BoxGeometry(.03,wh,ww),mG,wx,wy,wz,0,wr,0);
-      // Frame
-      addM(new THREE.BoxGeometry(.04,wh+trimW,ww+trimW),mT,wx,wy,wz,0,wr,0);
-      // Muntins
-      addM(new THREE.BoxGeometry(.04,trimW*.4,ww),mT,wx,wy,wz,0,wr,0);
-      addM(new THREE.BoxGeometry(.04,wh,trimW*.4),mT,wx,wy,wz,0,wr,0);
+    var wy=H*.62, ww=W*.18, wh=H*.24;
+    var wpos=[[-W/2-.02,L*.28,-Math.PI/2],[-W/2-.02,-L*.28,-Math.PI/2],
+              [W/2+.02,L*.28,Math.PI/2],[W/2+.02,-L*.28,Math.PI/2]];
+    wpos.forEach(function(wp){
+      addM(new THREE.BoxGeometry(.03,wh,ww),mG,wp[0],wy,wp[1],0,wp[2],0);
+      addM(new THREE.BoxGeometry(.04,wh+tw,ww+tw),mT,wp[0],wy,wp[1],0,wp[2],0);
     });
   }
 
   // ── RAMP ──
   if(S.extras.ramp){
-    const rw=W*.3,rl=.55;
-    addM(new THREE.BoxGeometry(rw,.03,rl),mW,0,.015,L/2+rl/2+.01,.08,0,0);
-    for(let i=0;i<4;i++) addM(new THREE.BoxGeometry(rw,.025,.03),mW,0,.02+i*.12,L/2+.12+i*.12);
+    addM(new THREE.BoxGeometry(W*.3,.03,.5),mW,0,.015,L/2+.26,.08,0,0);
   }
 
   // ── LOFT ──
   if(S.extras.loft){
-    const lm=new THREE.MeshLambertMaterial({color:0xc8a030,transparent:true,opacity:.5});
+    var lm=new THREE.MeshLambertMaterial({color:0xc8a030,transparent:true,opacity:.5});
     addM(new THREE.BoxGeometry(W-.06,.03,L-.06),lm,0,H*.65,0);
-    addM(new THREE.BoxGeometry(W-.06,.03,.04),mT,0,H*.65,L/2-.04);
   }
 
-  // Update concrete pad size
+  // Update pad
   pad.scale.set(W+.5,1,L+.5);
   pad.position.set(0,.02,0);
 
