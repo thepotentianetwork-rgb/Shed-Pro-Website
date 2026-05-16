@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Your Shed | ShedPro LLC</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#2BB5E8;--bh:#1fa3d4;--dark:#0C0C0C;--d2:#141414;--d3:#1A1A1A;--w:#fff;--mu:rgba(255,255,255,0.6);--br:rgba(255,255,255,0.09);--pill:50px}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--w);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+header{background:rgba(12,12,12,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--br);padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900}.logo em{color:var(--blue);font-style:normal}
+.hb{display:flex;gap:8px}
+.btn{font-family:'Barlow',sans-serif;font-weight:700;font-size:13px;padding:8px 18px;border-radius:var(--pill);border:none;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.bb{background:var(--blue);color:#000}.bb:hover{background:var(--bh)}
+.bg{background:transparent;color:var(--mu);border:1px solid var(--br)}.bg:hover{color:var(--w)}
+.main{display:flex;flex:1;overflow:hidden}
+.vp{flex:1;position:relative;background:#f0f0ee;overflow:hidden}
+#c{display:block;width:100%;height:100%}
+.hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border-radius:30px;padding:7px 18px;font-size:11px;color:rgba(255,255,255,.8);white-space:nowrap}
+.sb{width:280px;background:var(--d2);border-left:1px solid var(--br);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.tabs{display:flex;border-bottom:1px solid var(--br);flex-shrink:0}
+.tab{flex:1;padding:11px 4px;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;text-align:center;cursor:pointer;color:var(--mu);border:none;border-bottom:2px solid transparent;background:none;font-family:'Barlow',sans-serif;transition:all .2s}
+.tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+.tc{display:none;flex:1;overflow-y:auto;padding:14px}.tc.on{display:block}
+.tc::-webkit-scrollbar{width:3px}.tc::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+.grp{margin-bottom:18px}
+.lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:8px;display:block}
+.sw{margin-bottom:13px}.sh{display:flex;justify-content:space-between;margin-bottom:5px}
+.sn{font-size:12px;font-weight:600;color:rgba(255,255,255,.8)}.sv{font-size:13px;font-weight:700;color:var(--blue);font-family:'Barlow Condensed',sans-serif}
+input[type=range]{width:100%;-webkit-appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.12);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px rgba(43,181,232,.25)}
+.cg{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px}
+.cs{width:100%;aspect-ratio:1;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.cs:hover{transform:scale(1.1)}.cs.on{border-color:var(--w);box-shadow:0 0 0 2px var(--blue)}
+.tg{display:flex;flex-direction:column;gap:7px}
+.ti{display:flex;align-items:center;justify-content:space-between;background:var(--d3);border:1px solid var(--br);border-radius:8px;padding:10px 12px;cursor:pointer;transition:border-color .2s}
+.ti:hover{border-color:rgba(43,181,232,.4)}.ti.on{border-color:rgba(43,181,232,.45);background:rgba(43,181,232,.06)}
+.tn{font-size:12px;font-weight:700}.ts{font-size:10px;color:var(--mu);margin-top:2px}
+.tk{width:18px;height:18px;border-radius:50%;border:2px solid var(--br);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.ti.on .tk{background:var(--blue);border-color:var(--blue)}
+.sqbox{background:rgba(43,181,232,.07);border:1px solid rgba(43,181,232,.2);border-radius:9px;padding:13px 15px;margin-top:4px}
+.sqbox-l{font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.07em}
+.sqbox-n{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;line-height:1.1;margin-top:2px}
+.sqbox-s{font-size:11px;color:var(--mu);margin-top:3px}
+.sum{border-top:1px solid var(--br);padding:13px 15px;background:var(--dark);flex-shrink:0}
+.sum-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.sum-lbl{font-size:10px;color:var(--mu);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.sum-val{font-size:11px;color:rgba(255,255,255,.82);font-weight:600;text-align:right;max-width:178px;line-height:1.5}
+.cta{width:100%;padding:13px;background:var(--blue);color:#000;font-family:'Barlow',sans-serif;font-weight:800;font-size:14px;border:none;border-radius:var(--pill);cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:7px}
+.cta:hover{background:var(--bh)}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.9);backdrop-filter:blur(10px);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;padding:20px}
+.mo.on{opacity:1;pointer-events:all}
+.mbox{background:var(--d2);border:1px solid rgba(43,181,232,.3);border-radius:16px;padding:30px 26px;max-width:400px;width:100%;position:relative}
+.mbox h3{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;text-transform:uppercase;margin-bottom:6px}
+.mbox>p{font-size:12px;color:var(--mu);margin-bottom:16px;line-height:1.65}
+.mconf{background:var(--d3);border:1px solid var(--br);border-radius:9px;padding:13px 15px;margin-bottom:16px;font-size:12px;line-height:1.9;color:rgba(255,255,255,.82)}
+.mconf strong{color:var(--blue)}
+.mi{width:100%;background:var(--d3);border:1px solid var(--br);border-radius:8px;padding:11px 14px;color:var(--w);font-family:'Barlow',sans-serif;font-size:13px;margin-bottom:9px;outline:none;transition:border-color .2s}
+.mi:focus{border-color:rgba(43,181,232,.55)}.mi::placeholder{color:rgba(255,255,255,.2)}
+.mcl{position:absolute;top:13px;right:13px;background:rgba(255,255,255,.08);border:none;color:var(--mu);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.msuc{text-align:center;display:none;padding:16px 0}
+.msuc .si{font-size:52px;margin-bottom:12px}
+.msuc h4{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;text-transform:uppercase;margin-bottom:8px}
+.msuc p{font-size:13px;color:var(--mu);line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SHED<em>PRO</em> LLC <span style="color:var(--mu);font-size:12px;font-weight:400;margin-left:6px">/ A-Frame Designer</span></div>
+  <div class="hb">
+    <a href="index.html" class="btn bg">&#8592; Back</a>
+    <button class="btn bb" onclick="openQ()">Get Quote</button>
+  </div>
+</header>
+<div class="main">
+  <div class="vp">
+    <canvas id="c"></canvas>
+    <div class="hint">Drag to rotate &nbsp;&middot;&nbsp; Scroll to zoom</div>
+  </div>
+  <div class="sb">
+    <div class="tabs">
+      <button class="tab on" onclick="tab('size',this)">Size</button>
+      <button class="tab" onclick="tab('color',this)">Color</button>
+      <button class="tab" onclick="tab('extras',this)">Extras</button>
+    </div>
+    <!-- SIZE -->
+    <div class="tc on" id="t-size">
+      <div class="grp">
+        <span class="lbl">Dimensions</span>
+        <div class="sw"><div class="sh"><span class="sn">Width</span><span class="sv" id="wv">12 ft</span></div><input type="range" min="8" max="20" value="12" step="2" oninput="sz('w',this.value)"></div>
+        <div class="sw"><div class="sh"><span class="sn">Length</span><span class="sv" id="lv">16 ft</span></div><input type="range" min="8" max="32" value="16" step="2" oninput="sz('l',this.value)"></div>
+        <div class="sw"><div class="sh"><span class="sn">Wall Height</span><span class="sv" id="hv">8 ft</span></div><input type="range" min="6" max="12" value="8" step="1" oninput="sz('h',this.value)"></div>
+      </div>
+      <div class="sqbox">
+        <div class="sqbox-l">Square Footage</div>
+        <div class="sqbox-n" id="sqft">192 sq ft</div>
+        <div class="sqbox-s">&#9888; Permit may be required over 200 sq ft</div>
+      </div>
+    </div>
+    <!-- COLOR -->
+    <div class="tc" id="t-color">
+      <div class="grp"><span class="lbl">Siding Color</span>
+        <div class="cg" id="cg-s">
+          <div class="cs" style="background:#F2F0EC" onclick="clr('s',0xF2F0EC,'White',this)" title="White"></div>
+          <div class="cs on" style="background:#5B6B78" onclick="clr('s',0x5B6B78,'Gray',this)" title="Gray"></div>
+          <div class="cs" style="background:#1a1a1a" onclick="clr('s',0x1a1a1a,'Black',this)" title="Black"></div>
+          <div class="cs" style="background:#9C8B73" onclick="clr('s',0x9C8B73,'Tan',this)" title="Tan"></div>
+          <div class="cs" style="background:#2C3E52" onclick="clr('s',0x2C3E52,'Navy',this)" title="Navy"></div>
+          <div class="cs" style="background:#7A4B2A" onclick="clr('s',0x7A4B2A,'Brown',this)" title="Brown"></div>
+          <div class="cs" style="background:#3A7A48" onclick="clr('s',0x3A7A48,'Forest',this)" title="Forest"></div>
+          <div class="cs" style="background:#A83230" onclick="clr('s',0xA83230,'Red',this)" title="Red"></div>
+          <div class="cs" style="background:#C8A84B" onclick="clr('s',0xC8A84B,'Gold',this)" title="Gold"></div>
+          <div class="cs" style="background:#4a5e6a" onclick="clr('s',0x4a5e6a,'Slate',this)" title="Slate"></div>
+        </div>
+      </div>
+      <div class="grp"><span class="lbl">Trim Color</span>
+        <div class="cg" id="cg-t">
+          <div class="cs on" style="background:#F2F0EC" onclick="clr('t',0xF2F0EC,'White',this)" title="White"></div>
+          <div class="cs" style="background:#1a1a1a" onclick="clr('t',0x1a1a1a,'Black',this)" title="Black"></div>
+          <div class="cs" style="background:#9C8B73" onclick="clr('t',0x9C8B73,'Tan',this)" title="Tan"></div>
+          <div class="cs" style="background:#5B6B78" onclick="clr('t',0x5B6B78,'Gray',this)" title="Gray"></div>
+          <div class="cs" style="background:#7A4B2A" onclick="clr('t',0x7A4B2A,'Brown',this)" title="Brown"></div>
+        </div>
+      </div>
+      <div class="grp"><span class="lbl">Roof Color</span>
+        <div class="cg" id="cg-r">
+          <div class="cs on" style="background:#3a3a3a" onclick="clr('r',0x3a3a3a,'Charcoal',this)" title="Charcoal"></div>
+          <div class="cs" style="background:#5B6B78" onclick="clr('r',0x5B6B78,'Gray',this)" title="Gray"></div>
+          <div class="cs" style="background:#7A4B2A" onclick="clr('r',0x7A4B2A,'Brown',this)" title="Brown"></div>
+          <div class="cs" style="background:#2C3E52" onclick="clr('r',0x2C3E52,'Navy',this)" title="Navy"></div>
+          <div class="cs" style="background:#1a1a1a" onclick="clr('r',0x1a1a1a,'Black',this)" title="Black"></div>
+        </div>
+      </div>
+      <div style="background:rgba(43,181,232,.07);border:1px solid rgba(43,181,232,.15);border-radius:9px;padding:12px 14px">
+        <p style="font-size:11px;color:var(--mu);line-height:1.65">&#127912; <strong style="color:var(--w)">Sherwin-Williams</strong> paint &mdash; any color they make, we can paint. Ask us!</p>
+      </div>
+    </div>
+    <!-- EXTRAS -->
+    <div class="tc" id="t-extras">
+      <div class="grp"><span class="lbl">Doors</span>
+        <div class="tg">
+          <div class="ti on" onclick="tog(this,'door')"><div><div class="tn">Single Door</div><div class="ts">Standard entry door with frame</div></div><div class="tk"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+          <div class="ti" onclick="tog(this,'dbl')"><div><div class="tn">Double Doors</div><div class="ts">Wide opening for equipment</div></div><div class="tk"></div></div>
+          <div class="ti" onclick="tog(this,'gdoor')"><div><div class="tn">Garage Door</div><div class="ts">Roll-up for workshop access</div></div><div class="tk"></div></div>
+        </div>
+      </div>
+      <div class="grp"><span class="lbl">Windows</span>
+        <div class="tg">
+          <div class="ti" onclick="tog(this,'win')"><div><div class="tn">Side Windows</div><div class="ts">Natural light on both sides</div></div><div class="tk"></div></div>
+        </div>
+      </div>
+      <div class="grp"><span class="lbl">Electrical</span>
+        <div class="tg" id="elec-grp">
+          <div class="ti on" onclick="elec(this,'None')"><div><div class="tn">No Electrical</div><div class="ts">Standard build</div></div><div class="tk"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+          <div class="ti" onclick="elec(this,'Basic')"><div><div class="tn">&#9889; Basic</div><div class="ts">1 light &middot; 1 switch &middot; 1 outlet</div></div><div class="tk"></div></div>
+          <div class="ti" onclick="elec(this,'Standard')"><div><div class="tn">&#9889; Standard</div><div class="ts">2 lights &middot; 1 switch &middot; 3 outlets</div></div><div class="tk"></div></div>
+          <div class="ti" onclick="elec(this,'Core')"><div><div class="tn">&#9889; Core</div><div class="ts">4 lights &middot; outside light &middot; GFCI</div></div><div class="tk"></div></div>
+          <div class="ti" onclick="elec(this,'Essential')"><div><div class="tn">&#9889; Essential</div><div class="ts">Soffit lights &middot; 6 outlets &middot; full</div></div><div class="tk"></div></div>
+        </div>
+      </div>
+      <div class="grp"><span class="lbl">Add-Ons</span>
+        <div class="tg">
+          <div class="ti" onclick="tog(this,'loft')"><div><div class="tn">Loft</div><div class="ts">Overhead storage level</div></div><div class="tk"></div></div>
+          <div class="ti" onclick="tog(this,'ramp')"><div><div class="tn">Access Ramp</div><div class="ts">Easy roll-in for equipment</div></div><div class="tk"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="sum">
+      <div class="sum-row"><span class="sum-lbl">Your Build</span><span class="sum-val" id="sumtxt">12x16 ft &middot; Gray/White/Charcoal</span></div>
+      <button class="cta" onclick="openQ()">Request Free Quote</button>
+    </div>
+  </div>
+</div>
+<div class="mo" id="modal" onclick="if(event.target===this)closeQ()">
+  <div class="mbox">
+    <button class="mcl" onclick="closeQ()">&#x2715;</button>
+    <div id="mform">
+      <h3>Get Your Free Quote</h3>
+      <p>We'll reach out with pricing for your build &mdash; usually same day.</p>
+      <div class="mconf" id="mconf"></div>
+      <input class="mi" id="mn" placeholder="Your full name" type="text">
+      <input class="mi" id="mp" placeholder="Phone number" type="tel">
+      <input class="mi" id="me" placeholder="Email address" type="email">
+      <input class="mi" id="ml" placeholder="City / Location" type="text">
+      <button class="cta" onclick="subQ()" style="margin-top:4px">Send My Quote Request</button>
+    </div>
+    <div class="msuc" id="msuc">
+      <div class="si">&#127881;</div>
+      <h4>Quote Sent!</h4>
+      <p>We got your shed configuration and will be in touch shortly. Excited to build with you!</p>
+    </div>
+  </div>
+</div>
+<script>
+const S={w:12,l:16,h:8,sc:0x5B6B78,tc:0xF2F0EC,rc:0x3a3a3a,sn:'Gray',tn:'White',rn:'Charcoal',extras:{door:true},elec:'None'};
+
+// ── RENDERER ──
+const canvas=document.getElementById('c');
+const R=new THREE.WebGLRenderer({canvas,antialias:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));
+R.shadowMap.enabled=true;
+R.shadowMap.type=THREE.PCFSoftShadowMap;
+R.setClearColor(0xf0f0ee);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xf0f0ee);
+scene.fog=new THREE.Fog(0xf0f0ee,25,45);
+
+const cam=new THREE.PerspectiveCamera(38,1,.1,100);
+
+// ── LIGHTS ──
+scene.add(new THREE.AmbientLight(0xffffff,.7));
+const sun=new THREE.DirectionalLight(0xfff8f0,1.0);
+sun.position.set(6,12,8);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-12;sun.shadow.camera.right=12;
+sun.shadow.camera.top=12;sun.shadow.camera.bottom=-12;
+sun.shadow.bias=-.0005;
+scene.add(sun);
+scene.add(Object.assign(new THREE.DirectionalLight(0xc8d8ff,.35),{position:new THREE.Vector3(-4,3,-3)}));
+
+// ── GROUND ──
+function makeTex(fn){const c=document.createElement('canvas');c.width=256;c.height=256;fn(c.getContext('2d'),c);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
+const grassTex=makeTex((ctx)=>{
+  ctx.fillStyle='#c8d4b0';ctx.fillRect(0,0,256,256);
+  ctx.globalAlpha=.15;
+  for(let i=0;i<300;i++){ctx.fillStyle=Math.random()>.5?'#b8c898':'#d8e4b8';ctx.fillRect(Math.random()*256,Math.random()*256,2,2);}
+});
+grassTex.repeat.set(12,12);
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshLambertMaterial({map:grassTex}));
+gnd.rotation.x=-Math.PI/2;gnd.receiveShadow=true;scene.add(gnd);
+
+// Concrete pad
+const padM=new THREE.MeshLambertMaterial({color:0xc8c4be});
+const pad=new THREE.Mesh(new THREE.BoxGeometry(1,0.04,1),padM);
+pad.receiveShadow=true;scene.add(pad);
+
+const shed=new THREE.Group();scene.add(shed);
+
+// ── TEXTURES ──
+function sidingTex(color){
+  return makeTex((ctx)=>{
+    const hex='#'+color.toString(16).padStart(6,'0');
+    ctx.fillStyle=hex;ctx.fillRect(0,0,256,256);
+    // Vertical board lines
+    ctx.globalAlpha=.12;
+    ctx.strokeStyle='rgba(0,0,0,0.8)';ctx.lineWidth=1.5;
+    for(let x=0;x<256;x+=18){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,256);ctx.stroke();}
+    // Subtle horizontal grain
+    ctx.globalAlpha=.04;ctx.lineWidth=1;
+    for(let y=0;y<256;y+=4){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(256,y);ctx.stroke();}
+  });
+}
+function shingleTex(color){
+  return makeTex((ctx)=>{
+    const hex='#'+color.toString(16).padStart(6,'0');
+    ctx.fillStyle=hex;ctx.fillRect(0,0,256,256);
+    const rows=12,cols=6;
+    const sh=256/rows,sw=256/cols;
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols+(r%2);c++){
+        const x=(c-(r%2)*.5)*sw, y=r*sh;
+        const light=Math.random()>.5?.08:-.05;
+        ctx.globalAlpha=Math.abs(light);
+        ctx.fillStyle=light>0?'white':'black';
+        ctx.fillRect(x+1,y+1,sw-2,sh-2);
+        ctx.globalAlpha=.3;ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=.8;
+        ctx.strokeRect(x+1,y+1,sw-2,sh-2);
+      }
+    }
+  });
+}
+
+// ── MATERIALS ──
+let mS,mT,mR,mG,mD,mW;
+function initMats(){
+  const st=sidingTex(S.sc);st.repeat.set(3,2);
+  mS=new THREE.MeshLambertMaterial({map:st,color:S.sc});
+  mT=new THREE.MeshLambertMaterial({color:S.tc});
+  const rt=shingleTex(S.rc);rt.repeat.set(4,3);
+  mR=new THREE.MeshLambertMaterial({map:rt,color:S.rc});
+  mG=new THREE.MeshLambertMaterial({color:0xaaddef,transparent:true,opacity:.3,side:THREE.DoubleSide});
+  mD=new THREE.MeshLambertMaterial({color:S.sc});
+  mW=new THREE.MeshLambertMaterial({color:0xc8a850});
+}
+
+function addM(geo,mat,x,y,z,rx=0,ry=0,rz=0){
+  const m=new THREE.Mesh(geo,mat);
+  m.position.set(x,y,z);m.rotation.set(rx,ry,rz);
+  m.castShadow=true;m.receiveShadow=true;
+  shed.add(m);return m;
+}
+
+// ── BUILD ──
+function build(){
+  while(shed.children.length)shed.remove(shed.children[0]);
+  initMats();
+
+  // Scale: 1 unit = ~1 foot for readability
+  const W=S.w*.22, L=S.l*.22, H=S.h*.22;
+  const ov=W*.12;       // eave overhang
+  const roofH=W*.42;    // peak height above wall top
+  const wallTop=H;      // y of wall top (walls sit on y=0)
+  const trimW=W*.025;   // trim board width
+
+  // ── FOUNDATION / SKIRT ──
+  addM(new THREE.BoxGeometry(W+trimW*2,.06,L+trimW*2),new THREE.MeshLambertMaterial({color:0xb0aca6}),0,.03,0);
+
+  // ── WALLS ──
+  // Front wall
+  addM(new THREE.BoxGeometry(W,H,.03),mS,0,H/2,L/2);
+  // Back wall
+  addM(new THREE.BoxGeometry(W,H,.03),mS,0,H/2,-L/2);
+  // Left wall
+  addM(new THREE.BoxGeometry(.03,H,L),mS,-W/2,H/2,0);
+  // Right wall
+  addM(new THREE.BoxGeometry(.03,H,L),mS,W/2,H/2,0);
+
+  // ── CORNER TRIM ──
+  const ct=trimW,ch=H+.03;
+  [[-W/2,L/2],[W/2,L/2],[-W/2,-L/2],[W/2,-L/2]].forEach(([cx,cz])=>{
+    addM(new THREE.BoxGeometry(ct,ch,ct),mT,cx,ch/2,cz);
+  });
+  // Top plate (horizontal trim at wall top)
+  addM(new THREE.BoxGeometry(W+ct*2,ct,ct),mT,0,wallTop+ct/2, L/2);
+  addM(new THREE.BoxGeometry(W+ct*2,ct,ct),mT,0,wallTop+ct/2,-L/2);
+  addM(new THREE.BoxGeometry(ct,ct,L),mT,-W/2,wallTop+ct/2,0);
+  addM(new THREE.BoxGeometry(ct,ct,L),mT, W/2,wallTop+ct/2,0);
+
+  // ── ROOF (A-Frame / Gable) ──
+  // Build using a Shape extruded along Z — guaranteed seamless connection
+  const roofShape=new THREE.Shape();
+  roofShape.moveTo(-W/2-ov, 0);          // left eave bottom
+  roofShape.lineTo( W/2+ov, 0);          // right eave bottom
+  roofShape.lineTo( W/2+ov, trimW);      // right eave top outer
+  roofShape.lineTo( W/2,    trimW);      // right wall outer top
+  roofShape.lineTo( 0,      roofH+trimW);// ridge top
+  roofShape.lineTo(-W/2,    trimW);      // left wall outer top
+  roofShape.lineTo(-W/2-ov, trimW);      // left eave top outer
+  roofShape.closePath();
+
+  const roofGeo=new THREE.ExtrudeGeometry(roofShape,{steps:1,depth:L+ov*2,bevelEnabled:false,bevelSize:0,bevelThickness:0});
+  const roofMesh=new THREE.Mesh(roofGeo,mR);
+  roofMesh.position.set(0,wallTop,-(L/2+ov));
+  roofMesh.castShadow=true;roofMesh.receiveShadow=true;
+  shed.add(roofMesh);
+
+  // ── RIDGE CAP ──
+  addM(new THREE.BoxGeometry(trimW*.8,trimW*.6,L+ov*2+trimW),mT,0,wallTop+roofH+trimW,0);
+
+  // ── GABLE ENDS (triangular wall fill above wall top) ──
+  const gableShape=new THREE.Shape();
+  gableShape.moveTo(-W/2,0);
+  gableShape.lineTo( W/2,0);
+  gableShape.lineTo( 0,roofH);
+  gableShape.closePath();
+
+  for(const s of[-1,1]){
+    const gm=new THREE.Mesh(new THREE.ShapeGeometry(gableShape),mS);
+    gm.position.set(0,wallTop,s*(L/2+.005));
+    if(s===-1)gm.rotation.y=Math.PI;
+    gm.castShadow=true;shed.add(gm);
+    // Gable trim (rake boards along roof edge)
+    // Left rake
+    const rakeLen=Math.sqrt((W/2+ov)*(W/2+ov)+roofH*roofH)+.02;
+    const rakeAng=Math.atan2(roofH,W/2+ov);
+    for(const side of[-1,1]){
+      const rake=new THREE.Mesh(new THREE.BoxGeometry(rakeLen,trimW,trimW*.8),mT);
+      rake.position.set(side*(W/4+ov/2),wallTop+roofH/2,s*(L/2+ov+.005));
+      rake.rotation.z=side*rakeAng;
+      rake.castShadow=true;shed.add(rake);
+    }
+  }
+
+  // ── FASCIA BOARDS (at eave) ──
+  addM(new THREE.BoxGeometry(W+ov*2+trimW,trimW*1.2,trimW*.8),mT,0,wallTop+trimW*.4, L/2+ov);
+  addM(new THREE.BoxGeometry(W+ov*2+trimW,trimW*1.2,trimW*.8),mT,0,wallTop+trimW*.4,-L/2-ov);
+
+  // ── DOOR ──
+  const doorX = S.extras.gdoor ? W*.12 : 0;
+  if(S.extras.door&&!S.extras.gdoor||S.extras.door&&S.extras.gdoor){
+    const dw=S.extras.dbl?W*.38:W*.2, dh=H*.8;
+    // Door panel
+    addM(new THREE.BoxGeometry(dw,dh,.04),mD,doorX-(S.extras.gdoor?W*.15:0),dh/2,L/2+.02);
+    // Door center line for double
+    if(S.extras.dbl){
+      addM(new THREE.BoxGeometry(trimW*.5,dh,.045),mT,doorX-(S.extras.gdoor?W*.15:0),dh/2,L/2+.025);
+    }
+    // Door frame
+    addM(new THREE.BoxGeometry(dw+trimW*2,dh+trimW,trimW*.5),mT,doorX-(S.extras.gdoor?W*.15:0),dh/2,L/2+.01);
+    // Door glass (for single)
+    if(!S.extras.dbl){
+      addM(new THREE.BoxGeometry(dw*.5,dh*.22,trimW*.3),mG,doorX-(S.extras.gdoor?W*.15:0),dh*.75,L/2+.03);
+    }
+    // Hinges
+    const hx=doorX-(S.extras.gdoor?W*.15:0)+(S.extras.dbl?dw/4:-dw*.35);
+    [[.2,.8],[.5,.2]].forEach(([fy,side])=>{
+      addM(new THREE.BoxGeometry(.02,.06,.06),new THREE.MeshLambertMaterial({color:0x222222}),hx,dh*fy,L/2+.04);
+      if(S.extras.dbl) addM(new THREE.BoxGeometry(.02,.06,.06),new THREE.MeshLambertMaterial({color:0x222222}),doorX-(S.extras.gdoor?W*.15:0)-dw*.35,dh*fy,L/2+.04);
+    });
+  }
+
+  // ── GARAGE DOOR ──
+  if(S.extras.gdoor){
+    const gw=W*.5,gh=H*.82;
+    const gdMat=new THREE.MeshLambertMaterial({color:0xdddddd});
+    const gox=S.extras.door?W*.15:0;
+    addM(new THREE.BoxGeometry(gw,gh,.03),gdMat,gox,gh/2,L/2+.02);
+    // Panels
+    for(let i=1;i<=5;i++) addM(new THREE.BoxGeometry(gw-.04,.015,.04),new THREE.MeshLambertMaterial({color:0xbbbbbb}),gox,gh*i/6,L/2+.04);
+    // Frame
+    addM(new THREE.BoxGeometry(gw+trimW*2,gh+trimW,trimW*.5),mT,gox,gh/2,L/2+.01);
+  }
+
+  // ── WINDOWS ──
+  if(S.extras.win){
+    const wy=H*.62, ww=W*.18, wh=H*.24;
+    [[-W/2-.02,L*.28,-Math.PI/2],[-W/2-.02,-L*.28,-Math.PI/2],[W/2+.02,L*.28,Math.PI/2],[W/2+.02,-L*.28,Math.PI/2]].forEach(([wx,wz,wr])=>{
+      // Glass
+      addM(new THREE.BoxGeometry(.03,wh,ww),mG,wx,wy,wz,0,wr,0);
+      // Frame
+      addM(new THREE.BoxGeometry(.04,wh+trimW,ww+trimW),mT,wx,wy,wz,0,wr,0);
+      // Muntins
+      addM(new THREE.BoxGeometry(.04,trimW*.4,ww),mT,wx,wy,wz,0,wr,0);
+      addM(new THREE.BoxGeometry(.04,wh,trimW*.4),mT,wx,wy,wz,0,wr,0);
+    });
+  }
+
+  // ── RAMP ──
+  if(S.extras.ramp){
+    const rw=W*.3,rl=.55;
+    addM(new THREE.BoxGeometry(rw,.03,rl),mW,0,.015,L/2+rl/2+.01,.08,0,0);
+    for(let i=0;i<4;i++) addM(new THREE.BoxGeometry(rw,.025,.03),mW,0,.02+i*.12,L/2+.12+i*.12);
+  }
+
+  // ── LOFT ──
+  if(S.extras.loft){
+    const lm=new THREE.MeshLambertMaterial({color:0xc8a030,transparent:true,opacity:.5});
+    addM(new THREE.BoxGeometry(W-.06,.03,L-.06),lm,0,H*.65,0);
+    addM(new THREE.BoxGeometry(W-.06,.03,.04),mT,0,H*.65,L/2-.04);
+  }
+
+  // Update concrete pad size
+  pad.scale.set(W+.5,1,L+.5);
+  pad.position.set(0,.02,0);
+
+  updateSum();
+}
+
+// ── ORBIT ──
+const sph={t:.55,p:.75,r:11};
+let drag=false,pm={x:0,y:0},autoRot=true,pt=null;
+function updCam(){
+  cam.position.x=sph.r*Math.sin(sph.p)*Math.sin(sph.t);
+  cam.position.y=sph.r*Math.cos(sph.p);
+  cam.position.z=sph.r*Math.sin(sph.p)*Math.cos(sph.t);
+  cam.lookAt(0,sph.r*.18,0);
+}
+updCam();
+canvas.addEventListener('mousedown',e=>{drag=true;autoRot=false;pm={x:e.clientX,y:e.clientY};});
+addEventListener('mouseup',()=>drag=false);
+canvas.addEventListener('mousemove',e=>{
+  if(!drag)return;
+  sph.t-=(e.clientX-pm.x)*.007;
+  sph.p=Math.max(.2,Math.min(1.4,sph.p+(e.clientY-pm.y)*.007));
+  pm={x:e.clientX,y:e.clientY};updCam();
+});
+canvas.addEventListener('wheel',e=>{sph.r=Math.max(4,Math.min(22,sph.r+e.deltaY*.015));updCam();e.preventDefault();},{passive:false});
+canvas.addEventListener('touchstart',e=>{pt=e.touches[0];autoRot=false;});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(e.touches.length===1&&pt){
+    sph.t-=(e.touches[0].clientX-pt.clientX)*.011;
+    sph.p=Math.max(.2,Math.min(1.4,sph.p+(e.touches[0].clientY-pt.clientY)*.011));
+    pt=e.touches[0];updCam();
+  }
+},{passive:false});
+function rsz(){const vp=document.querySelector('.vp');R.setSize(vp.clientWidth,vp.clientHeight);cam.aspect=vp.clientWidth/vp.clientHeight;cam.updateProjectionMatrix();}
+addEventListener('resize',rsz);rsz();
+function anim(){requestAnimationFrame(anim);if(autoRot){sph.t+=.004;updCam();}R.render(scene,cam);}
+anim();
+
+// ── UI ──
+function tab(name,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.tc').forEach(t=>t.classList.remove('on'));el.classList.add('on');document.getElementById('t-'+name).classList.add('on');}
+function sz(d,v){
+  if(d==='w'){S.w=+v;document.getElementById('wv').textContent=v+' ft';}
+  if(d==='l'){S.l=+v;document.getElementById('lv').textContent=v+' ft';}
+  if(d==='h'){S.h=+v;document.getElementById('hv').textContent=v+' ft';}
+  document.getElementById('sqft').textContent=(S.w*S.l)+' sq ft';
+  build();
+}
+function clr(p,hex,name,el){
+  if(p==='s'){S.sc=hex;S.sn=name;document.querySelectorAll('#cg-s .cs').forEach(c=>c.classList.remove('on'));}
+  if(p==='t'){S.tc=hex;S.tn=name;document.querySelectorAll('#cg-t .cs').forEach(c=>c.classList.remove('on'));}
+  if(p==='r'){S.rc=hex;S.rn=name;document.querySelectorAll('#cg-r .cs').forEach(c=>c.classList.remove('on'));}
+  el.classList.add('on');build();
+}
+function tog(el,key){
+  S.extras[key]=!S.extras[key];
+  el.classList.toggle('on',S.extras[key]);
+  el.querySelector('.tk').innerHTML=S.extras[key]?'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>':'';
+  build();
+}
+function elec(el,pkg){
+  S.elec=pkg;
+  document.querySelectorAll('#elec-grp .ti').forEach(t=>{t.classList.remove('on');t.querySelector('.tk').innerHTML='';});
+  el.classList.add('on');el.querySelector('.tk').innerHTML='<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+  updateSum();
+}
+function updateSum(){
+  const parts=[S.w+'x'+S.l+' ft','A-Frame/Gable',S.sn+'/'+S.tn+'/'+S.rn];
+  if(S.elec!=='None')parts.push(S.elec+' Elec');
+  document.getElementById('sumtxt').textContent=parts.join(' · ');
+}
+function openQ(){
+  autoRot=false;
+  const ex=Object.entries(S.extras).filter(([k,v])=>v).map(([k])=>k).join(', ')||'None';
+  document.getElementById('mconf').innerHTML=
+    '<strong>Style:</strong> A-Frame / Gable<br>'+
+    '<strong>Size:</strong> '+S.w+' ft x '+S.l+' ft x '+S.h+' ft walls<br>'+
+    '<strong>Siding:</strong> '+S.sn+' &nbsp;/&nbsp; <strong>Trim:</strong> '+S.tn+' &nbsp;/&nbsp; <strong>Roof:</strong> '+S.rn+'<br>'+
+    '<strong>Electrical:</strong> '+S.elec+'<br>'+
+    '<strong>Add-ons:</strong> '+ex;
+  document.getElementById('modal').classList.add('on');
+}
+function closeQ(){document.getElementById('modal').classList.remove('on');}
+function subQ(){
+  const n=document.getElementById('mn').value.trim();
+  const p=document.getElementById('mp').value.trim();
+  const e=document.getElementById('me').value.trim();
+  if(!n||!p||!e){alert('Please fill in your name, phone and email.');return;}
+  const conf=document.getElementById('mconf').innerText;
+  const sub=encodeURIComponent('ShedPro Quote - A-Frame '+S.w+'x'+S.l+' - '+n);
+  const bod=encodeURIComponent('New quote from 3D Designer:\n\nName: '+n+'\nPhone: '+p+'\nEmail: '+e+'\nLocation: '+document.getElementById('ml').value+'\n\nConfiguration:\n'+conf);
+  window.location.href='mailto:info@shedpro-utah.com?subject='+sub+'&body='+bod;
+  document.getElementById('mform').style.display='none';
+  document.getElementById('msuc').style.display='block';
+}
+
+build();
+</script>
+</body>
+</html>
