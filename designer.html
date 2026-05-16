@@ -81,6 +81,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
     <canvas id="c"></canvas>
     <div id="errmsg" style="display:none;position:absolute;inset:0;background:#f0f0ee;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-family:sans-serif;color:#333;font-size:14px;text-align:center;padding:20px"></div>
     <div class="hint">Drag to rotate &nbsp;&middot;&nbsp; Scroll to zoom</div>
+    <div id="status" style="position:absolute;top:16px;left:16px;background:rgba(0,0,0,.6);color:white;padding:8px 14px;border-radius:8px;font-size:12px;font-family:sans-serif;">Loading 3D engine...</div>
   </div>
   <div class="sb">
     <div class="tabs">
@@ -198,11 +199,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 </div>
 <script>
 // Error handler
+function setStatus(msg){var el=document.getElementById('status');if(el)el.textContent=msg;}
 window.onerror=function(msg,src,line){
   document.getElementById('errmsg').style.display='flex';
   document.getElementById('errmsg').innerHTML='<strong>Error: '+msg+'</strong><br>Line: '+line+'<br><small>'+src+'</small>';
   return false;
 };
+setStatus('Three.js loaded: '+(typeof THREE!=='undefined'));
 if(typeof THREE==='undefined'){
   document.getElementById('errmsg').style.display='flex';
   document.getElementById('errmsg').innerHTML='<strong>3D library failed to load.</strong><br>Please check your internet connection and try again.';
@@ -554,7 +557,9 @@ function subQ(){
   document.getElementById('msuc').style.display='block';
 }
 
+setStatus('Building shed...');
 build();
+setStatus('');
 </script>
 </body>
 </html>
