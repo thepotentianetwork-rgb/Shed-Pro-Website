@@ -13,9 +13,11 @@
   gtag('js', new Date());
   gtag('config', 'G-GR8BG7DXZE');
 </script>
-<link rel="icon" type="image/png" href="shed-logo.png">
+<link rel="icon" type="image/png" href="shed-logo.webp">
 <script src="https://elfsightcdn.com/platform.js" async></script>
+<link rel="preload" href="shed-hero.webp" as="image" fetchpriority="high">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script type="application/ld+json">
 {
@@ -246,7 +248,7 @@
   .hero-bg {
     position: absolute;
     inset: 0;
-    background: url('shed-hero.jpeg') center/cover no-repeat;
+    background: url('shed-hero.webp') center/cover no-repeat;
     transform: scale(1.05);
     transition: transform 8s ease-out;
   }
@@ -365,7 +367,7 @@
   }
   .craft-photo {
     min-height: 300px;
-    background: url('shed-craftsmanship.jpeg') center/cover no-repeat;
+    background: url('shed-craftsmanship.webp') center/cover no-repeat;
     position: relative;
   }
   .craft-photo::after {
@@ -1021,9 +1023,9 @@
     <span></span><span></span><span></span>
   </button>
 
-  <a href="/" class="nav-logo">
+  <a href="/" class="nav-logo" aria-label="ShedPro LLC - Utah Custom Shed Builder - Home">
     <div class="logo-badge">
-      <img src="shed-logo.png" alt="ShedPro LLC Utah Logo">
+      <img src="shed-logo.webp" alt="ShedPro LLC Utah Logo" loading="lazy" width="52" height="52">
     </div>
     <div class="logo-text">
       <strong>SHEDPRO LLC</strong>
@@ -1032,7 +1034,7 @@
   </a>
 
   <div class="nav-right">
-    <a href="tel:+14352329516" class="nav-phone">
+    <a href="tel:+14352329516" class="nav-phone" aria-label="Call ShedPro LLC at 435-232-9516">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
     </a>
     <a href="https://design.idearoom.com/shedview-shed-pro-llc" class="btn btn-blue">Get A Free Quote</a>
@@ -1052,6 +1054,7 @@
 </div>
 
 <!-- HERO -->
+<main>
 <section class="hero">
   <div class="hero-bg" id="heroBg"></div>
   <div class="hero-overlay"></div>
@@ -1067,7 +1070,7 @@
 </section>
 
 <!-- STATS STRIP -->
-<div class="stats-strip">
+<div class="stats-strip" style="min-height:80px">
   <div class="stat-item">
     <div class="stat-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
@@ -1115,7 +1118,7 @@
 
     <div class="svc-card fade-up">
       <div class="svc-img-wrap">
-        <img class="svc-img" src="shed-storage.jpeg" alt="Custom storage shed built on-site by ShedPro LLC" loading="lazy">
+        <img class="svc-img" src="shed-storage.webp" alt="Custom storage shed built on-site by ShedPro LLC" loading="lazy">
         <div class="svc-badge">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
         </div>
@@ -1132,7 +1135,7 @@
 
     <div class="svc-card fade-up">
       <div class="svc-img-wrap">
-        <img class="svc-img" src="shed-workshop.jpeg" alt="Large barn-style workshop shed with garage door built by ShedPro LLC" loading="lazy">
+        <img class="svc-img" src="shed-workshop.webp" alt="Large barn-style workshop shed with garage door built by ShedPro LLC" loading="lazy">
         <div class="svc-badge">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
         </div>
@@ -1149,7 +1152,7 @@
 
     <div class="svc-card fade-up">
       <div class="svc-img-wrap">
-        <img class="svc-img" src="shed-garden.jpeg" alt="Custom shed with garden and trees built by ShedPro LLC" loading="lazy">
+        <img class="svc-img" src="shed-garden.webp" alt="Custom shed with garden and trees built by ShedPro LLC" loading="lazy">
         <div class="svc-badge">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V12"/><path d="M12 12C12 12 7 10 5 6c3 0 6 1 7 6z"/><path d="M12 12c0 0 5-2 7-6-3 0-6 1-7 6z"/><path d="M5 22h14"/></svg>
         </div>
@@ -1166,7 +1169,7 @@
 
     <div class="svc-card fade-up">
       <div class="svc-img-wrap">
-        <img class="svc-img" src="shed-adu.jpeg" alt="ADU livable backyard structure by ShedPro LLC" loading="lazy">
+        <img class="svc-img" src="shed-adu.webp" alt="ADU livable backyard structure by ShedPro LLC" loading="lazy">
         <div class="svc-badge">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M9 22V12h6v10"/></svg>
         </div>
@@ -1309,7 +1312,7 @@
     <div style="display:flex;flex-direction:column;gap:12px;">
 
       <div style="background:var(--dark3);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;">
-        <img src="shed-adu.jpeg" alt="ADU livable backyard structure with covered porch by ShedPro LLC" style="width:100%;height:200px;object-fit:cover;display:block;filter:brightness(0.75);">
+        <img src="shed-adu.webp" alt="ADU livable backyard structure with covered porch by ShedPro LLC" style="width:100%;height:200px;object-fit:cover;display:block;filter:brightness(0.75);" loading="lazy">
         <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(to top,rgba(12,12,12,0.95),transparent);">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;">Backyard Studios & ADUs</div>
           <div style="font-size:12px;color:var(--muted);">Fully livable. Fully permitted.</div>
@@ -1318,14 +1321,14 @@
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div style="background:var(--dark3);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;">
-          <img src="shed-barn-navy.jpeg" alt="Workshop shed built by ShedPro LLC" style="width:100%;height:130px;object-fit:cover;display:block;filter:brightness(0.65);">
+          <img src="shed-barn-navy.webp" alt="Workshop shed built by ShedPro LLC" style="width:100%;height:130px;object-fit:cover;display:block;filter:brightness(0.65);" loading="lazy">
           <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(to top,rgba(12,12,12,0.95),transparent);">
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;">Workshop Spaces</div>
             <div style="font-size:11px;color:var(--muted);">200+ sq ft builds</div>
           </div>
         </div>
         <div style="background:var(--dark3);border:1px solid rgba(43,181,232,0.25);border-radius:12px;overflow:hidden;position:relative;">
-          <img src="shed-office.jpeg" alt="Home office studio shed by ShedPro LLC" style="width:100%;height:130px;object-fit:cover;display:block;filter:brightness(0.65);">
+          <img src="shed-office.webp" alt="Home office studio shed by ShedPro LLC" style="width:100%;height:130px;object-fit:cover;display:block;filter:brightness(0.65);" loading="lazy">
           <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(to top,rgba(12,12,12,0.95),transparent);">
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;">Home Offices</div>
             <div style="font-size:11px;color:var(--muted);line-height:1.4;">Work from your backyard — legally</div>
@@ -1592,7 +1595,7 @@
 <footer>
   <div class="footer-grid">
     <div class="footer-brand">
-      <img src="shed-logo.png" alt="ShedPro LLC" style="width:64px;height:64px;object-fit:contain;margin-bottom:10px;">
+      <img src="shed-logo.webp" alt="ShedPro LLC" style="width:64px;height:64px;object-fit:contain;margin-bottom:10px;" loading="lazy" width="52" height="52">
       <strong>SHEDPRO LLC</strong>
       <p>Custom sheds built on-site across Utah, Idaho & surrounding states. Quality craftsmanship, fast turnaround, and a design process built around you.</p>
       <div class="social-row">
@@ -1608,7 +1611,7 @@
       </div>
     </div>
     <div class="footer-links">
-      <h4>Quick Links</h4>
+      <h3>Quick Links</h3>
       <ul>
         <li><a href="/">Home</a></li>
         <li><a href="gallery.html">Styles &amp; Gallery</a></li>
@@ -1622,6 +1625,7 @@
     <span>&copy; 2026 ShedPro LLC &nbsp;·&nbsp; Utah, Idaho & Beyond</span>
     <span><a href="/privacy-policy" style="color:inherit">Privacy Policy</a> &nbsp;·&nbsp; <a href="tel:+14352329516" style="color:var(--blue);">435-232-9516</a></span>
   </div>
+</main>
 </footer>
 
 <script>
