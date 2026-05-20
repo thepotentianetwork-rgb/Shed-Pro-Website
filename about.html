@@ -500,6 +500,32 @@
     .footer-grid { grid-template-columns: 1fr; }
     .cta-btns { flex-direction: column; align-items: center; }
   }
+
+  @media (max-width: 480px) {
+    /* Shrink logo image on small screens */
+    .logo-badge img { width: 36px !important; height: 36px !important; }
+    .logo-badge { width: 36px !important; height: 36px !important; }
+    /* Hide subtitle on very small screens */
+    .logo-text span { display: none; }
+    /* Shrink logo company name */
+    .logo-text strong { font-size: 15px !important; }
+    /* Shrink Get Quote button */
+    .nav-right .btn { font-size: 11px !important; padding: 8px 12px !important; }
+    /* Hide phone text, show only icon */
+    .nav-phone svg { width: 20px !important; height: 20px !important; }
+    /* Fix nav gap */
+    nav { gap: 6px !important; padding: 0 12px !important; }
+    .nav-right { gap: 8px !important; }
+    /* Smaller drawer font on mobile */
+    .nav-drawer a { font-size: 24px !important; }
+    /* Fix call link in drawer */
+    .nav-drawer a[href^="tel"] { font-size: 18px !important; }
+  }
+
+  @media (max-width: 360px) {
+    .logo-text { display: none; }
+    nav { padding: 0 10px !important; }
+  }
 </style>
 </head>
 <body>
