@@ -1,0 +1,1903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com?display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com?display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com?display=swap"></noscript>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Utah's #1 Custom Shed Builder | ShedPro LLC</title>
+<meta name="description" content="ShedPro LLC builds custom sheds on-site across Utah, Idaho & surrounding states. Pre-wired electrical available. Free quotes. Utah's #1 custom shed builder.">
+
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-GR8BG7DXZE');
+</script>
+<link rel="icon" type="image/png" href="ShedPro-Logo.webp">
+<script src="https://elfsightcdn.com/platform.js" async></script>
+<link rel="preload" href="shed-hero.webp" as="image" fetchpriority="high">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "ShedPro LLC",
+  "description": "Utah's #1 custom shed builder. Built on-site in under 2 weeks across Utah, Idaho & surrounding states.",
+  "url": "https://www.shedpro-utah.com",
+  "telephone": "+14352329516",
+  "email": "Shedprollc.utah@gmail.com",
+  "areaServed": ["Utah", "Idaho", "Nevada", "Wyoming", "Colorado"],
+  "serviceType": ["Custom Sheds", "Shed Kits"],
+  "sameAs": [
+    "https://www.facebook.com/profile.php?id=100070811200824",
+    "https://www.instagram.com/shedprout",
+    "https://www.tiktok.com/@shedprout"
+  ]
+}
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #2BB5E8;
+    --blue-hover: #1fa3d4;
+    --dark: #0C0C0C;
+    --dark2: #141414;
+    --dark3: #1A1A1A;
+    --dark4: #222222;
+    --white: #FFFFFF;
+    --muted: rgba(255,255,255,0.65);
+    --border: rgba(255,255,255,0.09);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-pill: 50px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--dark);
+    color: var(--white);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  img { display: block; max-width: 100%; }
+  a { text-decoration: none; color: inherit; }
+
+  /* ─── TOPBAR ─── */
+  .topbar {
+    background: var(--blue);
+    color: var(--dark);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .topbar svg { flex-shrink: 0; }
+
+  /* ─── NAV ─── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background: rgba(12,12,12,0.97);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 68px;
+  }
+  .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; }
+  .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-badge {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-badge img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+  }
+  .logo-text {
+    line-height: 1.1;
+  }
+  .logo-text strong {
+    display: block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+  }
+  .logo-text span {
+    font-size: 10px;
+    color: var(--blue);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .nav-phone {
+    color: var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .nav-phone svg { width: 18px; height: 18px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'Barlow', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 20px;
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+  .btn-blue {
+    background: var(--blue);
+    color: var(--dark);
+  }
+  .btn-blue:hover {
+    background: var(--blue-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(43,181,232,0.3);
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--white);
+    border: 2px solid rgba(255,255,255,0.6);
+  }
+  .btn-outline:hover {
+    background: var(--white);
+    color: var(--dark);
+    transform: translateY(-1px);
+  }
+  .btn-lg { font-size: 16px; padding: 14px 28px; }
+
+  /* Mobile nav drawer */
+  .nav-drawer {
+    position: fixed;
+    top: 68px;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(12,12,12,0.98);
+    backdrop-filter: blur(12px);
+    z-index: 199;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  }
+  .nav-drawer.open { transform: translateX(0); }
+  .nav-drawer a {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+  }
+  .nav-drawer a:hover { color: var(--blue); }
+
+  /* ─── HERO ─── */
+  .hero {
+    position: relative;
+    min-height: 600px;
+    display: flex;
+    align-items: flex-end;
+    padding: 48px 24px 56px;
+    overflow: hidden;
+  }
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background: url('shed-hero.webp') center/cover no-repeat;
+    transform: scale(1.05);
+    transition: transform 8s ease-out;
+  }
+  .hero-bg.loaded { transform: scale(1); }
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      110deg,
+      rgba(12,12,12,0.93) 0%,
+      rgba(12,12,12,0.72) 45%,
+      rgba(12,12,12,0.18) 100%
+    );
+  }
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 360px;
+  }
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(43,181,232,0.15);
+    border: 1px solid rgba(43,181,232,0.3);
+    border-radius: var(--radius-pill);
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--blue);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .hero h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(48px, 12vw, 68px);
+    font-weight: 900;
+    line-height: 0.95;
+    text-transform: uppercase;
+    letter-spacing: -0.5px;
+    margin-bottom: 20px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--blue);
+  }
+  .hero-sub {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+  .hero-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 240px;
+  }
+  .hero-btns .btn { width: 100%; justify-content: center; }
+
+  /* ─── STATS STRIP ─── */
+  .stats-strip {
+    background: var(--dark2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 22px 8px;
+    text-align: center;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--blue);
+  }
+  .stat-icon svg { width: 28px; height: 28px; stroke-width: 1.5; }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.3;
+  }
+
+  /* ─── CRAFTSMANSHIP ─── */
+  .craft {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .craft-photo {
+    min-height: 300px;
+    background: url('shed-craftsmanship.webp') center/cover no-repeat;
+    position: relative;
+  }
+  .craft-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, transparent 80%, var(--dark2));
+  }
+  .craft-body {
+    background: var(--dark2);
+    padding: 48px 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .eyebrow-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--blue);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .craft-body h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(26px, 4vw, 36px);
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 1.05;
+    margin-bottom: 16px;
+  }
+  .craft-body p {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.65;
+    margin-bottom: 24px;
+  }
+  .text-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--blue);
+    font-weight: 600;
+    font-size: 14px;
+    transition: gap 0.2s;
+  }
+  .text-link:hover { gap: 10px; }
+  .text-link svg { width: 16px; height: 16px; }
+
+  /* ─── SERVICES ─── */
+  .services {
+    padding: 56px 20px;
+    background: var(--dark);
+  }
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(28px, 6vw, 38px);
+    font-weight: 900;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 32px;
+    letter-spacing: -0.3px;
+  }
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .svc-card {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+    cursor: pointer;
+  }
+  .svc-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(43,181,232,0.35);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+  }
+  .svc-img-wrap {
+    position: relative;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+  }
+  .svc-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+  .svc-card:hover .svc-img { transform: scale(1.05); }
+  .svc-badge {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    width: 34px;
+    height: 34px;
+    background: rgba(12,12,12,0.8);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .svc-badge svg { width: 16px; height: 16px; color: var(--blue); }
+  .svc-body { padding: 16px; }
+  .svc-body h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+  .svc-body p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-bottom: 12px;
+  }
+  .svc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: gap 0.2s;
+  }
+  .svc-link:hover { gap: 8px; }
+  .svc-link svg { width: 12px; height: 12px; }
+
+  /* ─── REVIEWS ─── */
+  .reviews {
+    padding: 0 20px 56px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .review-card {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .google-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .g-logo {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .g-logo svg { width: 24px; height: 24px; }
+  .stars {
+    display: flex;
+    gap: 3px;
+  }
+  .stars svg {
+    width: 18px;
+    height: 18px;
+    fill: #FBBC04;
+    stroke: none;
+  }
+  .review-score {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .review-sublabel {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .review-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--blue);
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 14px;
+    transition: gap 0.2s;
+  }
+  .review-cta:hover { gap: 8px; }
+  .review-cta svg { width: 14px; height: 14px; }
+
+  .quote-card {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+  }
+  .quote-mark {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 56px;
+    line-height: 0.8;
+    color: var(--blue);
+    margin-bottom: 8px;
+    opacity: 0.8;
+  }
+  .quote-text {
+    font-size: 13px;
+    color: rgba(255,255,255,0.78);
+    font-style: italic;
+    line-height: 1.65;
+    flex: 1;
+    margin-bottom: 16px;
+  }
+  .quote-author {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── SERVICE AREA ─── */
+  .area-section {
+    background: var(--dark2);
+    padding: 56px 20px;
+    text-align: center;
+    border-top: 1px solid var(--border);
+  }
+  .area-section h2 { margin-bottom: 14px; }
+  .area-intro {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 28px;
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .cities-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 600px;
+    margin: 0 auto 28px;
+  }
+  .city-pill {
+    background: rgba(43,181,232,0.1);
+    border: 1px solid rgba(43,181,232,0.2);
+    border-radius: var(--radius-pill);
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.8);
+    letter-spacing: 0.02em;
+  }
+
+  /* ─── FAQ ─── */
+  .faq-section {
+    padding: 56px 20px;
+    background: var(--dark);
+    border-top: 1px solid var(--border);
+  }
+  .faq-section h2 { margin-bottom: 28px; }
+  .faq-list { max-width: 680px; margin: 0 auto; }
+  .faq-item {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .faq-item.open { border-color: rgba(43,181,232,0.3); }
+  .faq-btn {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--white);
+    font-family: 'Barlow', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 18px 20px;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .faq-btn:hover { color: var(--blue); }
+  .faq-icon {
+    width: 20px;
+    height: 20px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.3s, border-color 0.3s, background 0.3s;
+  }
+  .faq-item.open .faq-icon {
+    transform: rotate(45deg);
+    background: var(--blue);
+    border-color: var(--blue);
+  }
+  .faq-icon svg { width: 10px; height: 10px; }
+  .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+  }
+  .faq-answer-inner {
+    padding: 0 20px 20px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* ─── CTA BANNER ─── */
+  .cta-banner {
+    position: relative;
+    padding: 64px 24px;
+    text-align: center;
+    overflow: hidden;
+    background: var(--dark2);
+    border-top: 1px solid var(--border);
+  }
+  .cta-banner::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(43,181,232,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta-banner h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(32px, 8vw, 52px);
+    font-weight: 900;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .cta-banner p {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 32px;
+    max-width: 360px;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+  }
+  .cta-banner .btn { position: relative; font-size: 17px; padding: 15px 36px; }
+  .cta-phone {
+    display: block;
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 14px;
+    position: relative;
+  }
+  .cta-phone a { color: var(--blue); font-weight: 600; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    background: var(--dark);
+    border-top: 1px solid var(--border);
+    padding: 40px 20px 30px;
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+  .footer-brand strong {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .footer-brand p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .social-row {
+    display: flex;
+    gap: 10px;
+  }
+  .social-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .social-btn:hover { color: var(--blue); border-color: rgba(43,181,232,0.4); }
+  .social-btn svg { width: 16px; height: 16px; }
+  .footer-links h4 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 14px;
+  }
+  .footer-links ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .footer-links li a {
+    font-size: 14px;
+    color: var(--muted);
+    transition: color 0.2s;
+  }
+  .footer-links li a:hover { color: var(--white); }
+  .footer-bottom {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ─── FADE IN ANIMATIONS ─── */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .fade-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .fade-up:nth-child(2) { transition-delay: 0.1s; }
+  .fade-up:nth-child(3) { transition-delay: 0.2s; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 640px) {
+    .stats-strip { grid-template-columns: repeat(2, 1fr); }
+    .stat-item:nth-child(2) { border-right: none; }
+    .stat-item:nth-child(3) { border-top: 1px solid var(--border); }
+    .stat-item:nth-child(4) { border-top: 1px solid var(--border); border-right: none; }
+
+    .craft { grid-template-columns: 1fr; }
+    .craft-photo { min-height: 220px; }
+    .craft-photo::after { display: none; }
+    .craft-body { padding: 32px 20px; }
+
+    .services-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .svc-img-wrap { aspect-ratio: 16/9; }
+
+    .reviews { grid-template-columns: 1fr; }
+
+    .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+    .footer-bottom { flex-direction: column; align-items: flex-start; }
+
+    .hero { min-height: 520px; }
+    .hero-btns { max-width: 100%; }
+    .hero-btns .btn { font-size: 15px; padding: 12px 20px; }
+  }
+  /* ─── SOCIAL SECTION ─── */
+  .social-section {
+    background: var(--dark2);
+    padding: 56px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .section-inner { max-width: 900px; margin: 0 auto; }
+  .social-intro {
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 24px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .social-follow-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+  .follow-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--radius-pill);
+    font-weight: 700;
+    font-size: 13px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+  }
+  .follow-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+  .follow-btn.fb { background: #1877F2; color: white; }
+  .follow-btn.ig { background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
+  .follow-btn.tt { background: #010101; color: white; border: 1px solid rgba(255,255,255,0.15); }
+
+  .platform-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 16px;
+  }
+
+  /* Facebook Reviews */
+  .fb-reviews-block {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+  .fb-reviews-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .fb-review-card {
+    background: var(--dark4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+  }
+  .fb-review-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .fb-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #1877F2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 15px;
+    color: white;
+    flex-shrink: 0;
+  }
+  .fb-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .fb-stars { color: #FBBC04; font-size: 13px; letter-spacing: 1px; }
+  .fb-review-card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  /* Embed placeholders */
+  .social-embed-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .embed-card {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .embed-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    padding: 24px 16px;
+    border: 2px dashed rgba(255,255,255,0.1);
+    border-radius: var(--radius-sm);
+  }
+  .embed-placeholder p {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.6);
+  }
+  .embed-placeholder span {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .embed-placeholder strong { color: var(--blue); }
+  .embed-btn {
+    margin-top: 8px;
+    background: rgba(43,181,232,0.12);
+    border: 1px solid rgba(43,181,232,0.3);
+    color: var(--blue);
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 0.2s;
+  }
+  .embed-btn:hover { background: rgba(43,181,232,0.22); }
+
+  @media (max-width: 640px) {
+    .fb-reviews-grid { grid-template-columns: 1fr; }
+    .social-embed-row { grid-template-columns: 1fr; }
+    .social-follow-row { flex-direction: column; align-items: center; }
+  }
+
+
+  @media (max-width: 480px) {
+    /* Shrink logo image on small screens */
+    .logo-badge img { width: 36px !important; height: 36px !important; }
+    .logo-badge { width: 36px !important; height: 36px !important; }
+    /* Hide subtitle on very small screens */
+    .logo-text span { display: none; }
+    /* Shrink logo company name */
+    .logo-text strong { font-size: 15px !important; }
+    /* Shrink Get Quote button */
+    .nav-right .btn { font-size: 11px !important; padding: 8px 12px !important; }
+    /* Hide phone text, show only icon */
+    .nav-phone svg { width: 20px !important; height: 20px !important; }
+    /* Fix nav gap */
+    nav { gap: 6px !important; padding: 0 12px !important; }
+    .nav-right { gap: 8px !important; }
+    /* Smaller drawer font on mobile */
+    .nav-drawer a { font-size: 24px !important; }
+    /* Fix call link in drawer */
+    .nav-drawer a[href^="tel"] { font-size: 18px !important; }
+  }
+
+  @media (max-width: 360px) {
+    .logo-text { display: none; }
+    nav { padding: 0 10px !important; }
+  }
+
+
+  @media (max-width: 640px) {
+    .financing-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+    .payment-cards { grid-template-columns: 1fr !important; }
+    .elec-grid { grid-template-columns: 1fr 1fr !important; }
+  }
+
+  @media (max-width: 768px) {
+  }
+  
+  /* NAV LINKS - desktop flex, hidden on mobile */
+  .nav-links { display: flex; gap: 4px; list-style: none; }
+  .nav-links a { font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 12px; border-radius: 6px; transition: all .2s; text-decoration: none; }
+  .nav-links a:hover, .nav-links a.active { color: var(--white); background: rgba(255,255,255,.06); }
+  .hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
+  .hamburger span { display: block; width: 22px; height: 2px; background: var(--white); border-radius: 2px; transition: all .3s; }
+  @media (max-width: 768px) {
+    .nav-links { display: none !important; }
+    .hamburger { display: flex !important; }
+  }
+  
+  @media (max-width: 768px) {
+    .consult-grid { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+  Custom Sheds Built On-Site — Utah, Idaho & Beyond
+</div>
+
+<!-- NAV -->
+<nav>
+  <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+  <a href="/" class="nav-logo" aria-label="ShedPro LLC - Utah Custom Shed Builder - Home">
+    <div class="logo-badge"><img src="ShedPro-Logo.webp" alt="ShedPro LLC Utah Logo" width="52" height="52"></div>
+    <div class="logo-text"><strong>SHEDPRO LLC</strong><span>Utah's #1 Custom Shed Builder</span></div>
+  </a>
+  <div class="nav-right">
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="gallery.html">Styles & Gallery</a></li>
+      <li><a href="materials.html">Materials & Warranty</a></li>
+      <li><a href="faq.html">FAQ & Service Area</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="contact.html">Contact</a></li>
+      <li><a href="blog.html">Blog</a></li>
+    </ul>
+    <a href="tel:+14352329516" class="nav-phone" aria-label="Call ShedPro LLC at 435-232-9516"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+    <a href="contact.html" class="btn btn-blue">Get A Free Quote</a>
+  </div>
+</nav>
+
+<div class="nav-drawer" id="navDrawer">
+  <a href="index.html">Home</a>
+  <a href="gallery.html">Styles &amp; Gallery</a>
+  <a href="materials.html">Materials &amp; Warranty</a>
+  <a href="faq.html">FAQ &amp; Service Area</a>
+  <a href="about.html">About Us</a>
+  <a href="contact.html">Contact</a>
+  <a href="blog.html">Blog</a>
+  <a href="tel:+14352329516">Call 435-232-9516</a>
+</div>
+</div>
+
+<!-- HERO -->
+<main>
+<section class="hero">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Utah's #1 Custom Shed Builder</div>
+    <h1>Custom Sheds<br><em>Built On-Site,</em><br>Built to Last</h1>
+    <p class="hero-sub">We come to you. ShedPro LLC builds custom sheds directly in your backyard across Utah, Idaho & surrounding states — done in under 2 weeks.</p>
+    <div class="hero-btns">
+      <a href="https://design.idearoom.com/shedview-shed-pro-llc" class="btn btn-blue btn-lg">Get A Free Quote</a>
+      <a href="gallery.html" class="btn btn-outline btn-lg">View Shed Styles</a>
+      <div style="width:100%;display:flex;align-items:center;gap:12px;margin:4px 0;">
+        <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">Not sure where to start?</span>
+        <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
+      </div>
+      <a href="https://calendly.com/shedprollc-utah/30min" target="_blank" rel="noopener" class="btn btn-outline btn-lg" style="border-color:rgba(43,181,232,0.5);color:var(--blue);">&#127381; Book a Free In-Home Visit</a>
+    </div>
+  </div>
+</section>
+
+<!-- STATS STRIP -->
+<div class="stats-strip" style="min-height:80px">
+  <div class="stat-item">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+    </div>
+    <div class="stat-label">Built On-Site</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="stat-label">Custom Design Help</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div class="stat-label">Pre-Wired Electrical Available</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="stat-label">Quality Craftsmanship</div>
+  </div>
+</div>
+
+<!-- IN-HOME CONSULTATION -->
+<section style="background:var(--dark2);padding:72px 20px;border-top:1px solid var(--border);">
+  <div style="max-width:920px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;" class="consult-grid">
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(43,181,232,0.1);border:1px solid rgba(43,181,232,0.25);border-radius:50px;padding:5px 16px;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:18px;">
+        &#127968; Free In-Home Visit
+      </div>
+      <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(32px,6vw,52px);font-weight:900;text-transform:uppercase;line-height:1;margin-bottom:16px;">
+        We Come <span style="color:var(--blue)">To You</span>
+      </h2>
+      <p style="font-size:15px;color:var(--muted);line-height:1.75;margin-bottom:14px;">
+        Skip the guesswork. We'll come to your property, measure your space, show you real material samples, and help you visualize exactly what your shed will look like — before a single board is cut.
+      </p>
+      <p style="font-size:15px;color:var(--muted);line-height:1.75;margin-bottom:24px;">
+        Most shed companies make you figure it out yourself. We show up, walk your property with you, and make sure you love your design before we build it.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.85);">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          We measure your space on-site
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.85);">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          Real material samples — see exactly what you're getting
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.85);">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          Visualize your shed on your actual property
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.85);">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          100% free — no obligation
+        </div>
+      </div>
+      <a href="contact.html#consultation" style="display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:var(--dark);font-family:'Barlow',sans-serif;font-weight:800;font-size:16px;padding:14px 28px;border-radius:50px;text-decoration:none;">
+        Schedule Your Free Visit &#8594;
+      </a>
+    </div>
+
+    <!-- Right: Incentive card -->
+    <div style="background:var(--dark3);border:2px solid rgba(43,181,232,0.3);border-radius:16px;padding:32px 28px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:48px;margin-bottom:8px;">&#127381;</div>
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;text-transform:uppercase;margin-bottom:8px;">Free Upgrade</h3>
+        <p style="font-size:14px;color:var(--muted);line-height:1.6;">Schedule a free in-home consultation and choose one of these upgrades — on us.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(43,181,232,0.06);border:1px solid rgba(43,181,232,0.15);border-radius:10px;padding:12px 16px;">
+          <span style="font-size:24px;">🏠</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;">Loft Addition</div>
+            <div style="font-size:11px;color:var(--muted);">Extra overhead storage space</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(43,181,232,0.06);border:1px solid rgba(43,181,232,0.15);border-radius:10px;padding:12px 16px;">
+          <span style="font-size:24px;">📦</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;">Shelving Package</div>
+            <div style="font-size:11px;color:var(--muted);">Organized wall storage built-in</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(43,181,232,0.06);border:1px solid rgba(43,181,232,0.15);border-radius:10px;padding:12px 16px;">
+          <span style="font-size:24px;">💨</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;">Roof Vent</div>
+            <div style="font-size:11px;color:var(--muted);">Keeps your shed cool & dry</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(43,181,232,0.06);border:1px solid rgba(43,181,232,0.15);border-radius:10px;padding:12px 16px;">
+          <span style="font-size:24px;">☀️</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;">Solar Panel Light</div>
+            <div style="font-size:11px;color:var(--muted);">No wiring needed — powered by the sun</div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);line-height:1.6;">
+        &#9888; One upgrade per consultation. Must schedule and complete in-home visit to redeem. Limited spots available each month.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- CRAFTSMANSHIP -->
+<section class="craft">
+  <div class="craft-photo"></div>
+  <div class="craft-body">
+    <div class="eyebrow-tag">Built the Right Way</div>
+    <h2>Every Shed Built With Extra Craftsmanship</h2>
+    <p>We use high-quality materials and expert construction techniques to ensure your shed is strong, beautiful, and built to last — whether you're in Utah, Idaho, or anywhere in between.</p>
+    <a href="about.html#craftsmanship" class="text-link">
+      See Our Craftsmanship
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="services">
+  <h2 class="section-title">Sheds Built For Every Need</h2>
+  <div class="services-grid">
+
+    <div class="svc-card fade-up">
+      <div class="svc-img-wrap">
+        <img class="svc-img" src="shed-storage.webp" alt="Custom storage shed built on-site by ShedPro LLC" loading="lazy">
+        <div class="svc-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        </div>
+      </div>
+      <div class="svc-body">
+        <h3>Storage Sheds</h3>
+        <p>Keep your tools, gear, and lawn equipment organized and protected with a custom-built storage shed.</p>
+        <a href="gallery.html" class="svc-link">
+          Explore Storage Sheds
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="svc-card fade-up">
+      <div class="svc-img-wrap">
+        <img class="svc-img" src="shed-workshop.webp" alt="Large barn-style workshop shed with garage door built by ShedPro LLC" loading="lazy">
+        <div class="svc-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+      </div>
+      <div class="svc-body">
+        <h3>Workshop Sheds</h3>
+        <p>Built for projects, hobbies, and serious work in your own backyard. Your space, your rules. Add pre-wired electrical and really make it work.</p>
+        <a href="gallery.html" class="svc-link">
+          Explore Workshop Sheds
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="svc-card fade-up">
+      <div class="svc-img-wrap">
+        <img class="svc-img" src="shed-garden.webp" alt="Custom shed with garden and trees built by ShedPro LLC" loading="lazy">
+        <div class="svc-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V12"/><path d="M12 12C12 12 7 10 5 6c3 0 6 1 7 6z"/><path d="M12 12c0 0 5-2 7-6-3 0-6 1-7 6z"/><path d="M5 22h14"/></svg>
+        </div>
+      </div>
+      <div class="svc-body">
+        <h3>Garden Sheds</h3>
+        <p>Add charm and function to your garden with the perfect shed. Beautiful inside and out.</p>
+        <a href="gallery.html" class="svc-link">
+          Explore Garden Sheds
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="svc-card fade-up">
+      <div class="svc-img-wrap">
+        <img class="svc-img" src="shed-adu.webp" alt="ADU livable backyard structure by ShedPro LLC" loading="lazy">
+        <div class="svc-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M9 22V12h6v10"/></svg>
+        </div>
+      </div>
+      <div class="svc-body">
+        <h3>ADU / Livable</h3>
+        <p>Studios, offices, guest suites & more. We build the structure and work with licensed contractors to make it fully permitted and livable.</p>
+        <a href="#adu" class="svc-link">
+          Learn More
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
+<div class="reviews">
+  <div class="review-card">
+    <div class="google-header">
+      <div class="g-logo">
+        <!-- Google G icon -->
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+      </div>
+      <div>
+        <div class="stars">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="review-score">5.0 Rated by<br>Happy Customers</div>
+    <a href="https://www.google.com/search?q=ShedPro+LLC+Utah+Reviews" class="review-cta">
+      View All Reviews
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+
+  <div class="quote-card">
+    <div class="quote-mark">&ldquo;</div>
+    <p class="quote-text">ShedPro LLC exceeded our expectations from start to finish. The quality is top-notch and the team was easy to work with. We love our new shed!</p>
+    <div class="quote-author">— Jason H. &nbsp;·&nbsp; Saratoga Springs, UT</div>
+  </div>
+</div>
+
+<!-- SERVICE AREA -->
+<section class="area-section">
+  <h2 class="section-title">Proudly Serving Utah, Idaho & Beyond</h2>
+  <p class="area-intro">ShedPro LLC builds custom sheds on-site wherever you are. We're based in Utah but regularly serve Idaho and surrounding states — if you're close, we'll come to you.</p>
+  <div class="cities-wrap">
+    <span class="city-pill">Salt Lake City</span>
+    <span class="city-pill">Murray</span>
+    <span class="city-pill">Sandy</span>
+    <span class="city-pill">Draper</span>
+    <span class="city-pill">South Jordan</span>
+    <span class="city-pill">West Jordan</span>
+    <span class="city-pill">Herriman</span>
+    <span class="city-pill">Riverton</span>
+    <span class="city-pill">Lehi</span>
+    <span class="city-pill">American Fork</span>
+    <span class="city-pill">Provo</span>
+    <span class="city-pill">Orem</span>
+    <span class="city-pill">Ogden</span>
+    <span class="city-pill">Layton</span>
+    <span class="city-pill">Logan</span>
+    <span class="city-pill">Bountiful</span>
+    <span class="city-pill" style="border-color:rgba(43,181,232,0.45);color:var(--blue)">Boise, ID</span>
+    <span class="city-pill" style="border-color:rgba(43,181,232,0.45);color:var(--blue)">Twin Falls, ID</span>
+    <span class="city-pill" style="border-color:rgba(43,181,232,0.45);color:var(--blue)">Idaho Falls, ID</span>
+    <span class="city-pill" style="border-color:rgba(43,181,232,0.45);color:var(--blue)">Pocatello, ID</span>
+    <span class="city-pill" style="border-color:rgba(43,181,232,0.3);color:var(--muted)">& Surrounding States</span>
+  </div>
+  <p style="font-size:14px; color:var(--muted)">Not sure if we reach you? <a href="tel:+14352329516" style="color:var(--blue); font-weight:600;">Give us a call</a> — we likely do.</p>
+</section>
+
+<!-- ADU / LIVABLE STRUCTURES SECTION -->
+<section id="adu" style="background:var(--dark);padding:64px 20px;border-top:1px solid var(--border);overflow:hidden;position:relative;">
+  <!-- Subtle background glow -->
+  <div style="position:absolute;top:0;right:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(43,181,232,0.05) 0%,transparent 70%);pointer-events:none;"></div>
+
+  <div style="max-width:860px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;">
+
+    <!-- Left: Content -->
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(43,181,232,0.1);border:1px solid rgba(43,181,232,0.25);border-radius:50px;padding:5px 14px;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:18px;">
+        Beyond the Shed
+      </div>
+      <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(32px,6vw,48px);font-weight:900;text-transform:uppercase;line-height:1;margin-bottom:16px;">
+        Need a <span style="color:var(--blue);">Livable Space</span><br>in Your Backyard?
+      </h2>
+      <p style="font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:16px;">
+        We started with sheds — and we're still the best at them. But we've had more and more customers come to us with bigger dreams: a backyard studio, a home office, a guest suite, a fully livable ADU.
+      </p>
+      <p style="font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:24px;">
+        So we made it happen. ShedPro LLC now partners with licensed contractors to take your backyard structure from <strong style="color:var(--white);">a simple shed to a fully permitted, livable space</strong> — legally, properly, and built to last. We handle the structure. Our licensed partners handle the permitting and the finish work that makes it livable.
+      </p>
+
+      <!-- Feature list -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <span style="font-size:14px;color:rgba(255,255,255,0.8);">Backyard studios, home offices & guest suites</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <span style="font-size:14px;color:rgba(255,255,255,0.8);">Fully permitted builds — we handle the paperwork</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <span style="font-size:14px;color:rgba(255,255,255,0.8);">Structures over 200 sq ft — no project too big</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <span style="font-size:14px;color:rgba(255,255,255,0.8);">Licensed contractor partners for finish work & compliance</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="tel:+14352329516" class="btn btn-blue">Talk to Us About Your Project</a>
+        <a href="mailto:Shedprollc.utah@gmail.com" class="btn btn-outline">Send Us a Message</a>
+      </div>
+    </div>
+
+    <!-- Right: Visual cards -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+
+      <div style="background:var(--dark3);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;">
+        <img src="shed-adu.webp" alt="ADU livable backyard structure with covered porch by ShedPro LLC" style="width:100%;height:200px;object-fit:cover;display:block;filter:brightness(0.75);" loading="lazy">
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(to top,rgba(12,12,12,0.95),transparent);">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;">Backyard Studios & ADUs</div>
+          <div style="font-size:12px;color:var(--muted);">Fully livable. Fully permitted.</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="payment-cards">
+        <div style="background:var(--dark3);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;">
+          <img src="shed-barn-navy.webp" alt="Workshop shed built by ShedPro LLC" style="width:100%;height:130px;object-fit:cover;display:block;filter:brightness(0.65);" loading="lazy">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(to top,rgba(12,12,12,0.95),transparent);">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;">Workshop Spaces</div>
+            <div style="font-size:11px;color:var(--muted);">200+ sq ft builds</div>
+          </div>
+        </div>
+        <div style="background:var(--dark3);border:1px solid rgba(43,181,232,0.25);border-radius:12px;overflow:hidden;position:relative;">
+          <img src="shed-office.webp" alt="Home office studio shed by ShedPro LLC" style="width:100%;height:130px;object-fit:cover;display:block;filter:brightness(0.65);" loading="lazy">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(to top,rgba(12,12,12,0.95),transparent);">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;">Home Offices</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.4;">Work from your backyard — legally</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trust note -->
+      <div style="background:rgba(43,181,232,0.07);border:1px solid rgba(43,181,232,0.2);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <p style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.5;"><strong style="color:var(--white);">Properly permitted.</strong> We work with licensed contractors to ensure every livable structure meets local code — so you're protected now and when you sell.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+<!-- FAQ -->
+<section class="faq-section">
+  <h2 class="section-title" style="text-align:center">Frequently Asked Questions</h2>
+  <div class="faq-list">
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        Do you offer financing?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">Yes — we offer financing options for qualifying customers. Ask us about financing when you get your quote and we'll walk you through the details. We also accept cashier's check and electronic payment through Invoice2go.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        What payment methods do you accept?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">We accept cashier's check as our preferred payment method. We also offer electronic invoicing and payment through Invoice2go for your convenience. Payment details will be discussed during your consultation and outlined in your quote.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        Do I need a permit to build a shed in Utah?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">Most Utah municipalities don't require a permit for sheds under 200 square feet, but rules vary by city. We recommend checking with your local city office — and we're happy to help guide you through the process.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        How long does it take to build a custom shed?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">Most custom sheds are completed in under 2 weeks from the time you finalize your design. Larger or more complex builds may take slightly longer. We'll give you a clear timeline during your free consultation.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        How much does a custom shed cost?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">Pricing varies based on size, materials, and features. We offer free quotes with no obligation — use our online design tool to get started, or call us at 435-232-9516 and we'll work up an estimate together.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        What's the difference between a custom build and a shed kit?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">A shed kit is a pre-built structure we deliver to your property for you to assemble. A custom shed is built on-site by our team. Kits are great for DIYers; custom builds are best if you want professional craftsmanship with zero hassle.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        Can I customize the look of my shed?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">Absolutely. You can choose your roof style, siding, doors, windows, color, and more. Our online design tool lets you visualize your shed before we build it — start designing today for free.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        Do you offer electrical in your sheds?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">Yes — we offer pre-wired electrical as an add-on upgrade on any build. We have 4 tiers to choose from depending on how much power you need, from a basic single outlet and light all the way up to a full essential package with soffit lighting, multiple switches, GFCI outlets and more. Ask us about electrical when you get your quote.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        What siding material do you use?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">We build every shed with LP SmartSide engineered wood siding — not cheap OSB or T1-11. LP SmartSide is engineered to resist moisture, impact, and the freeze-thaw cycles common across Utah and Idaho. It holds paint beautifully and comes with an industry-leading 50-year warranty. It's one of the reasons our sheds last decades, not years.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        What colors can I choose from?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">Any color you want — seriously. We paint all of our sheds with Sherwin-Williams exterior paint, which means you have access to thousands of colors, not just the ones shown on our website. Browse the full Sherwin-Williams color library at sherwin-williams.com and bring us your pick. If they make it, we can paint it.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        What kind of foundation do I need?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">We just need a reasonably flat surface — no more than 6 inches of unevenness. We'll level the ground out before we build. Grass and gravel are both fine, but we always recommend a concrete slab for the best long-term results. Concrete gives your shed the most stable, lasting foundation — especially important for larger builds or workshop sheds. The homeowner is responsible for any ground movement over time, so a solid concrete pad protects your investment.</div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-btn" onclick="toggleFaq(this)">
+        Do you offer a warranty?
+        <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">Yes — every ShedPro LLC build is backed by our workmanship warranty. Our LP SmartSide siding carries a manufacturer-backed 50-year warranty. Our Sherwin-Williams paint is rated for long-term exterior performance. And our structural framing is built to last. See our full warranty details on the site or ask us when you get your quote.</div>
+      </div>
+    </div>
+
+  </div>
+  <div style="text-align:center; margin-top:28px;">
+    <a href="gallery.html" style="display:inline-flex;align-items:center;gap:8px;color:var(--blue);font-weight:700;font-size:15px;">
+      Browse Shed Styles & Gallery
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- FINANCING SECTION -->
+<section style="background:var(--dark2);padding:48px 20px;border-top:1px solid var(--border);">
+  <div style="max-width:860px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;" class="financing-grid">
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--blue);text-transform:uppercase;margin-bottom:10px;">Flexible Payment Options</div>
+      <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(28px,5vw,44px);font-weight:900;text-transform:uppercase;line-height:1;margin-bottom:14px;">Financing <em style="font-style:normal;color:var(--blue);">Available</em></h2>
+      <p style="font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:20px;">Don't let budget hold you back from the shed you actually want. We offer financing options for qualifying customers — so you can get started today and pay over time.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.85);">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          Financing available for qualifying customers
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.85);">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          Up to $20,000 in financing
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.85);">
+          <div style="width:20px;height:20px;background:rgba(43,181,232,0.15);border:1px solid rgba(43,181,232,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          Also accept cashier's check & electronic invoice
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="contact.html" style="display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:var(--dark);font-family:'Barlow',sans-serif;font-weight:800;font-size:15px;padding:13px 24px;border-radius:50px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1fa3d4'" onmouseout="this.style.background='var(--blue)'">Ask About Financing</a>
+        <a href="tel:+14352329516" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--white);font-family:'Barlow',sans-serif;font-weight:700;font-size:15px;padding:12px 24px;border-radius:50px;border:2px solid rgba(255,255,255,0.4);text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.8)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.4)'">Call Us</a>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:var(--dark3);border:1px solid var(--border);border-radius:12px;padding:24px 18px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">💳</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;margin-bottom:6px;">Financing</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Up to $20K for qualifying customers</div>
+      </div>
+      <div style="background:var(--dark3);border:1px solid var(--border);border-radius:12px;padding:24px 18px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">🏦</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;margin-bottom:6px;">Cashier's Check</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Preferred payment method</div>
+      </div>
+      <div style="background:var(--dark3);border:1px solid var(--border);border-radius:12px;padding:24px 18px;text-align:center;grid-column:span 2;">
+        <div style="font-size:32px;margin-bottom:8px;">📱</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;margin-bottom:6px;">Electronic Invoice</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Pay online via Invoice2go — fast & convenient</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- CTA BANNER -->
+<section class="cta-banner">
+  <h2>Ready to Build<br>Your Dream Shed?</h2>
+  <p>Get a free quote in minutes. No obligation, no pressure — just a great shed.</p>
+  <a href="https://design.idearoom.com/shedview-shed-pro-llc" class="btn btn-blue">Start Designing Now</a>
+  <span class="cta-phone">Or call us at <a href="tel:+14352329516">435-232-9516</a></span>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <img src="ShedPro-Logo.webp" alt="ShedPro LLC" style="width:64px;height:64px;object-fit:contain;margin-bottom:10px;" loading="lazy" width="52" height="52">
+      <strong>SHEDPRO LLC</strong>
+      <p>Custom sheds built on-site across Utah, Idaho & surrounding states. Quality craftsmanship, fast turnaround, and a design process built around you.</p>
+      <div class="social-row">
+        <a href="https://www.facebook.com/profile.php?id=100070811200824" class="social-btn" aria-label="Facebook" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+        </a>
+        <a href="https://www.instagram.com/shedprout" class="social-btn" aria-label="Instagram" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
+        </a>
+        <a href="https://www.tiktok.com/@shedprout" class="social-btn" aria-label="TikTok" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.79 1.53V6.79a4.85 4.85 0 01-1.02-.1z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="footer-links">
+      <h3>Quick Links</h3>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="gallery.html">Styles &amp; Gallery</a></li>
+        <li><a href="materials.html">Materials & Warranty</a></li>
+      <li><a href="materials.html">Materials &amp; Warranty</a>
+  <a href="faq.html">FAQ &amp; Service Area</a>
+  <a href="about.html">About Us</a></li>
+        <li><a href="contact.html">Contact Us</a></li>
+        <li><a href="https://design.idearoom.com/shedview-shed-pro-llc">Design Your Shed</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2026 ShedPro LLC &nbsp;·&nbsp; Utah, Idaho & Beyond</span>
+    <span><a href="/privacy-policy" style="color:inherit">Privacy Policy</a> &nbsp;·&nbsp; <a href="tel:+14352329516" style="color:var(--blue);">435-232-9516</a></span>
+  </div>
+</main>
+</footer>
+
+<script>
+  // Mobile nav
+  const hamburger = document.getElementById('hamburger');
+  const navDrawer = document.getElementById('navDrawer');
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    navDrawer.classList.toggle('open');
+    document.body.style.overflow = navDrawer.classList.contains('open') ? 'hidden' : '';
+  });
+
+  // Hero image zoom
+  window.addEventListener('load', () => {
+    document.getElementById('heroBg').classList.add('loaded');
+  });
+
+  // FAQ accordion
+  function toggleFaq(btn) {
+    const item = btn.closest('.faq-item');
+    const answer = item.querySelector('.faq-answer');
+    const isOpen = item.classList.contains('open');
+
+    document.querySelectorAll('.faq-item.open').forEach(el => {
+      el.classList.remove('open');
+      el.querySelector('.faq-answer').style.maxHeight = '0';
+    });
+
+    if (!isOpen) {
+      item.classList.add('open');
+      answer.style.maxHeight = answer.scrollHeight + 'px';
+    }
+  }
+
+  // Scroll fade-in
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+</script>
+
+<!-- WARRANTY TEASER -->
+<section style="background:var(--dark2);padding:48px 20px;border-top:1px solid var(--border);text-align:center">
+  <div style="max-width:620px;margin:0 auto">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--blue);text-transform:uppercase;margin-bottom:10px">Built to Last</div>
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(26px,5vw,40px);font-weight:900;text-transform:uppercase;margin-bottom:12px">LP SmartSide &bull; Sherwin-Williams &bull; 50-Year Warranty</h2>
+    <p style="font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:24px">Every ShedPro LLC build uses premium materials backed by industry-leading warranties. We never cut corners on what goes into your shed.</p>
+    <a href="materials.html" style="display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:var(--dark);font-family:'Barlow',sans-serif;font-weight:800;font-size:15px;padding:13px 28px;border-radius:50px;text-decoration:none">View Materials &amp; Warranty &rarr;</a>
+  </div>
+</section>
+
+<!-- SCARCITY POPUP -->
+<div id="emailPopup" style="
+  position:fixed;inset:0;z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);
+  opacity:0;pointer-events:none;transition:opacity 0.4s ease;
+  padding:20px;
+">
+  <div style="
+    background:var(--dark2);
+    border:1px solid rgba(43,181,232,0.3);
+    border-radius:16px;
+    max-width:400px;width:100%;
+    padding:36px 28px;
+    position:relative;
+    text-align:center;
+    box-shadow:0 24px 64px rgba(0,0,0,0.7);
+    transform:translateY(20px);
+    transition:transform 0.4s ease;
+  " id="popupBox">
+
+    <!-- Close button -->
+    <button onclick="closePopup()" style="
+      position:absolute;top:14px;right:14px;
+      background:rgba(255,255,255,0.08);border:none;
+      color:var(--muted);font-size:16px;
+      width:32px;height:32px;border-radius:50%;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:background 0.2s;
+    ">✕</button>
+
+    <!-- Pulsing dot -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:#EF4444;animation:pulse-red 1.5s infinite;"></div>
+      <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:#EF4444;text-transform:uppercase;">Limited Availability</span>
+    </div>
+
+    <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;text-transform:uppercase;line-height:1.05;margin-bottom:12px;">
+      Build Spots for<br><span style="color:var(--blue);">This Month</span><br>Are Filling Up
+    </h3>
+
+    <p style="font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:10px;">
+      ShedPro LLC limits the number of builds AND in-home consultations we take on each month — so every customer gets our full attention and craftsmanship.
+    </p>
+    <p style="font-size:14px;color:rgba(255,255,255,0.85);line-height:1.65;margin-bottom:24px;">
+      <strong>Don't wait</strong> — reach out now to check availability and lock in your spot before this month fills up.
+    </p>
+
+    <a href="contact.html" onclick="closePopup()" style="
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      width:100%;padding:15px;
+      background:var(--blue);color:var(--dark);
+      font-family:'Barlow',sans-serif;font-weight:800;font-size:16px;
+      border:none;border-radius:50px;cursor:pointer;
+      text-decoration:none;
+      transition:background 0.2s,transform 0.15s;
+      letter-spacing:0.02em;
+      margin-bottom:10px;
+    " onmouseover="this.style.background='#1fa3d4'" onmouseout="this.style.background='var(--blue)'">
+      Check Availability →
+    </a>
+
+    <a href="tel:+14352329516" onclick="closePopup()" style="
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      width:100%;padding:13px;
+      background:transparent;color:var(--white);
+      font-family:'Barlow',sans-serif;font-weight:700;font-size:14px;
+      border:2px solid rgba(255,255,255,0.2);border-radius:50px;
+      text-decoration:none;
+      transition:border-color 0.2s;
+    " onmouseover="this.style.borderColor='rgba(255,255,255,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)'">
+      📞 Call 435-232-9516
+    </a>
+
+    <p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5;">
+      We limit builds to ensure quality over quantity.<br>Spots are first come, first served.
+    </p>
+  </div>
+</div>
+
+<style>
+  #emailPopup.open { opacity:1; pointer-events:all; }
+  #emailPopup.open #popupBox { transform:translateY(0); }
+  @keyframes pulse-red {
+    0%, 100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(0.7); }
+  }
+  @media(max-width:640px){
+    [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr!important; }
+  }
+</style>
+
+<script>
+  // Show popup after 10 seconds if not already dismissed this session
+  setTimeout(() => {
+    if (!sessionStorage.getItem('popupDismissed')) {
+      document.getElementById('emailPopup').classList.add('open');
+    }
+  }, 10000);
+
+  function closePopup() {
+    document.getElementById('emailPopup').classList.remove('open');
+    sessionStorage.setItem('popupDismissed', '1');
+  }
+
+  // Close on backdrop click
+  document.getElementById('emailPopup').addEventListener('click', function(e) {
+    if (e.target === this) closePopup();
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePopup();
+  });
+</script>
+
+<!-- Google Analytics (deferred) -->
+<script>
+window.addEventListener('load', function(){
+  var s=document.createElement('script');
+  s.src='https://www.googletagmanager.com/gtag/js?id=G-GR8BG7DXZE';
+  s.async=true;
+  document.head.appendChild(s);
+  s.onload=function(){
+    window.dataLayer=window.dataLayer||[];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js',new Date());
+    gtag('config','G-GR8BG7DXZE');
+  };
+});
+</script>
+</body>
+</html>
