@@ -124,13 +124,25 @@
       .nav-drawer a[href^="tel"]{font-size:18px!important}
       .faq-btn{font-size:14px;padding:15px 16px}
     }
-  
-  /* NAV LINKS - desktop flex, hidden on mobile */
   .nav-links { display: flex; gap: 4px; list-style: none; }
   .nav-links a { font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 12px; border-radius: 6px; transition: all .2s; text-decoration: none; }
   .nav-links a:hover, .nav-links a.active { color: var(--white); background: rgba(255,255,255,.06); }
   .hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
   .hamburger span { display: block; width: 22px; height: 2px; background: var(--white); border-radius: 2px; transition: all .3s; }
+  @media (max-width: 768px) {
+    .nav-links { display: none !important; }
+    .hamburger { display: flex !important; }
+  }
+  
+  /* NAV LINKS - fit all items on one line */
+  .nav-links { display: flex; gap: 2px; list-style: none; flex-wrap: nowrap; }
+  .nav-links a { font-size: 12px; font-weight: 600; color: var(--muted); padding: 6px 9px; border-radius: 6px; transition: all .2s; text-decoration: none; white-space: nowrap; }
+  .nav-links a:hover, .nav-links a.active { color: var(--white); background: rgba(255,255,255,.06); }
+  .hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
+  .hamburger span { display: block; width: 22px; height: 2px; background: var(--white); border-radius: 2px; transition: all .3s; }
+  @media (max-width: 1024px) {
+    .nav-links a { font-size: 11px; padding: 6px 7px; }
+  }
   @media (max-width: 768px) {
     .nav-links { display: none !important; }
     .hamburger { display: flex !important; }
@@ -192,6 +204,15 @@
     </div>
 
     <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          What is your most popular shed style?
+          <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span>
+        </button>
+        <div class="faq-answer"><div class="faq-answer-inner">Our <strong>#1 most requested style is the A-Frame / Gable</strong> — and it's easy to see why. The classic peaked roofline handles Utah snow loads perfectly, works in any backyard, and has timeless curb appeal. Our <strong>#2 most requested is the Barn Style</strong>, which gives you dramatically more vertical space and loft potential without increasing your footprint. Both styles are available in any size, color, and configuration. <a href="gallery.html">Browse all styles →</a></div></div>
+      </div>
+
 
       <div class="faq-item">
         <button class="faq-btn" onclick="toggleFaq(this)">
