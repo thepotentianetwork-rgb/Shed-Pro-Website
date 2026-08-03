@@ -31,13 +31,7 @@
 @media(max-width:480px){}
 @media(max-width:360px){}
 .topbar{background:var(--blue);color:var(--dark);font-weight:700;font-size:13px;letter-spacing:0.04em;text-align:center;padding:9px 16px;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.3}.topbar svg{flex-shrink:0}nav{position:sticky;top:0;z-index:200;background:rgba(12,12,12,0.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:68px}.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}.logo-badge{width:52px;height:52px;display:flex;align-items:center;justify-content:center}.logo-badge img{width:52px;height:52px;object-fit:contain}.logo-text{line-height:1.1}.logo-text strong{display:block;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;letter-spacing:0.02em;color:var(--white)}.logo-text span{font-size:10px;color:var(--blue);font-weight:600;letter-spacing:0.08em;text-transform:uppercase}.nav-right{display:flex;align-items:center;gap:12px}.nav-phone{color:var(--blue);display:flex;align-items:center;gap:6px;font-weight:600;font-size:14px;text-decoration:none}.nav-phone svg{width:18px;height:18px}.nav-links{display:flex;gap:2px;list-style:none;flex-wrap:nowrap}.nav-links a{font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;color:var(--muted);padding:6px 10px;border-radius:6px;transition:all .2s;text-decoration:none;white-space:nowrap;text-transform:none;letter-spacing:normal}.nav-links a:hover,.nav-links a.active{color:var(--white);background:rgba(255,255,255,.06)}.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:'Barlow',sans-serif;font-weight:700;font-size:14px;padding:10px 20px;border-radius:50px;border:none;cursor:pointer;transition:all 0.2s;white-space:nowrap;text-decoration:none}.btn-blue{background:var(--blue);color:var(--dark)}.btn-blue:hover{background:var(--blue-hover);transform:translateY(-1px)}.hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:4px}.hamburger span{display:block;width:22px;height:2px;background:var(--white);border-radius:2px;transition:all .3s}.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}.hamburger.open span:nth-child(2){opacity:0}.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}.nav-drawer{position:fixed;top:106px;left:0;right:0;bottom:0;background:rgba(12,12,12,0.98);backdrop-filter:blur(12px);z-index:199;padding:32px 24px;display:flex;flex-direction:column;gap:8px;transform:translateX(-100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1)}.nav-drawer.open{transform:translateX(0)}.nav-drawer a{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:800;text-transform:uppercase;padding:10px 0;border-bottom:1px solid var(--border);letter-spacing:0.02em;transition:color 0.2s;text-decoration:none;color:var(--white)}.nav-drawer a:hover{color:var(--blue)}@media(max-width:1100px){.nav-links a{font-size:11px;padding:6px 7px}}@media(max-width:768px){.nav-links{display:none!important}.hamburger{display:flex!important}}@media(max-width:480px){.logo-badge img{width:36px!important;height:36px!important}.logo-badge{width:36px!important;height:36px!important}.logo-text span{display:none}.logo-text strong{font-size:15px!important}.nav-right .btn{font-size:11px!important;padding:8px 12px!important}nav{gap:6px!important;padding:0 12px!important}.nav-right{gap:8px!important}}@media(max-width:360px){.logo-text{display:none}nav{padding:0 10px!important}}
-/* ─── SHED QUIZ ─── */
-.quiz-question{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;text-transform:uppercase;margin-bottom:18px;letter-spacing:0.01em;}
-.quiz-options{display:flex;flex-direction:column;gap:10px;}
-.quiz-opt{background:var(--dark3);border:1px solid var(--border);border-radius:12px;padding:14px 18px;color:var(--white);font-family:'Barlow',sans-serif;font-size:15px;font-weight:600;text-align:left;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
-.quiz-opt:hover{border-color:var(--blue);background:rgba(43,181,232,0.08);}
-.quiz-opt.selected{border-color:var(--blue);background:rgba(43,181,232,0.15);color:var(--blue);}
-@media(max-width:768px){}@media(max-width:768px){.diff-grid{grid-template-columns:1fr!important;}.diff-img{min-height:220px!important;}}@media(max-width:768px){.quiz-layout{grid-template-columns:1fr!important;}.quiz-layout>div:last-child{position:static!important;}}
+@media(max-width:768px){}@media(max-width:768px){.diff-grid{grid-template-columns:1fr!important;}.diff-img{min-height:220px!important;}}@media(max-width:768px){}
 .hero-slideshow{position:absolute;inset:0;overflow:hidden;}
 .hero-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 2.5s ease-in-out;}
 .hero-slide.active{opacity:1;}
@@ -52,7 +46,7 @@
   <div class="hero-slide" style="background-image:url('shed-gambrel-white-logan.webp');"></div>
   <div class="hero-slide" style="background-image:url('shed-farmhouse-preston-idaho.webp');"></div>
   <div class="hero-slide" style="background-image:url('shed-navy-gambrel-logan.webp');"></div>
-</div><div class="hero-overlay"></div><div class="hero-vignette"></div><div class="hero-content"><div class="hero-eyebrow">Utah's #1 Custom Shed Builder</div><h1>Custom Sheds<br><em>Built On-Site,</em><br>Built to Last</h1><p class="hero-sub">We come to you. ShedPro LLC builds custom sheds directly in your backyard across Utah, Idaho & surrounding states — done in under 2 weeks.</p><div class="hero-btns"><button class="btn btn-blue btn-lg" onclick="document.getElementById('shed-quiz').scrollIntoView({behavior:'smooth'})">Get Started in Under 1 Minute &rarr;</button></div></div></section><section style="padding:64px 20px;background:var(--dark2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+</div><div class="hero-overlay"></div><div class="hero-vignette"></div><div class="hero-content"><div class="hero-eyebrow">Utah's #1 Custom Shed Builder</div><h1>Custom Sheds<br><em>Built On-Site,</em><br>Built to Last</h1><p class="hero-sub">We come to you. ShedPro LLC builds custom sheds directly in your backyard across Utah, Idaho & surrounding states — done in under 2 weeks.</p><div class="hero-btns"><button class="btn btn-blue btn-lg" onclick="document.getElementById('shed-designer').scrollIntoView({behavior:'smooth'})">Get Started in Under 1 Minute &rarr;</button></div></div></section><section style="padding:64px 20px;background:var(--dark2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
 <div style="max-width:1000px;margin:0 auto;">
   <div style="text-align:center;margin-bottom:36px;">
     <div class="section-label" style="justify-content:center;display:flex;">Proven Track Record</div>
@@ -96,126 +90,21 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
-<!-- ─── SHED QUIZ ─── -->
-<section id="shed-quiz" style="background:var(--dark2);padding:64px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
-<div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;" class="quiz-layout">
-
-  <!-- LEFT: Quiz -->
-  <div>
-    <div style="margin-bottom:32px;">
-      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(43,181,232,0.1);border:1px solid rgba(43,181,232,0.25);border-radius:50px;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--blue);text-transform:uppercase;margin-bottom:14px;">Free — No Obligation</div>
-      <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(26px,4vw,36px);font-weight:900;text-transform:uppercase;line-height:1.05;margin-bottom:10px;">Let's Find Your <span style="color:var(--blue);">Perfect Shed</span></h2>
-      <p style="color:var(--muted);font-size:14px;">5 quick questions. We'll reach out with a custom recommendation.</p>
-    </div>
-
-    <!-- Progress bar -->
-    <div style="background:rgba(255,255,255,0.08);border-radius:50px;height:4px;margin-bottom:28px;overflow:hidden;">
-      <div id="quiz-progress" style="background:var(--blue);height:4px;border-radius:50px;width:20%;transition:width 0.4s ease;"></div>
-    </div>
-
-    <div id="quiz-container">
-
-      <!-- STEP 1 -->
-      <div class="quiz-step" id="step-1">
-        <p class="quiz-question">What are you planning to use it for?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" data-step="1" data-val="Extra storage &amp; organization">📦 Extra Storage &amp; Organization</button>
-          <button class="quiz-opt" data-step="1" data-val="Home office or workspace">💼 Home Office / Workspace</button>
-          <button class="quiz-opt" data-step="1" data-val="She shed / hobby room / retreat">🌸 She Shed / Hobby Room / Retreat</button>
-          <button class="quiz-opt" data-step="1" data-val="Man cave / entertainment space">🎮 Man Cave / Entertainment Space</button>
-          <button class="quiz-opt" data-step="1" data-val="Workshop or garage overflow">🔧 Workshop / Garage Overflow</button>
-          <button class="quiz-opt" data-step="1" data-val="Gym or yoga studio">🏋️ Gym or Yoga Studio</button>
-          <button class="quiz-opt" data-step="1" data-val="Farm / livestock / equipment storage">🌾 Farm / Livestock / Equipment</button>
-          <button class="quiz-opt" data-step="1" data-val="Not sure yet">🤷 Not Sure Yet</button>
-        </div>
-      </div>
-
-      <!-- STEP 2 -->
-      <div class="quiz-step" id="step-2" style="display:none;">
-        <p class="quiz-question">Do you have a size or style in mind?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" data-step="2" data-val="yes">✅ Yes — I know what I want</button>
-          <button class="quiz-opt" data-step="2" data-val="maybe">🤔 Rough idea, but open to suggestions</button>
-          <button class="quiz-opt" data-step="2" data-val="no">❓ No idea — I need guidance</button>
-        </div>
-      </div>
-
-      <!-- STEP 3 -->
-      <div class="quiz-step" id="step-3" style="display:none;">
-        <p class="quiz-question">What matters most to you? <span style="font-size:13px;color:var(--muted);font-weight:400;">(Pick all that apply)</span></p>
-        <div class="quiz-options">
-          <button class="quiz-opt quiz-multi" data-val="Concrete foundation">🏗️ Concrete Foundation — adds home value</button>
-          <button class="quiz-opt quiz-multi" data-val="Electrical built in">⚡ Electrical — outlets, lighting, panel</button>
-          <button class="quiz-opt quiz-multi" data-val="Ventilation / climate control">💨 Ventilation / Climate Control</button>
-          <button class="quiz-opt quiz-multi" data-val="Built-in shelving">🗄️ Built-In Shelving</button>
-          <button class="quiz-opt quiz-multi" data-val="Loft for extra storage">🪜 Loft for Extra Storage</button>
-          <button class="quiz-opt quiz-multi" data-val="None of these">👍 Keep it simple</button>
-        </div>
-        <button id="step3-next" class="btn btn-blue" style="margin-top:20px;width:100%;display:none;" onclick="quizNext(3)">Next &rarr;</button>
-      </div>
-
-      <!-- STEP 4 -->
-      <div class="quiz-step" id="step-4" style="display:none;">
-        <p class="quiz-question">What's your timeline?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" data-step="4" data-val="ASAP — ready to move forward">🚀 ASAP — Ready to Move Forward</button>
-          <button class="quiz-opt" data-step="4" data-val="1–3 months">📅 Within 1–3 Months</button>
-          <button class="quiz-opt" data-step="4" data-val="Just planning for now">🗺️ Just Planning for Now</button>
-        </div>
-      </div>
-
-      <!-- STEP 5 -->
-      <div class="quiz-step" id="step-5" style="display:none;">
-        <p class="quiz-question">Last step — how do we reach you?</p>
-        <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
-          <input id="q-name" type="text" placeholder="Your name" style="background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--white);font-size:15px;font-family:'Barlow',sans-serif;outline:none;width:100%;box-sizing:border-box;">
-          <input id="q-phone" type="tel" placeholder="Phone number" style="background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--white);font-size:15px;font-family:'Barlow',sans-serif;outline:none;width:100%;box-sizing:border-box;">
-          <button class="btn btn-blue" style="width:100%;padding:16px;font-size:16px;" onclick="quizSubmit()">Get My Custom Recommendation →</button>
-          <p style="font-size:12px;color:var(--muted);text-align:center;">We'll call or text you — no spam, ever.</p>
-        </div>
-      </div>
-
-      <!-- RESULT: No idea -->
-      <div class="quiz-step" id="step-no-idea" style="display:none;text-align:center;">
-        <div style="font-size:48px;margin-bottom:16px;">🏠</div>
-        <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;text-transform:uppercase;margin-bottom:10px;">Let's Figure It Out Together</h3>
-        <p style="color:var(--muted);margin-bottom:28px;">No problem — browse our styles for inspiration, or get in touch and we'll walk you through everything.</p>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <a href="gallery.html" class="btn btn-blue" style="width:100%;padding:16px;font-size:16px;">🎨 Explore Shed Styles &amp; Gallery</a>
-          <a href="contact.html" class="btn btn-outline" style="width:100%;padding:16px;font-size:16px;border-color:rgba(43,181,232,0.5);color:var(--blue);">💬 Talk to a Shed Expert</a>
-        </div>
-      </div>
-
-      <!-- RESULT: Done -->
-      <div class="quiz-step" id="step-done" style="display:none;text-align:center;">
-        <div style="font-size:48px;margin-bottom:16px;">✅</div>
-        <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;text-transform:uppercase;margin-bottom:10px;">You're All Set!</h3>
-        <p style="color:var(--muted);margin-bottom:28px;">We'll be in touch soon. In the meantime, feel free to start designing or check out our work.</p>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <a href="https://design.idearoom.com/shedview-shed-pro-llc" class="btn btn-blue" style="width:100%;padding:16px;font-size:16px;">🛠️ Start Designing Your Shed</a>
-          <a href="gallery.html" class="btn btn-outline" style="width:100%;padding:16px;font-size:16px;border-color:rgba(43,181,232,0.5);color:var(--blue);">📸 View Our Work</a>
-        </div>
-      </div>
-
+<!-- ─── DESIGNER PROMO ─── -->
+<section id="shed-designer" style="background:var(--dark2);padding:64px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+<div style="max-width:480px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:20px;">
+  <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(43,181,232,0.1);border:1px solid rgba(43,181,232,0.25);border-radius:50px;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--blue);text-transform:uppercase;">Free — No Obligation</div>
+  <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(26px,4vw,36px);font-weight:900;text-transform:uppercase;line-height:1.05;">Try Our Free <span style="color:var(--blue);">3D Designer</span></h2>
+  <p style="color:var(--muted);font-size:14px;max-width:360px;">Customize your shed's size, style, and colors online — then get a quote instantly.</p>
+  <div style="border-radius:16px;overflow:hidden;width:100%;max-width:300px;position:relative;background:#000;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+    <video id="designer-vid" autoplay muted loop playsinline webkit-playsinline style="width:100%;display:block;aspect-ratio:9/16;object-fit:cover;">
+      <source src="designer-video.mov" type="video/mp4"><source src="designer-video.mp4" type="video/mp4">
+    </video>
+    <div style="position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:linear-gradient(to top,rgba(0,0,0,0.85),transparent);">
+      <p style="font-size:12px;color:rgba(255,255,255,0.8);margin:0;text-align:center;">Design your shed in 3D</p>
     </div>
   </div>
-
-  <!-- RIGHT: Video + Start Designing -->
-  <div style="display:flex;flex-direction:column;align-items:center;gap:20px;position:sticky;top:100px;">
-    <div style="text-align:center;margin-bottom:4px;">
-      <p style="font-size:13px;color:var(--muted);">Already know what you want?</p>
-    </div>
-    <div style="border-radius:16px;overflow:hidden;width:100%;max-width:300px;position:relative;background:#000;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-      <video id="designer-vid" autoplay muted loop playsinline webkit-playsinline style="width:100%;display:block;aspect-ratio:9/16;object-fit:cover;">
-        <source src="designer-video.mov" type="video/mp4"><source src="designer-video.mp4" type="video/mp4">
-      </video>
-      <div style="position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:linear-gradient(to top,rgba(0,0,0,0.85),transparent);">
-        <p style="font-size:12px;color:rgba(255,255,255,0.8);margin:0;text-align:center;">Design your shed in 3D</p>
-      </div>
-    </div>
-    <a href="https://design.idearoom.com/shedview-shed-pro-llc" class="btn btn-blue" style="width:100%;max-width:300px;padding:14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">🛠️ Start Designing Now &rarr;</a>
-  </div>
-
+  <a href="https://design.idearoom.com/shedview-shed-pro-llc" class="btn btn-blue" style="width:100%;max-width:300px;padding:14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">🛠️ Start Designing Now &rarr;</a>
 </div>
 </section><section style="background:var(--dark2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
 
@@ -402,98 +291,7 @@
   </div>
 </div>
 </section><section class="cta-banner"><h2>Ready to Build<br>Your Dream Shed?</h2><p>Get a free quote in minutes. No obligation, no pressure — just a great shed.</p><a href="https://design.idearoom.com/shedview-shed-pro-llc" class="btn btn-blue">Start Designing Now</a><span class="cta-phone">Or call us at <a href="tel:+14352329516">435-232-9516</a></span></section><footer><div class="footer-grid"><div class="footer-brand"><img src="ShedPro-Logo.webp" alt="ShedPro LLC" style="width:64px;height:64px;object-fit:contain;margin-bottom:10px;" loading="lazy" width="52" height="52"><strong>SHEDPRO LLC</strong><p>Custom sheds built on-site across Utah, Idaho & surrounding states. Quality craftsmanship, fast turnaround, and a design process built around you.</p><div class="social-row"><a href="https://www.facebook.com/profile.php?id=100070811200824" class="social-btn" aria-label="Facebook" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a><a href="https://www.instagram.com/shedprout" class="social-btn" aria-label="Instagram" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg></a><a href="https://www.tiktok.com/@shedprout" class="social-btn" aria-label="TikTok" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.79 1.53V6.79a4.85 4.85 0 01-1.02-.1z"/></svg></a></div></div><div class="footer-links"><h3>Quick Links</h3><ul><li><a href="/">Home</a></li><li><a href="gallery.html">Styles &amp; Gallery</a></li><li><a href="materials.html">Materials & Warranty</a></li><li><a href="materials.html">Materials &amp; Warranty</a><a href="faq.html">FAQ &amp; Service Area</a><a href="about.html">About Us</a></li><li><a href="contact.html">Contact Us</a></li><li><a href="https://design.idearoom.com/shedview-shed-pro-llc">Design Your Shed</a></li></ul></div></div><div class="footer-bottom"><span>&copy; 2026 ShedPro LLC &nbsp;·&nbsp; Utah, Idaho & Beyond</span><span><a href="/privacy-policy" style="color:inherit">Privacy Policy</a> &nbsp;·&nbsp; <a href="tel:+14352329516" style="color:var(--blue);">435-232-9516</a></span></div></main></footer><div id="emailPopup" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity 0.4s ease;padding:20px;"><div style="background:var(--dark2);border:1px solid rgba(43,181,232,0.3);border-radius:16px;max-width:400px;width:100%;padding:36px 28px;position:relative;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.7);transform:translateY(20px);transition:transform 0.4s ease;" id="popupBox"><button onclick="closePopup()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.08);border:none;color:var(--muted);font-size:16px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;">✕</button><div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;"><div style="width:10px;height:10px;border-radius:50%;background:#EF4444;animation:pulse-red 1.5s infinite;"></div><span style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:#EF4444;text-transform:uppercase;">Limited Availability</span></div><h3 style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;text-transform:uppercase;line-height:1.05;margin-bottom:12px;">Build Spots for<br><span style="color:var(--blue);">This Month</span><br>Are Filling Up</h3><p style="font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:10px;">ShedPro LLC limits the number of builds AND in-home consultations we take on each month — so every customer gets our full attention and craftsmanship.</p><p style="font-size:14px;color:rgba(255,255,255,0.85);line-height:1.65;margin-bottom:24px;"><strong>Don't wait</strong> — reach out now to check availability and lock in your spot before this month fills up.</p><a href="contact.html" onclick="closePopup()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;background:var(--blue);color:var(--dark);font-family:'Barlow',sans-serif;font-weight:800;font-size:16px;border:none;border-radius:50px;cursor:pointer;text-decoration:none;transition:background 0.2s,transform 0.15s;letter-spacing:0.02em;margin-bottom:10px;" onmouseover="this.style.background='#1fa3d4'" onmouseout="this.style.background='var(--blue)'">Check Availability →</a><a href="tel:+14352329516" onclick="closePopup()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:transparent;color:var(--white);font-family:'Barlow',sans-serif;font-weight:700;font-size:14px;border:2px solid rgba(255,255,255,0.2);border-radius:50px;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)'">📞 Call 435-232-9516</a><p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5;">We limit builds to ensure quality over quantity.<br>Spots are first come, first served.</p></div></div><style>#emailPopup.open { opacity:1; pointer-events:all; }#emailPopup.open #popupBox { transform:translateY(0); }@keyframes pulse-red {0%, 100% { opacity:1; transform:scale(1); }50% { opacity:0.5; transform:scale(0.7); }}@media(max-width:640px){[style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr!important; }}</style><script>// Show popup after 10 seconds if not already dismissed this sessionsetTimeout(() => {if (!sessionStorage.getItem('popupDismissed')) {document.getElementById('emailPopup').classList.add('open');}}, 10000);function closePopup() {document.getElementById('emailPopup').classList.remove('open');sessionStorage.setItem('popupDismissed', '1');}// Close on backdrop clickdocument.getElementById('emailPopup').addEventListener('click', function(e) {if (e.target === this) closePopup();});// Close on Escape keydocument.addEventListener('keydown', e => {if (e.key === 'Escape') closePopup();});</script><script>window.addEventListener('load', function(){var s=document.createElement('script');s.src='https://www.googletagmanager.com/gtag/js?id=G-GR8BG7DXZE';s.async=true;document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-GR8BG7DXZE');};});</script><script>document.addEventListener('DOMContentLoaded',function(){var h=document.getElementById('hamburger');var d=document.getElementById('navDrawer');if(h&&d){h.addEventListener('click',function(){h.classList.toggle('open');d.classList.toggle('open');document.body.style.overflow=d.classList.contains('open')?'hidden':'';});}});function toggleFaq(btn){var item=btn.closest('.faq-item');if(item){item.classList.toggle('open');}}</script>
-<script>
-(function(){
-  var answers = {};
-  var progressMap = {1:20,2:40,3:60,4:80,5:100};
 
-  function setProgress(pct){
-    document.getElementById('quiz-progress').style.width = pct + '%';
-  }
-
-  function showStep(id){
-    document.querySelectorAll('.quiz-step').forEach(function(s){s.style.display='none';});
-    document.getElementById(id).style.display='block';
-  }
-
-  // Single-select options
-  document.querySelectorAll('.quiz-opt:not(.quiz-multi)').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var step = this.dataset.step;
-      var val = this.dataset.val;
-      if(!step) return; // multi or special
-      answers['step'+step] = val;
-
-      if(step == '1'){
-        setProgress(progressMap[2]);
-        showStep('step-2');
-      } else if(step == '2'){
-        if(val === 'no'){
-          // No idea — show no-idea result
-          showStep('step-no-idea');
-          setProgress(100);
-        } else {
-          setProgress(progressMap[3]);
-          showStep('step-3');
-        }
-      } else if(step == '4'){
-        setProgress(progressMap[5]);
-        showStep('step-5');
-      }
-    });
-  });
-
-  // Multi-select options
-  document.querySelectorAll('.quiz-multi').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      this.classList.toggle('selected');
-      var anySelected = document.querySelectorAll('.quiz-multi.selected').length > 0;
-      document.getElementById('step3-next').style.display = anySelected ? 'block' : 'none';
-    });
-  });
-
-  window.quizNext = function(step){
-    if(step === 3){
-      var selected = [];
-      document.querySelectorAll('.quiz-multi.selected').forEach(function(b){ selected.push(b.dataset.val); });
-      answers['step3'] = selected.join(', ') || 'None selected';
-      setProgress(progressMap[4]);
-      showStep('step-4');
-    }
-  };
-
-  window.quizSubmit = function(){
-    var name = document.getElementById('q-name').value.trim();
-    var phone = document.getElementById('q-phone').value.trim();
-    if(!name || !phone){ alert('Please enter your name and phone number.'); return; }
-    answers['name'] = name;
-    answers['phone'] = phone;
-
-    // Send via Web3Forms
-    var body = [
-      'Name: ' + name,
-      'Phone: ' + phone,
-      'Use: ' + (answers['step1'] || '—'),
-      'Style in mind: ' + (answers['step2'] || '—'),
-      'Priorities: ' + (answers['step3'] || '—'),
-      'Timeline: ' + (answers['step4'] || '—')
-    ].join('\n');
-
-    fetch('https://formspree.io/f/xzdqykzw', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','Accept':'application/json'},
-      body: JSON.stringify({
-        name: name,
-        phone: phone,
-        message: body
-      })
-    }).catch(function(){});
-
-    showStep('step-done');
-    setProgress(100);
-  };
-})();
-</script>
 
 <script>
 (function(){
