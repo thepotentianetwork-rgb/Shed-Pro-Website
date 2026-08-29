@@ -140,6 +140,7 @@
     });
 
     map.fitBounds(bounds, {padding: [40, 40]});
+    map.setZoom(map.getZoom() + 1);
   }
 
   if (document.getElementById('build-map')) {
