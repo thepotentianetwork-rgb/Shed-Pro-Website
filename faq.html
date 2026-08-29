@@ -118,7 +118,8 @@
 
   function initMap(){
     var map = L.map('build-map', {scrollWheelZoom:false});
-    var bounds = L.latLngBounds(builds.map(function(b){ return [b.lat, b.lng]; }));
+    var utBuilds = builds.filter(function(b){ return b.city.indexOf(', UT') !== -1; });
+    var bounds = L.latLngBounds((utBuilds.length ? utBuilds : builds).map(function(b){ return [b.lat, b.lng]; }));
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
       attribution: '&copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
       maxZoom: 16
