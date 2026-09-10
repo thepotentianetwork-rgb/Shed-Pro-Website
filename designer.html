@@ -1266,6 +1266,8 @@ var ADDONS={ shutters:false, flowerboxes:false, cupola:'none',
   skylight:false, stairs:false, statLadder:false, atticLadder:false,
   weatherGuard:false, radiantBarrier:false, houseWrap:false, hurricaneTies:false,
   doorAwning:false,
+  // Site clearance — work on what is already there, not part of the build.
+  shedRemoval:false, concreteRemoval:false,
   fbColor:'brown', shutterColor:'brown' };
 // Finish colours shared by flower boxes + shutters (brown is the default).
 var ADDON_COLORS=[
@@ -2119,6 +2121,15 @@ var FLOOR_JOISTS = [
   {k:'j12x6', name:'12" OC 2x6', sub:'Four 4x4 skids',  perSqft:3,  oc:12}
 ];
 var FLOOR_JOIST='j16x4';
+/* Declared here rather than springing into existence the first time
+   setFloorJoist() runs. It was an implicit global created by that assignment,
+   so any path reaching studSpacingWorld() before the floor step was touched
+   threw ReferenceError — and loading a saved design via ?d= is exactly that
+   path: it builds the shed straight away.
+   The throw landed inside buildInterior(), which sits ABOVE buildFoundation()
+   and buildFloor() in buildShed(), so the concrete pad and the floor were never
+   built and the grass showed through. One missing declaration, two symptoms. */
+var FRAMING_OC = floorJoistDef().oc || 16;
 function floorJoistDef(){
   for(var i=0;i<FLOOR_JOISTS.length;i++)
     if(FLOOR_JOISTS[i].k===FLOOR_JOIST) return FLOOR_JOISTS[i];
@@ -10285,7 +10296,12 @@ var ADDON_ITEMS=[
   {k:'weatherGuard',name:'Floor Weather Guard'},
   {k:'radiantBarrier',name:'Radiant Roof Barrier', visual:true},
   {k:'houseWrap',   name:'House Wrap',     visual:true},
-  {k:'hurricaneTies',name:'Hurricane Ties'}
+  {k:'hurricaneTies',name:'Hurricane Ties'},
+  // Last on the list on purpose: everything above adds to the new shed, these
+  // two clear what is already on the site. Flat fees — the job is a crew and a
+  // dump run whatever size the old shed was.
+  {k:'shedRemoval',    name:'Remove Existing Shed'},
+  {k:'concreteRemoval',name:'Remove Existing Concrete'}
 ];
 function addonPriceText(it){
   if(it.price) return it.price;   // doorAwning's fixed "TBD" note
