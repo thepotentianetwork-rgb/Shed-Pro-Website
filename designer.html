@@ -79,7 +79,7 @@ canvas{display:block;width:100%;height:100%}
   .pitch-btn{padding:12px 10px;font-size:13px}
   .tile-name{font-size:13px}
   .cta{padding:15px;font-size:15px}
-  .wnav{padding:10px 12px;gap:10px}
+  .wnav{padding:10px 12px 8px;column-gap:10px;row-gap:0}   /* column-gap only — a plain `gap` here would reinstate a row gap under Next */
   .wnav .cta{padding:14px}
   .sum-row{font-size:13px}
   /* A sub-page is the whole panel on a phone, so it needs the panel's own
@@ -196,7 +196,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 .sum{border-top:1px solid var(--br);padding:13px 15px;background:var(--dark);flex-shrink:0}
 .sum-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .sum-lbl{font-size:10px;color:var(--mu);font-weight:700;text-transform:uppercase}
-.sum-val{font-size:11px;color:rgba(255,255,255,.82);font-weight:600;text-align:right;max-width:170px;line-height:1.5}
+
 .pitch-btn{background:var(--d3);border:2px solid var(--br);border-radius:8px;padding:9px;text-align:center;cursor:pointer;font-size:12px;font-weight:700;color:var(--mu);transition:all .2s;font-family:'Barlow',sans-serif}
 .pitch-btn:hover{border-color:rgba(43,181,232,.4);color:var(--w)}
 .pitch-btn.on{border-color:var(--blue);color:var(--blue);background:rgba(43,181,232,.08)}
@@ -216,7 +216,7 @@ textarea.inp{resize:vertical}
    Next button and the one thing it must never do is compete with it: someone
    who knows what they want should never have to pick between two buttons of
    equal weight. Quiet text link, full width for a comfortable tap target. */
-.consult-link{width:100%;margin-top:10px;padding:9px;background:none;border:none;color:var(--mu);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:center;text-decoration:underline;text-underline-offset:3px;transition:color .15s}
+.consult-link{flex:0 0 100%;width:100%;margin-top:0;padding:9px 5px;background:none;border:none;color:var(--mu);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:center;text-decoration:underline;text-underline-offset:3px;transition:color .15s}
 .consult-link:hover{color:var(--blue)}
 /* Stall nudge. Lives in the 3D viewport rather than the sidebar so it cannot
    push the controls around when it appears, and slides rather than pops so a
@@ -234,14 +234,24 @@ textarea.inp{resize:vertical}
 .wprog-seg{flex:1;height:4px;border-radius:2px;background:var(--br);transition:background .25s}
 .wprog-seg.done{background:var(--blue)}
 .wprog-seg.cur{background:var(--blue);opacity:.55}
-.wstep-head{padding:10px 14px 2px}
+.wstep-head{padding:10px 14px 2px;display:flex;align-items:baseline;gap:8px}
+/* nowrap keeps "Step 12 of 12" on one line no matter how tight it gets; the
+   text column takes the rest. min-width:0 is what lets a long caption wrap
+   inside the column instead of forcing the flex row wider than the sidebar. */
+.wstep-num{flex:0 0 auto;white-space:nowrap}
+.wstep-headtext{flex:1;min-width:0}
+.wstep-headtext .wstep-title{margin-top:0}
 .wstep-num{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}
 .wstep-title{font-size:19px;font-weight:800;color:var(--w);margin-top:2px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.01em}
 .wstep-sub{font-size:11px;color:var(--mu);margin-top:2px}
 .wsteps{flex:1;overflow-y:auto;padding:8px 14px 14px}
 .wstep{display:none}.wstep.on{display:block;animation:wfade .25s ease}
 @keyframes wfade{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:none}}
-.wnav{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--br);background:var(--d2)}
+/* row-gap:0 — the link's own padding provides the whole gap. Spending it as
+   padding rather than as a gap buys the same 9px of air while keeping the tap
+   target at 32px; taking it as a row-gap shrank the target to 24px, which is
+   small for a thumb on the one control a confused visitor reaches for. */
+.wnav{display:flex;flex-wrap:wrap;column-gap:8px;row-gap:0;padding:10px 14px 8px;border-top:1px solid var(--br);background:var(--d2)}
 .wbtn{flex:1;padding:12px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;text-align:center;font-family:'Barlow',sans-serif;border:none;transition:all .15s}
 .wbtn-back{background:var(--d3);border:1px solid var(--br);color:var(--w)}
 .wbtn-next{background:var(--blue);color:#06222e}
@@ -353,13 +363,24 @@ textarea.inp{resize:vertical}
   <div class="sb" style="position:relative">
     <div class="wprog" id="wprog"></div>
 
+    <!-- Step counter to the LEFT of the title and caption rather than stacked
+         above them: three full-width lines for what is really one heading and
+         a label. The DESKTOP sidebar is the tightest column, not the phone —
+         270px wide against a phone's full 390px — so that is what the fit was
+         checked against: 241px usable, 38px counter, 8px gap, leaving 195px
+         for a widest caption of 188px ("Finish the inside, add a loft or
+         shelves.") and a widest title of 168px. Baseline-aligned so the
+         counter sits on the title's baseline rather than floating against the
+         top of a two-line block. -->
     <div class="wstep-head">
       <!-- Overwritten by wizRender on first paint; kept in sync so the markup
            does not flash a stale step count. It said "Step 1 of 10" while
            WIZ_STEPS held nine. -->
-      <div class="wstep-num" id="wStepNum">Step 1 of 12</div>
-      <div class="wstep-title" id="wStepTitle">What's it for?</div>
-      <div class="wstep-sub" id="wStepSub">We'll set a starting point for you.</div>
+      <div class="wstep-num" id="wStepNum">1 / 12</div>
+      <div class="wstep-headtext">
+        <div class="wstep-title" id="wStepTitle">What's it for?</div>
+        <div class="wstep-sub" id="wStepSub">We'll set a starting point for you.</div>
+      </div>
     </div>
 
     <div class="wsteps">
@@ -373,10 +394,14 @@ textarea.inp{resize:vertical}
            conversation more than any dimension does. -->
       <div class="wstep on" data-step="0">
         <div class="grp">
-          <span class="lbl">What will you use it for?</span>
+          <!-- The "What will you use it for?" label that sat here asked the
+               step title's own question a second time, 40px below it. And the
+               note under the grid opened by repeating the caption ("Sets a
+               starting point" / "We'll set a starting point for you."), so it
+               is trimmed to the only part that was new. -->
           <div class="tgrid" id="useGrid"></div>
           <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:8px;display:block">
-            Sets a starting point &mdash; you can change everything after this.</span>
+            You can change everything after this.</span>
         </div>
       </div>
 
@@ -637,7 +662,17 @@ textarea.inp{resize:vertical}
             <div class="pitch-btn sid-btn on" data-sid="vertical" onclick="setSiding('vertical',this)">Vertical<span class="sid-price"></span></div>
             <div class="pitch-btn sid-btn" data-sid="horizontal" onclick="setSiding('horizontal',this)">Horizontal Lap<span class="sid-price"></span></div>
             <div class="pitch-btn sid-btn" data-sid="board-batten" onclick="setSiding('board-batten',this)">Board &amp; Batten<span class="sid-price"></span></div>
-            <div class="pitch-btn sid-btn" data-sid="pine" onclick="setSiding('pine',this)">1x6 Pine T&amp;G<span class="sid-price"></span></div>
+            <!-- 1x6 Pine T&G is retired from the menu (Sep 2026). HIDDEN, not
+                 deleted, and none of the pine rendering, stain, width or
+                 direction code is touched: designs already saved with pine are
+                 still out there on ?d= links, and staff still reopen them to
+                 re-quote. syncControlsFromState restores siding with
+                 mark('.sid-btn', SIDING), which matches on this element — drop
+                 it and a reopened pine build loads with no style selected while
+                 the 3D view still shows pine walls. Hidden, it keeps loading
+                 and pricing exactly as before; it just can't be newly chosen.
+                 To bring it back, delete the style attribute below. -->
+            <div class="pitch-btn sid-btn" data-sid="pine" style="display:none" onclick="setSiding('pine',this)">1x6 Pine T&amp;G<span class="sid-price"></span></div>
           </div>
           <!-- Direction only matters for the T&G boards — the LP panels have a
                fixed orientation baked into the product. -->
@@ -817,13 +852,20 @@ textarea.inp{resize:vertical}
     <div class="wnav">
       <button class="wbtn wbtn-back" id="wBack" onclick="wizPrev()">&#8592; Back</button>
       <button class="wbtn wbtn-next" id="wNext" onclick="wizNext()">Next &#8594;</button>
+      <!-- Inside .wnav, not floating below it. As a sibling it carried the
+           nav's 10px bottom padding, its own 10px margin and 9px of padding
+           before the text — 29px of dead air that read as a gap between two
+           unrelated things. Wrapped onto its own row inside the same block it
+           shares the border and background, and the spacing is one row-gap. -->
+      <button class="consult-link" id="consultBtn" onclick="openConsult('button')">Not sure what you need? Talk to a designer</button>
     </div>
-    <button class="consult-link" id="consultBtn" onclick="openConsult('button')">Not sure what you need? Talk to a designer</button>
+
     <div class="sum">
-      <div class="sum-row">
-        <span class="sum-lbl">Your Build</span>
-        <span class="sum-val" id="sumtxt">8x12 ft &middot; Gray / White / Charcoal</span>
-      </div>
+      <!-- The "Your Build" readout used to sit here. Removed: on a phone the
+           bottom of the sidebar now stacks Back/Next, the consult link, the
+           price and the CTA, and a line repeating what the 3D view is already
+           showing was the one of those with no job to do. The dimensions live
+           on the size step and the colours are on screen in 3D. -->
       <div class="sum-row" style="align-items:center;margin-bottom:12px">
         <!-- Double-tap unlocks pricing when locked, and opens the redline once it is
      already unlocked — the redline is meaningless with the prices hidden. -->
@@ -8889,7 +8931,12 @@ function wizRender(){
     }
     prog.innerHTML=html;
   }
-  document.getElementById('wStepNum').textContent='Step '+(wizStep+1)+' of '+WIZ_STEPS.length;
+  // "1 / 12", not "Step 1 of 12". Beside the title now rather than above it,
+  // and the desktop sidebar is the tightest of the three at 241px usable —
+  // "STEP 12 OF 12" needs 84px there and overflowed the row by 41px, wrapping
+  // the titles. The short form needs 38px and clears every width. The word
+  // "Step" was carrying nothing the progress bar directly above does not.
+  document.getElementById('wStepNum').textContent=(wizStep+1)+' / '+WIZ_STEPS.length;
   document.getElementById('wStepTitle').textContent=WIZ_STEPS[wizStep].title;
   document.getElementById('wStepSub').textContent=WIZ_STEPS[wizStep].sub;
   dedupeStepHeadings();
@@ -12014,7 +12061,14 @@ function money(v){
   return "$"+Number(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
 }
 function money0(v){
-  if(PRICE_LOCKED) return "Request a quote";
+  // "On request", not "Request a quote": this lands in the sidebar directly
+  // above a "Request Free Quote" button, and two calls to action stacked
+  // 40px apart read as two different things to do. This one is a price
+  // VALUE — the row is labelled "Your Price" — so it should state a price,
+  // not issue an instruction. The failure path in refreshPrice still says
+  // "Request a quote", which now also distinguishes a broken fetch from a
+  // deliberately hidden price instead of showing the customer the same words.
+  if(PRICE_LOCKED) return "On request";
   if(v==null||isNaN(v)) return "—";
   return "$"+Math.round(v).toLocaleString();
 }
@@ -12076,11 +12130,13 @@ try{
 // render path moved there since it reads quoteCache.redline instead of
 // calling a client-side compute() that no longer exists.
 
+// Named for the summary line it used to write; that readout is gone and the
+// price is all this block still shows. Kept as updateSum() because a dozen
+// callers say updateSum() after changing something, and refreshPrice() has to
+// keep happening on every one of them — it used to run AFTER the element
+// write, so a stale getElementById here would throw and take the price
+// updates down with it.
 function updateSum(){
-  var wallName = (typeof SIDING!=='undefined' && SIDING==='pine' && typeof pineStainEntry==='function')
-    ? ('Pine \u00b7 '+pineStainEntry().name)
-    : sn;
-  document.getElementById('sumtxt').textContent=W+'x'+L+' ft · '+wallName+' / '+tn+' / '+rn;
   refreshPrice();
 }
 
@@ -12177,6 +12233,16 @@ function syncControlsFromState(){
     // shows pine selected with its direction picker still collapsed.
     var pw=document.getElementById('pineDirWrap');
     if(pw && typeof SIDING!=='undefined') pw.style.display=(SIDING==='pine')?'block':'none';
+
+    // Pine T&G is retired from the menu, but a design SAVED with it must still
+    // show what it is. Hidden unconditionally, reopening one of those designs
+    // left three styles with none selected and an orphaned Board Direction /
+    // Width / Stain block underneath, belonging to nothing on screen. So the
+    // retired tile comes back into view exactly when it is the active choice:
+    // never offered to someone choosing fresh, never hidden from someone who
+    // already chose it.
+    var pineBtn=document.querySelector('[data-sid="pine"]');
+    if(pineBtn && typeof SIDING!=='undefined') pineBtn.style.display=(SIDING==='pine')?'':'none';
     var ip=document.getElementById('intPaintWrap');
     if(ip && typeof INT_FINISH!=='undefined') ip.style.display=(INT_FINISH==='painted')?'block':'none';
     var ih=document.getElementById('insideHint');
