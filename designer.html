@@ -238,6 +238,12 @@ textarea.inp{resize:vertical}
 .tile-cap{padding:7px 9px}
 .tile-name{font-size:12px;font-weight:700;color:var(--w);line-height:1.2}
 .tile-price{font-size:11px;font-weight:700;color:var(--blue);margin-top:2px}
+/* v480 — small orange tile badge. Top-LEFT, because tile-check owns top-right
+   and a badged tile is often the selected one too. Deliberately small: it is a
+   note on the tile, not a second headline competing with the tile's name. */
+.tile-rec{position:absolute;top:5px;left:5px;background:#F8921E;color:#1a1205;
+  font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
+  text-transform:uppercase;pointer-events:none;z-index:2;line-height:1.5}
 .tile-check{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#06222e;font-size:12px;font-weight:800;display:none;align-items:center;justify-content:center}
 .tile.on .tile-check{display:flex}
 .placed-list{margin-top:12px;display:flex;flex-direction:column;gap:6px}
@@ -247,7 +253,7 @@ textarea.inp{resize:vertical}
 </head>
 <body>
 <header>
-  <div class="logo">SHED<em>PRO</em> <span class="logo-sub">/ Shed Designer</span> <span id="buildTag" style="color:#F8921E;font-size:10px;font-weight:700;margin-left:6px;cursor:pointer;-webkit-user-select:none;user-select:none"><span class="bt-word">build&nbsp;</span>v470</span></div>
+  <div class="logo">SHED<em>PRO</em> <span class="logo-sub">/ Shed Designer</span> <span id="buildTag" style="color:#F8921E;font-size:10px;font-weight:700;margin-left:6px;cursor:pointer;-webkit-user-select:none;user-select:none"><span class="bt-word">build&nbsp;</span>v489</span></div>
   <div class="hb">
     <!-- STAFF PRICING TOGGLE. A padlock in the header rather than a URL parameter, so
  the designer keeps one address and the sales flow is a tap. Deliberately quiet
@@ -298,7 +304,7 @@ textarea.inp{resize:vertical}
       <!-- Overwritten by wizRender on first paint; kept in sync so the markup
            does not flash a stale step count. It said "Step 1 of 10" while
            WIZ_STEPS held nine. -->
-      <div class="wstep-num" id="wStepNum">Step 1 of 11</div>
+      <div class="wstep-num" id="wStepNum">Step 1 of 12</div>
       <div class="wstep-title" id="wStepTitle">What's it for?</div>
       <div class="wstep-sub" id="wStepSub">We'll set a starting point for you.</div>
     </div>
@@ -386,17 +392,34 @@ textarea.inp{resize:vertical}
                workbook (A-Frame Cabin / Side Porch A-Frame) and price off their
                own base tables, so they belong on the style grid alongside the
                rest. Tapping either sets the A-frame shell AND the porch. -->
-          <div class="tile" id="porchFrontBtn" onclick="pickPorchStyle('front',this)">
+          <!-- v483 — ONE porch tile with Front/Side underneath, instead of two
+               tiles that looked like unrelated products. They are the same
+               A-frame shell with the porch on a different wall, and the grid
+               now says so. The sub-row only appears once the tile is chosen,
+               so the grid stays six tiles wide until it is relevant.
+               Front and Side still call pickPorchStyle, so each keeps quoting
+               off its own sheet in the workbook — this changes how the choice
+               is presented, not how it prices. -->
+          <div class="tile" id="porchFrontBtn" onclick="pickPorchStyle(PORCH_LOC==='side'?'side':'front',this)">
             <div class="tile-img" id="porchFrontIcon"></div>
-            <div class="tile-cap"><div class="tile-name">A-Frame Cabin</div>
-              <div class="tile-price" id="porchFrontLabel">Front porch</div></div>
+            <div class="tile-cap"><div class="tile-name">Cabin / Porch</div>
+              <div class="tile-price" id="porchFrontLabel">Front or side porch</div></div>
             <div class="tile-check">&#10003;</div>
           </div>
-          <div class="tile" id="porchSideBtn" onclick="pickPorchStyle('side',this)">
-            <div class="tile-img" id="porchSideIcon"></div>
-            <div class="tile-cap"><div class="tile-name">Side Porch A-Frame</div>
-              <div class="tile-price" id="porchSideLabel">Side porch</div></div>
-            <div class="tile-check">&#10003;</div>
+        </div>
+        <div id="porchSubRow" style="display:none;margin-top:10px">
+          <span class="lbl">Porch Location</span>
+          <div class="tgrid" style="margin:6px 0 0">
+            <div class="tile" id="porchSideBtn2" onclick="pickPorchStyle('front',this)">
+              <div class="tile-cap"><div class="tile-name">Front</div>
+                <div class="tile-price" id="porchFrontLabel2">Across the width</div></div>
+              <div class="tile-check">&#10003;</div>
+            </div>
+            <div class="tile" id="porchSideBtn" onclick="pickPorchStyle('side',this)">
+              <div class="tile-cap"><div class="tile-name">Side</div>
+                <div class="tile-price" id="porchSideLabel">Along the length</div></div>
+              <div class="tile-check">&#10003;</div>
+            </div>
           </div>
         </div>
       </div>
@@ -411,6 +434,11 @@ textarea.inp{resize:vertical}
           <span class="lbl">Foundation</span>
           <div class="wstep-sub" style="margin:0 0 8px">What your shed sits on. We can pour a pad or set it level on blocks.</div>
           <div id="foundationList"></div>
+        </div>
+        <div class="grp">
+          <span class="lbl">Floor Joist</span>
+          <div class="wstep-sub" style="margin:0 0 8px">What the floor is framed with.</div>
+          <div class="tgrid" id="joistList"></div>
         </div>
       </div>
 
@@ -675,15 +703,24 @@ textarea.inp{resize:vertical}
             <div onclick="removeShelf()" style="text-align:center;cursor:pointer;font-size:11px;font-weight:700;padding:7px 0;border-radius:7px;background:rgba(220,70,70,.14);border:1px solid rgba(220,70,70,.5);color:#ff6b6b">Remove this shelf</div>
           </div>
         </div>
-        <div class="grp" style="margin-top:14px">
+      </div>
+
+      <!-- STEP 9 · ADD-ONS. v489 — lifted out of Interior. It had grown to
+           four sections (finish, paint, loft, shelves) and then a list of
+           extras that are mostly EXTERIOR — shutters, flower boxes, ridge
+           vent, door overhangs. Burying outdoor items at the bottom of an
+           indoor step meant they were reached last, by someone already
+           scrolling, which is the worst place for optional revenue. -->
+      <div class="wstep" data-step="9">
+        <div class="grp">
           <span class="lbl">Add-Ons</span>
           <div class="wstep-sub" style="margin:0 0 8px">Optional extras — tap to include.</div>
           <div id="addonList"></div>
         </div>
       </div>
 
-      <!-- STEP 8 · ELECTRICAL (upsell, near the end) -->
-      <div class="wstep" data-step="9">
+      <!-- STEP 10 · ELECTRICAL (upsell, near the end) -->
+      <div class="wstep" data-step="10">
         <div class="grp">
           <span class="lbl">Electrical Package</span>
           <div class="wstep-sub" id="elecBarnNote" style="display:none;margin:0 0 8px;color:#ffb86b">Essential isn't available on Barn / Gambrel yet — Basic and Core are.</div>
@@ -714,7 +751,7 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 9 · REVIEW -->
-      <div class="wstep" data-step="10">
+      <div class="wstep" data-step="11">
         <div class="grp">
           <span class="lbl">Your Build</span>
           <div style="font-size:13px;color:var(--w);line-height:1.7" id="reviewSummary"></div>
@@ -1399,18 +1436,26 @@ function init(){
   // scene and fill shadows; the sun is softened so shadows are gentle, not harsh.
   ambLight=new THREE.AmbientLight(0xffffff,0.18);
   scene.add(ambLight);
-  hemiLight=new THREE.HemisphereLight(0xbcd0e0, 0x3a4030, 0.40);
+  /* v472 — the sky light follows the sunset. A hemisphere light IS the sky as
+     far as the model is concerned, so leaving it cool blue would light the shed
+     for a sky that is no longer behind it. */
+  hemiLight=new THREE.HemisphereLight(0xe0a483, 0x46402f, 0.40);   // v477 — cooler with the sky
   scene.add(hemiLight);
 
   // KEY (warm sun) — main directional, casts soft shadows.
-  sunLight=new THREE.DirectionalLight(0xfff4e2,1.7);
+  /* Low and warm, but the sun has only just set — there is still real light in
+     the sky, so this stays close to full strength rather than dropping to the
+     dusk level v472 used. */
+  /* Low and warm. v474 pushed this to 1.62 to match a brighter sky; with the
+     sky back down, so is this. */
+  sunLight=new THREE.DirectionalLight(0xffcf94,1.45);
   // SUN ELEVATION — at y=1.0 the sun sat 4.4 degrees above the horizon, almost
   // horizontal, so it grazed the roof and barely lit it (N.L 0.31 on a 6/12
   // slope, 0 on the far slope). y=5.5 puts it at ~23 degrees: N.L 0.57 lit /
   // 0.13 shaded. Raise or lower this ONE value to change how bright the roof
   // reads — but keep it in sync with the DAY branch of applyLighting(), which
   // resets the rig every rebuild.
-  sunLight.position.set(7,5.5,11);
+  sunLight.position.set(9,2.6,11);   // v472 — dropped from 5.5 for a low sunset sun
   sunLight.castShadow=true;
   sunLight.shadow.mapSize.set(2048,2048);
   sunLight.shadow.camera.left=-10;sunLight.shadow.camera.right=10;
@@ -1422,7 +1467,7 @@ function init(){
   scene.add(sunLight);
 
   // FILL (cool, opposite side) — brighter so the shadow side stays well-lit.
-  fillLight=new THREE.DirectionalLight(0xfff0dc,0.95);
+  fillLight=new THREE.DirectionalLight(0xb98fbf,0.80);   // v472 — violet sky fill opposite the sun
   fillLight.position.set(-7,2.5,-11);   // lifted with the sun so the far slope isn't flat
   scene.add(fillLight);
 
@@ -1576,6 +1621,20 @@ function init(){
     {k:3,amp:0.32,phase:1.2},{k:7,amp:0.27,phase:0.5},{k:11,amp:0.20,phase:2.7},{k:19,amp:0.13,phase:1.5},{k:31,amp:0.08,phase:3.6}
   ]); // near range — darker rock, snow-capped tips
   mountainGroup.add(_near); mountainNear.push(_near);
+  /* v472 — MOUNTAINS OFF. The ranges are still built and mountainFar /
+     mountainNear stay populated, because applyLighting() tints them for day and
+     night and every one of those calls would need unpicking to delete them
+     properly. Not adding the group switches them off in one line with no
+     orphans — flip this to true to bring them back.
+     They also fought the sunset: a snow-capped ridge is the brightest thing in
+     any scene, and it would have upstaged the sky behind it. */
+  /* v476 — MOUNTAINS AT NIGHT ONLY. The group goes into the scene but starts
+     hidden; applyLighting shows it in the night branch and hides it by day.
+     Night already paints them 0x2e2438 and 0x18131f — near-black — so they
+     arrive as silhouettes with no extra work, which is exactly what a ridge
+     line looks like against a dark sky. By day they fought the sunset, and the
+     snow caps upstaged it. */
+  mountainGroup.visible=false;
   scene.add(mountainGroup);
 
   // Brand logos floating in the background as a subtle, faded backdrop pattern.
@@ -1934,6 +1993,7 @@ function init(){
   if(typeof renderPineStains==='function') renderPineStains();
   if(typeof renderBulbs==='function') renderBulbs();
   if(typeof syncPorchLightVisibility==='function') syncPorchLightVisibility();
+  if(typeof renderFloorJoist==='function') renderFloorJoist();
   if(typeof captureStockBuild==='function') captureStockBuild();
   if(typeof renderUseGrid==='function') renderUseGrid();
   if(typeof renderAddons==='function') renderAddons();
@@ -2048,19 +2108,47 @@ function pineTile(){ return PINE_BOARDS_PER_TILE * pineFaceIn()/12 * 0.2; }
    made the battens 24in instead of 16 and is why they looked huge.
    Deriving the tile from both numbers means the spacing stays right even if a
    count changes, and the intent is readable without opening makeSiding. */
+/* v488 — FLOOR JOIST, from the Client Workbook. Only the three rows marked
+   Implemented=TRUE are here; the greyed 2x4 rows are not offered.
+   perSqft is the workbook's rate. The quote should ultimately come from the
+   worker like every other per-sqft item, but SELL has no entry yet, so these
+   rates are carried here and flagged in the summary. */
+var FLOOR_JOISTS = [
+  {k:'j16x4', name:'16" OC 2x4', sub:'Three 4x4 skids', perSqft:0,  oc:16},
+  {k:'j16x6', name:'16" OC 2x6', sub:'Three 4x4 skids', perSqft:2,  oc:16},
+  {k:'j12x6', name:'12" OC 2x6', sub:'Four 4x4 skids',  perSqft:3,  oc:12}
+];
+var FLOOR_JOIST='j16x4';
+function floorJoistDef(){
+  for(var i=0;i<FLOOR_JOISTS.length;i++)
+    if(FLOOR_JOISTS[i].k===FLOOR_JOIST) return FLOOR_JOISTS[i];
+  return FLOOR_JOISTS[0];
+}
+function floorJoistPrice(){ return floorJoistDef().perSqft * (W*L); }
+
+/* FRAMING_OC now follows the joist upgrade rather than a toggle of its own.
+   WORTH CONFIRMING: the workbook's 12" OC is a FLOOR JOIST line, and battens
+   are nailed to WALL studs — strictly they are different members. You asked
+   for battens to tighten with the 12" OC upgrade, which is right if you frame
+   the whole building at 12" when someone buys it. If the walls stay at 16"
+   and only the floor tightens, delete the oc field from j12x6 above and the
+   battens will stop moving with it. */
+function studSpacingWorld(){ return FRAMING_OC*0.2/12; }
+
 var SIDING_SPEC = {
-  'board-batten': {inches:16, perTile:4},   // bw = 512/4
-  'horizontal'  : {inches:12, perTile:6},   // gw = 512/6
-  '_default'    : {inches:8,  perTile:6}    // T1-11 grooves, gw = 512/6
+  /* board-batten inches is a FUNCTION of the framing, not a constant. */
+  'board-batten': {inches:null, perTile:4},   // bw = 512/4 — follows FRAMING_OC
+  'horizontal'  : {inches:12, perTile:6},     // gw = 512/6
+  '_default'    : {inches:8,  perTile:6}      // T1-11 grooves, gw = 512/6
 };
-var SIDING_TILE_BY_STYLE = (function(){
-  var out={};
-  for(var k in SIDING_SPEC){
-    var sp=SIDING_SPEC[k];
-    out[k]=(sp.inches/12)*sp.perTile*0.2;   // ft -> boards -> world
-  }
-  return out;
-})();
+function sidingSpecInches(key){
+  var sp=SIDING_SPEC[key] || SIDING_SPEC._default;
+  return (sp.inches==null) ? FRAMING_OC : sp.inches;
+}
+function sidingTileWorld(key){
+  var sp=SIDING_SPEC[key] || SIDING_SPEC._default;
+  return (sidingSpecInches(key)/12)*sp.perTile*0.2;   // ft -> boards -> world
+}
 /* ── WHAT IT IS FOR ────────────────────────────────────────────────────────
    Each use sets a starting build. These are STARTING POINTS, not rules — the
    customer changes anything they like in the steps that follow.
@@ -2132,12 +2220,109 @@ function captureStockBuild(){
     })
   };
 }
+/* v471 — ICONS FOR THE THREE USE TILES.
+   Same conventions as shedStyleIcon so they sit next to the style tiles
+   without looking like they came from somewhere else: 48x48 viewBox, cyan
+   #2BB5E8 stroke, 1.6 weight, round joins, no fill.
+   Each one is drawn as the shed plus the single thing that identifies the
+   use — the roll-up's panel lines, a ball and flag on a screen, a pencil for
+   your own design. At 44px anything more detailed turns to mush. */
+function shedUseIcon(kind){
+  var o='<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="#2BB5E8" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">';
+  var p='';
+  if(kind==='garage'){
+    p+='<path d="M6 22 L24 10 L42 22"/>';              // roof
+    p+='<path d="M9 22 V39 H39 V22"/>';                // walls
+    p+='<rect x="14" y="26" width="20" height="13"/>'; // roll-up opening
+    p+='<path d="M14 30 H34 M14 34 H34"/>';            // curtain slats
+  } else if(kind==='golfsim'){
+    /* v478 — A CLUB AND A BALL, FILLING THE FRAME.
+       The old one drew the shed and then put a screen, a ball and a flag
+       INSIDE it. Rendered at the real 44px all of that collapsed into noise —
+       three small shapes inside a small outline is nothing legible.
+       The other two tiles keep their shed because the shed is not the point
+       there; here it is. A club is the one object that says golf instantly, so
+       it gets the whole 48x48 and the shed goes. Consistency across the row
+       matters less than the middle tile being readable. */
+    p+='<path d="M32 9 L19 34"/>';                     // shaft
+    p+='<path d="M19 34 L10 38 L14 43 L23 39 Z"/>';    // club head
+    p+='<circle cx="37" cy="38" r="3.4"/>';            // ball
+  } else {
+    p+='<path d="M6 22 L24 10 L42 22"/>';
+    p+='<path d="M9 22 V39 H39 V22"/>';
+    p+='<path d="M18 34 L28 24 L32 28 L22 38 H18 Z"/>';// pencil over the shed
+  }
+  return o+p+'</svg>';
+}
+/* ── RECOMMENDATIONS BY USE ────────────────────────────────────────────────
+   A golf simulator has constraints most customers do not know, so the preset
+   should keep advising after step 1 rather than setting a size and going
+   quiet. This badges the recommended choice on the later steps.
+   Keyed by use, then by the data- attribute the step's tiles carry. Adding
+   advice for another step is a line in this table, not new code —
+   applyRecommendations finds any tile with a matching attribute.
+   WHY GABLE FOR A SIMULATOR: it is the only style giving full ceiling height
+   across the whole width. A barn's walls kick in at the knee and a lean-to's
+   low side is under 7ft — both eat exactly the headroom a driver needs at the
+   top of the arc, and ceiling is the one thing that cannot be fixed later. */
+var SHED_USE_RECS = {
+  golfsim: { style:'gable' },
+  garage:  { style:'gable' }
+};
+/* Badges a style carries on its own, whatever the customer said they wanted.
+   These are positioning, not advice — 3 and 4 Peak are the premium builds and
+   a lean-to is the contemporary one, and that is true of them regardless of
+   use. Keyed the same way as SHED_USE_RECS so both feed one renderer. */
+var STYLE_BADGES = {
+  /* v486 — 'Most space' on the barn, and it is a measured claim rather than a
+     sales one. Comparing the section above the wall top at the same footprint,
+     a gambrel beats a gable by 35% at a steep 8/12 and by 166% at a shallow
+     4/12, and it wins at every pitch and width we offer. The reason is the
+     knee: the walls kick out at 0.365 of the width and carry near-full height
+     out to there, where a gable is already closing in.
+     Headroom too — at 10ft wide and 4/12, a barn peaks 3.40ft above the wall
+     against a gable's 1.71ft.
+     Kept to two words because the badge is 8px; the tile's own subtitle
+     already says "Max loft space" underneath it. */
+  'barn':   'Most space',
+  '3peak':  'Luxury',
+  '4peak':  'Luxury',
+  'leanto': 'Modern'
+};
+function applyRecommendations(){
+  var old=document.querySelectorAll('.tile-rec');
+  for(var i=0;i<old.length;i++) old[i].parentNode.removeChild(old[i]);
+  function badge(sel, text){
+    var els=document.querySelectorAll(sel);
+    for(var j=0;j<els.length;j++){
+      var el=els[j];
+      if(!el.className || el.className.indexOf('tile')<0) continue;
+      // One badge per tile. The standing label goes on first, so a
+      // recommendation arriving later would double up — skip if taken.
+      if(el.querySelector && el.querySelector('.tile-rec')) continue;
+      var b=document.createElement('div');
+      b.className='tile-rec'; b.textContent=text;
+      el.appendChild(b);
+    }
+  }
+  /* Recommendation FIRST, so that on the rare tile that is both recommended
+     and premium, the advice wins — that is the one the customer needs. */
+  var recs=SHED_USE_RECS[SHED_USE];
+  if(recs) Object.keys(recs).forEach(function(attr){
+    badge('[data-'+attr+'="'+recs[attr]+'"]', 'Recommended');
+  });
+  Object.keys(STYLE_BADGES).forEach(function(st){
+    badge('[data-style="'+st+'"]', STYLE_BADGES[st]);
+  });
+}
 function renderUseGrid(){
   var el=document.getElementById('useGrid'); if(!el) return;
   el.innerHTML=SHED_USES.map(function(u){
     return '<div class="tile'+(SHED_USE===u.k?' on':'')+'" onclick="setShedUse(\''+u.k+'\')">'+
+      '<div class="tile-img">'+shedUseIcon(u.k)+'</div>'+
       '<div class="tile-cap"><div class="tile-name">'+u.name+'</div>'+
-      '<div class="tile-price">'+u.sub+'</div></div></div>';
+      '<div class="tile-price">'+u.sub+'</div></div>'+
+      '<div class="tile-check">&#10003;</div></div>';
   }).join('');
 }
 function setShedUse(k){
@@ -2168,6 +2353,7 @@ function setShedUse(k){
       if(typeof clampPorch==='function') clampPorch();
     }
     renderUseGrid();
+  if(typeof applyRecommendations==='function') applyRecommendations();
     if(typeof buildShed==='function') buildShed();
     if(typeof updateSum==='function') updateSum();
     return;
@@ -2193,14 +2379,44 @@ function setShedUse(k){
   }
   if(typeof clampPorch==='function') clampPorch();
   renderUseGrid();
+  if(typeof applyRecommendations==='function') applyRecommendations();
   if(typeof renderStyleTiles==='function') renderStyleTiles();
   if(typeof buildShed==='function') buildShed();
   if(typeof updateSum==='function') updateSum();
 }
 function sidingTileFor(){
   if(typeof SIDING!=='undefined' && SIDING==='pine') return pineTile();
-  var t=SIDING_TILE_BY_STYLE[(typeof SIDING!=='undefined')?SIDING:''];
-  return (t!=null) ? t : SIDING_TILE_BY_STYLE._default;
+  /* Computed per call, not cached at load — board & batten's pitch moves with
+     FRAMING_OC and a table built once would freeze it at whatever the page
+     started with. */
+  var k=(typeof SIDING!=='undefined')?SIDING:'';
+  return SIDING_SPEC[k] ? sidingTileWorld(k) : sidingTileWorld('_default');
+}
+function setFloorJoist(k){
+  FLOOR_JOIST=k;
+  FRAMING_OC=floorJoistDef().oc || 16;     // battens follow — see FLOOR_JOISTS
+  renderFloorJoist();
+  if(typeof buildShed==='function') buildShed();
+  if(typeof updateSum==='function') updateSum();
+}
+function renderFloorJoist(){
+  var el=document.getElementById('joistList'); if(!el) return;
+  var sq=W*L;
+  el.innerHTML=FLOOR_JOISTS.map(function(j){
+    var amt=j.perSqft*sq;
+    var price=(j.perSqft===0) ? 'Included'
+            : ((typeof priceTag==='function') ? priceTag(amt) : ('$'+amt.toLocaleString()));
+    return '<div class="tile'+(FLOOR_JOIST===j.k?' on':'')+
+      '" onclick="setFloorJoist(\''+j.k+'\')">'+
+      '<div class="tile-cap"><div class="tile-name">'+j.name+'</div>'+
+      '<div class="tile-price">'+j.sub+' &middot; '+price+'</div></div>'+
+      '<div class="tile-check">&#10003;</div></div>';
+  }).join('');
+}
+function setFramingOC(v){
+  FRAMING_OC = (+v===12) ? 12 : 16;
+  if(typeof buildShed==='function') buildShed();
+  if(typeof updateSum==='function') updateSum();
 }
 /* v451 — ONE FIXED BOARD PITCH, WHATEVER THE SHED.
    Everywhere used to compute round(len/tile)/len: a whole number of boards
@@ -2842,11 +3058,58 @@ function makeDaySky(){
      photo's high sky is far richer. The horizon band still pales out, because
      that gradient is what gives the backdrop depth — flattening it would make
      the dome read as a painted wall behind the shed. */
-  g.addColorStop(0.00,'#145bc4');   // deep clear-day blue at the zenith
-  g.addColorStop(0.30,'#2c7cd8');   // mid blue
-  g.addColorStop(0.60,'#62a2e4');   // lighter blue
-  g.addColorStop(0.82,'#a9cbea');   // atmospheric haze near the horizon
-  g.addColorStop(1.00,'#d8e7f2');   // pale horizon line
+  /* v472 — SUNSET. Blue at the zenith through violet and rose to a hot band at
+     the horizon. Seven stops rather than five: the violet-to-rose crossover is
+     where a sunset either reads or turns muddy, and it needs a stop each side.
+     The horizon stays bright (lum 221 against the old 228). That is what keeps
+     the dome reading as distance rather than a painted wall, and it is what the
+     shed is silhouetted against. The zenith drops from 83 to 40. */
+  /* v473 — more orange low down. Two changes, not one: the orange band starts
+     HIGHER (0.62 rather than 0.75, with the violet handing over at 0.36
+     instead of 0.42), and the horizon stops going pale — it was drifting to a
+     washed gold that read as haze rather than as the sun.
+     Bottom half of the dome goes from R228 G157 B106 to R241 G156 B76, warmth
+     R-B from +122 to +165. Brightness is barely touched, so the shed still has
+     something to be silhouetted against. */
+  /* v474 — THE SUN HAS JUST GONE DOWN, not been down a while.
+     v473's zenith was luminance 40 — that is dusk, twenty minutes later, and it
+     made the whole scene dim. Lifting it to 99 puts the light back.
+     The trap is that lifting a gradient washes the colour out of it: a
+     straight brighten took overall warmth from +69 down to +47 and the orange
+     went peach. So the top lifts and the lower band holds its saturation
+     instead, which is what the sky actually does in that first minute — the
+     high sky is still lit while the horizon burns.
+     Overall luminance 120 -> 151, zenith 40 -> 99, and warmth still rises,
+     +69 -> +78 overall and +165 -> +178 low down. */
+  /* v475 — HALFWAY. v473 sat at luminance 121 with a zenith of 40, which was
+     dusk; v474 went to 151 / 99, which was a shade too lit. This is a straight
+     45% blend of the two, stop by stop, so the curve keeps its shape instead
+     of me re-picking eight colours by eye and drifting the hue.
+     Lands at 135 overall with a zenith of 66 — the deeper top is back without
+     the near-navy — and the orange band is untouched at +169, because the two
+     versions barely differed down there. */
+  /* v476 — BACK TO THE ORIGINAL DEPTH. v474 and v475 lifted the whole dome and
+     it read as daylight with a warm filter. These are the v473 stops exactly:
+     luminance 121 with a zenith of 40, deep blue up top burning to orange low
+     down. The orange you asked for in v473 stays — only the brightening is
+     undone. */
+  /* v477 — LESS ORANGE, MORE BLUE. Two moves, because "less orange" alone
+     just mutes the sky:
+       the warm stops move DOWN the dome — orange starts at 0.70 rather than
+       0.62 — so blue and violet hold more of the height, and
+       each warm stop cools slightly, so the band that is left is orange rather
+       than the near-amber it had become.
+     Warmth R-B 56 -> 44, blue-dominant area 41% -> 43%. Brightness is
+     unchanged at 115, so this reads as a cooler sunset rather than a dimmer
+     one. A full cool-down took warmth to +22 and it went washed and grey; this
+     is 35% of the way there. */
+  g.addColorStop(0.00,'#162d59');   // deep blue at the zenith
+  g.addColorStop(0.22,'#3c467f');   // blue into violet, holding higher
+  g.addColorStop(0.40,'#775687');   // violet
+  g.addColorStop(0.56,'#b8696a');   // rose
+  g.addColorStop(0.70,'#e08452');   // orange starts lower down
+  g.addColorStop(0.84,'#ee9a49');   // hot band
+  g.addColorStop(1.00,'#f9c46e');   // amber at the horizon
   ctx.fillStyle=g; ctx.fillRect(0,0,16,256);
   var t=new THREE.CanvasTexture(c);
   t.colorSpace=THREE.SRGBColorSpace;
@@ -7923,7 +8186,7 @@ function buildInterior(){
   // windows/doors see INTO the room (studs, floor, rafters) instead of a panel.
   var sheathIn=0.055;   // panel center this far inside the wall center plane
   var studIn=0.095;     // studs sit proud of the sheathing, inside the room
-  var studSpacing=16*0.2/12;   // 16" OC
+  var studSpacing=studSpacingWorld();   // v487 — 16" or 12" OC
   function interiorWall(wall){
     // LEAN-TO SIDE WALLS are TRAPEZOIDS (high at the front, low at the back) — the
     // exterior side is built that way in buildLeanToRoof(). Sheathing them as flat
@@ -8408,7 +8671,8 @@ var WIZ_STEPS = [
   {title:"Roof",               sub:"Type, color, pitch, overhang & details."},
   {title:"Doors",              sub:"Pick a size, then a style."},
   {title:"Windows & Vents",    sub:"Tap to add, then move or delete."},
-  {title:"Interior",           sub:"Finish the inside, add a loft or shelves."},
+{title:"Interior",           sub:"Finish the inside, add a loft or shelves."},
+  {title:"Add-Ons",         sub:"Optional extras."},
   {title:"Electrical",         sub:"Power package (optional)."},
   {title:"Review & quote",     sub:"Looks good? Send it over."}
 ];
@@ -8513,6 +8777,8 @@ function wizRender(){
   if(wizIs('Review & quote')) buildReview();
   // keep the scroll at top of the step
   var sc=document.querySelector('.wsteps'); if(sc) sc.scrollTop=0;
+  /* v479 — badge the recommended choice on whichever step just drew. */
+  if(typeof applyRecommendations==='function') applyRecommendations();
 }
 function wizNext(){
   if(wizStep>=WIZ_STEPS.length-1){ openQ(); return; }
@@ -9544,7 +9810,7 @@ function _sizeLabel(){
   el.textContent=(W*L)+' sq ft'+((eat.w||eat.l)?(' \u00b7 '+enc+' enclosed'):'');
 }
 function setW(v){W=+v;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);}
-function setL(v){L=+v;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);}
+function setL(v){L=+v;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
 function setH(v){
   H=+v;
   var wh = quoteCache.optionPrices && quoteCache.optionPrices.wallHeight;
@@ -10266,16 +10532,28 @@ function porchLabel(){
 function syncPorchBtn(){
   var fi=document.getElementById('porchFrontIcon');
   if(fi) fi.innerHTML=shedStyleIcon('porch-front');
-  var si=document.getElementById('porchSideIcon');
-  if(si) si.innerHTML=shedStyleIcon('porch-side');
+  /* v483 — the side tile no longer has its own icon slot; the one Cabin /
+     Porch tile carries a single icon. Show the icon for whichever side is
+     actually selected so the tile pictures the shed being built. */
+  if(fi && STYLE==='gable' && PORCH_LOC==='side' && SIDE_PORCH>0)
+    fi.innerHTML=shedStyleIcon('porch-side');
   var onF=(STYLE==='gable' && PORCH_LOC==='front' && SIDE_PORCH>0);
   var onS=(STYLE==='gable' && PORCH_LOC==='side'  && SIDE_PORCH>0);
-  var fb=document.getElementById('porchFrontBtn'); if(fb) fb.classList.toggle('on', onF);
-  var sb=document.getElementById('porchSideBtn');  if(sb) sb.classList.toggle('on', onS);
+  /* v483 — one tile covers both, so it lights up for either. */
+  var fb=document.getElementById('porchFrontBtn'); if(fb) fb.classList.toggle('on', onF||onS);
   var fl=document.getElementById('porchFrontLabel');
-  if(fl) fl.textContent = onF ? (SIDE_PORCH+' ft front porch') : 'Front porch';
+  if(fl) fl.textContent = (onF||onS)
+    ? (SIDE_PORCH+' ft '+(onF?'front':'side')+' porch')
+    : 'Front or side porch';
+  // Sub-row: only visible once the tile is active, and it marks which side.
+  var sub=document.getElementById('porchSubRow');
+  if(sub) sub.style.display=(onF||onS) ? '' : 'none';
+  var f2=document.getElementById('porchSideBtn2'); if(f2) f2.classList.toggle('on', onF);
+  var sb=document.getElementById('porchSideBtn');  if(sb) sb.classList.toggle('on', onS);
+  var fl2=document.getElementById('porchFrontLabel2');
+  if(fl2) fl2.textContent = onF ? (SIDE_PORCH+' ft across the width') : 'Across the width';
   var sl=document.getElementById('porchSideLabel');
-  if(sl) sl.textContent = onS ? (SIDE_PORCH+' ft side porch')  : 'Side porch';
+  if(sl) sl.textContent = onS ? (SIDE_PORCH+' ft along the length')  : 'Along the length';
   // The plain A-frame tile is only "on" when there is NO porch.
   var gb=document.querySelector('#styleGrid .tile[data-style="gable"]');
   if(gb) gb.classList.toggle('on', STYLE==='gable' && (PORCH_LOC==='none'||!(SIDE_PORCH>0)));
@@ -10311,9 +10589,24 @@ function porchPageHTML(){
   }
   var h='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">A covered porch on posts, under its own roof. Watch the 3D view update as you choose.</div>';
   h+='<span class="lbl">Porch Style</span><div class="tgrid" style="margin:6px 0 14px">';
-  h+=ibtn(PORCH_LOC==='none',"setPorchLoc('none')",'porch-none','None');
-  h+=ibtn(PORCH_LOC==='side',"setPorchLoc('side')",'porch-side','Side');
+  /* v484 — FRONT IS BACK. v482 removed it because a front porch was reachable
+     twice: here, and via the old 'A-Frame Cabin' tile. That was the right call
+     against two tiles that read as separate products — but v483 collapsed
+     those into one Cabin / Porch tile with Front and Side underneath, so the
+     duplication is already gone.
+     Leaving Front out after that just made this list disagree with the style
+     step, which offered both. A porch control that lists None and Side is
+     broken-looking, not simpler. */
+  /* v485 — FRONT AND SIDE ONLY. 'None' does not belong here: you reach this
+     panel by choosing Cabin / Porch on the style grid, so a porch already
+     exists and the only live question is which wall it is on. Offering None
+     asks the customer to un-choose the thing they just chose.
+     Removing a porch still works and has a better home: pickStyle clears
+     PORCH_LOC and SIDE_PORCH, so tapping A-Frame — or any other style — takes
+     the porch off. That is also the honest model, since these price off
+     separate sheets and a porch is not an add-on you toggle. */
   h+=ibtn(PORCH_LOC==='front',"setPorchLoc('front')",'porch-front','Front');
+  h+=ibtn(PORCH_LOC==='side',"setPorchLoc('side')",'porch-side','Side');
   h+='</div>';
   if(PORCH_LOC!=='none'){
     if(PORCH_LOC==='front'){
@@ -10879,6 +11172,7 @@ function applyLighting(){
     // mountains darken to near-silhouettes — material.color multiplies the
     // per-vertex rock/haze/snow gradient built into each ridge, so this still
     // tints every rotated copy in one shot without flattening that gradient.
+    if(mountainGroup) mountainGroup.visible=true;      // v476 — silhouettes, night only
     if(mountainFar && mountainNear){
       mountainFar.forEach(function(m){ m.material.color.setHex(0x2e2438); });   // far range
       mountainNear.forEach(function(m){ m.material.color.setHex(0x18131f); }); // near range
@@ -10894,8 +11188,12 @@ function applyLighting(){
   } else {
     // DAY — bright blue sky.
     if(skyDome) skyDome.material.map=daySkyTex;
-    renderer.setClearColor(0xbcd8ee);
-    if(scene.fog){ scene.fog.color.setHex(0xcfe2ef); scene.fog.near=34; scene.fog.far=80; }
+    /* v476 — the clear colour and fog are what shows past the dome and in the
+       distance, so they have to be the sunset's colours too. 0xbcd8ee is a
+       daylight blue and it was leaking a cold edge into a warm scene. */
+    renderer.setClearColor(0x775687);
+    if(scene.fog){ scene.fog.color.setHex(0xc4835f); scene.fog.near=34; scene.fog.far=80; }
+    if(mountainGroup) mountainGroup.visible=false;     // v476 — hidden by day
     if(mountainFar && mountainNear){
       mountainFar.forEach(function(m){ m.material.color.setHex(0xffffff); });  // far range — full vertex gradient, no extra tint
       mountainNear.forEach(function(m){ m.material.color.setHex(0xffffff); }); // near range
@@ -10905,7 +11203,7 @@ function applyLighting(){
     // hardest, so it lands mostly on the roof, which is what we want here.
     hemiLight.intensity=0.40; hemiLight.color.setHex(0xbcd0e0); hemiLight.groundColor.setHex(0x3a5030);
     sunLight.intensity=1.7; sunLight.color.setHex(0xfff4e2);
-    sunLight.position.set(7,5.5,11);    // keep in sync with the init rig above
+    sunLight.position.set(9,2.6,11);   // v472 — dropped from 5.5 for a low sunset sun    // keep in sync with the init rig above
     fillLight.intensity=0.95; fillLight.color.setHex(0xfff0dc);
     rimLight.intensity=0.4;  rimLight.color.setHex(0x2BB5E8);
   }
@@ -11672,6 +11970,112 @@ function getDesignConfig(){
     porchLights:porchLightsData
   };
 }
+/* ---- SYNC THE CONTROLS TO THE RESTORED STATE ----
+   applyDesignConfig assigns the globals and rebuilds the 3D model, but every
+   picker on the page keeps whatever was selected before — so reopening a saved
+   design showed the customer's shed with none of the customer's choices ticked.
+   You had to re-pick things you had already picked just to see where you were.
+
+   This marks each control to match the state that was just restored.
+
+   It deliberately does NOT replay the setters, even though they would light the
+   same buttons up. setElectrical bumps the overhang to 6"/all-4 when the
+   package is Essential, and setRoofType remaps the roof colour to the nearest
+   one in the other palette. Replaying those would quietly EDIT a saved design
+   while claiming to display it — the shed on screen would stop matching the
+   quote it was priced from. Everything below only touches classes, control
+   values and label text. */
+function syncControlsFromState(){
+  /* Reads the value straight out of the button's own onclick, the same way
+     syncPitchUI already does — so the buttons stay the single source of truth
+     for what each one means, and adding a tile needs no change here. */
+  function argOf(el, idx){
+    var m=/\(([^)]*)\)/.exec(el.getAttribute('onclick')||'');
+    if(!m) return null;
+    var parts=m[1].split(',');
+    var raw=(parts[idx||0]||'').trim();
+    return raw.replace(/^['"]|['"]$/g,'');
+  }
+  function mark(sel, want){
+    if(want===undefined || want===null) return;
+    document.querySelectorAll(sel).forEach(function(b){
+      var v=argOf(b,0);
+      b.classList.toggle('on', v!==null && v===String(want));
+    });
+  }
+
+  try{
+    // Style lives on a data attribute rather than the onclick, and its tiles
+    // share #styleGrid with the porch models.
+    if(typeof STYLE!=='undefined'){
+      document.querySelectorAll('#styleGrid .tile').forEach(function(t){
+        var d=t.getAttribute('data-style');
+        if(d) t.classList.toggle('on', d===STYLE);
+      });
+    }
+
+    if(typeof SIDING!=='undefined')            mark('.sid-btn', SIDING);
+    if(typeof ROOFTYPE!=='undefined')          mark('.roof-btn', ROOFTYPE);
+    if(typeof ELEC!=='undefined')              mark('.elec-btn', ELEC);
+    if(typeof INT_FINISH!=='undefined')        mark('.int-btn', INT_FINISH);
+    if(typeof SOFFIT!=='undefined')            mark('.soffit-btn', SOFFIT);
+    if(typeof PINE_DIR!=='undefined')          mark('.pinedir-btn', PINE_DIR);
+    if(typeof PINE_WIDTH!=='undefined')        mark('.pinew-btn', PINE_WIDTH);
+    if(typeof LEANTO_DROP!=='undefined')       mark('.leanto-drop-btn', LEANTO_DROP);
+    if(typeof LEANTO_FRONT_OVH!=='undefined')  mark('.leanto-fovh-btn', LEANTO_FRONT_OVH);
+
+    // Overhang is the one group where two arguments matter: setOverhang(4,'gable')
+    // and setOverhang(4,'all4') are different buttons carrying the same depth.
+    if(typeof OVH!=='undefined' && typeof OVTYPE!=='undefined'){
+      document.querySelectorAll('.ovh-btn').forEach(function(b){
+        b.classList.toggle('on', argOf(b,0)===String(OVH) && argOf(b,1)===String(OVTYPE));
+      });
+    }
+
+    // Wrappers the setters show and hide. Without these a restored pine design
+    // shows pine selected with its direction picker still collapsed.
+    var pw=document.getElementById('pineDirWrap');
+    if(pw && typeof SIDING!=='undefined') pw.style.display=(SIDING==='pine')?'block':'none';
+    var ip=document.getElementById('intPaintWrap');
+    if(ip && typeof INT_FINISH!=='undefined') ip.style.display=(INT_FINISH==='painted')?'block':'none';
+    var ih=document.getElementById('insideHint');
+    if(ih && typeof INT_FINISH!=='undefined') ih.style.display=(INT_FINISH==='none')?'none':'block';
+
+    // Size: sliders and their labels, set directly rather than through
+    // setW/setL/setH — those run clampPorch, which is a mutation, not a redraw.
+    var sl=document.querySelectorAll('.wstep[data-step="1"] input[type=range]');
+    if(sl.length>=3 && typeof W!=='undefined'){
+      sl[0].value=W; sl[1].value=L; sl[2].value=H;
+    }
+    var wv=document.getElementById('wv'), lv=document.getElementById('lv'), hv=document.getElementById('hv');
+    if(wv && typeof W!=='undefined') wv.textContent=W+' ft';
+    if(lv && typeof L!=='undefined') lv.textContent=L+' ft';
+    if(hv && typeof H!=='undefined') hv.textContent=H+' ft';
+    if(typeof _sizeLabel==='function') _sizeLabel();
+
+    // Grids that draw their own selected state from the globals.
+    [ 'syncPitchUI','syncIntFinishUI','syncWallUI','syncVentHeightUI','syncPorchBtn',
+      'renderWallColors','renderRoofColors','renderInteriorColors','renderFoundation',
+      'renderAddons','renderDormerUI','renderFloorJoist','renderBulbs',
+      'renderPorchLightCatalog','renderPlacedPorchLights','renderPlacedDoors',
+      'renderPlacedWindows','renderUseGrid'
+    ].forEach(function(name){
+      try{ if(typeof window[name]==='function') window[name](); }
+      catch(e){ console.warn('control sync: '+name+' failed', e); }
+    });
+
+    // Pine stains only exist while pine is the siding.
+    if(typeof SIDING!=='undefined' && SIDING==='pine' && typeof renderPineStains==='function') renderPineStains();
+
+    // Style badges are keyed off the restored use, so they follow it back.
+    if(typeof applyRecommendations==='function') applyRecommendations();
+  }catch(e){
+    // A control that won't sync must never stop the design loading — the shed
+    // and the price are the parts that have to be right.
+    console.error('control sync failed', e);
+  }
+}
+
 function applyDesignConfig(c){
   if(!c) return;
   try{
@@ -11716,6 +12120,10 @@ function applyDesignConfig(c){
     // would show the wrong ones until the style was touched again, even
     // though the 3D model itself (built below) is already correct either way.
     if(typeof syncOverhangUI==='function') syncOverhangUI();
+    // Every picker still shows the page defaults at this point — the globals
+    // above changed, the controls did not. This ticks them to match, so a
+    // reopened design shows the customer what they actually chose.
+    syncControlsFromState();
     buildShed(); if(typeof autoFrame==='function') autoFrame(false);
   }catch(e){ console.error('config restore failed', e); }
 }
