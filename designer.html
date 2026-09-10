@@ -212,6 +212,23 @@ textarea.inp{resize:vertical}
 .qsec-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
 .qsec-lbl::after{content:'';flex:1;height:1px;background:var(--br)}
 .qerr-box{display:none;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.3);border-radius:9px;padding:11px 13px;color:#ff8080;font-size:12px;font-weight:600;margin:10px 0}
+/* "Talk to a designer" — deliberately NOT a .cta. It sits directly under the
+   Next button and the one thing it must never do is compete with it: someone
+   who knows what they want should never have to pick between two buttons of
+   equal weight. Quiet text link, full width for a comfortable tap target. */
+.consult-link{width:100%;margin-top:10px;padding:9px;background:none;border:none;color:var(--mu);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:center;text-decoration:underline;text-underline-offset:3px;transition:color .15s}
+.consult-link:hover{color:var(--blue)}
+/* Stall nudge. Lives in the 3D viewport rather than the sidebar so it cannot
+   push the controls around when it appears, and slides rather than pops so a
+   card materialising in peripheral vision reads as an offer, not an alert. */
+.consult-nudge{position:absolute;left:16px;bottom:16px;z-index:85;max-width:290px;background:rgba(20,22,26,.97);border:1px solid rgba(43,181,232,.35);border-radius:12px;padding:14px 15px;box-shadow:0 10px 30px rgba(0,0,0,.45);transform:translateY(14px);opacity:0;transition:transform .32s ease,opacity .32s ease;pointer-events:none}
+.consult-nudge.on{transform:translateY(0);opacity:1;pointer-events:auto}
+.consult-nudge h4{margin:0 0 5px;font-family:'Barlow',sans-serif;font-size:14px;font-weight:800;color:#fff}
+.consult-nudge p{margin:0 0 11px;font-size:12px;line-height:1.45;color:var(--mu)}
+.consult-nudge-row{display:flex;gap:8px}
+.consult-nudge-yes{flex:1;padding:9px;background:var(--blue);color:#000;border:none;border-radius:var(--pill);font-family:'Barlow',sans-serif;font-weight:800;font-size:12px;cursor:pointer}
+.consult-nudge-no{padding:9px 13px;background:none;border:1px solid rgba(255,255,255,.18);border-radius:var(--pill);color:var(--mu);font-family:'Barlow',sans-serif;font-weight:600;font-size:12px;cursor:pointer}
+@media (max-width:900px){.consult-nudge{left:12px;right:12px;bottom:12px;max-width:none}}
 /* ===== WIZARD ===== */
 .wprog{display:flex;gap:4px;padding:12px 14px 0}
 .wprog-seg{flex:1;height:4px;border-radius:2px;background:var(--br);transition:background .25s}
@@ -323,6 +340,14 @@ textarea.inp{resize:vertical}
     <div class="hint">Drag to rotate &nbsp;&middot;&nbsp; Scroll to zoom</div>
     <div id="measureGuide" class="measure-guide"></div>
     <div id="editBadge" class="edit-badge">EDIT MODE &middot; drag a window along the wall or up/down</div>
+    <div class="consult-nudge" id="consultNudge">
+      <h4>Want a hand with this?</h4>
+      <p>Tell us what you're storing and we'll size it, spec it and price it with you &mdash; no charge, no obligation.</p>
+      <div class="consult-nudge-row">
+        <button class="consult-nudge-yes" onclick="openConsult('nudge')">Have someone call me</button>
+        <button class="consult-nudge-no" onclick="dismissConsultNudge()">No thanks</button>
+      </div>
+    </div>
     <div id="toast" style="display:none;position:absolute;left:50%;bottom:70px;transform:translateX(-50%);background:rgba(20,22,26,.95);color:#fff;font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.15);box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:80;max-width:80%;text-align:center"></div>
   </div>
   <div class="sb" style="position:relative">
@@ -793,6 +818,7 @@ textarea.inp{resize:vertical}
       <button class="wbtn wbtn-back" id="wBack" onclick="wizPrev()">&#8592; Back</button>
       <button class="wbtn wbtn-next" id="wNext" onclick="wizNext()">Next &#8594;</button>
     </div>
+    <button class="consult-link" id="consultBtn" onclick="openConsult('button')">Not sure what you need? Talk to a designer</button>
     <div class="sum">
       <div class="sum-row">
         <span class="sum-lbl">Your Build</span>
@@ -12065,6 +12091,7 @@ function updateSum(){
    ══════════════════════════════════════════════════════════════════════════ */
 var QUOTE_ENDPOINT = 'https://potentia-assistant.thepotentianetwork.workers.dev/shed/submit';
 var DESIGN_ENDPOINT = 'https://potentia-assistant.thepotentianetwork.workers.dev/shed/design';
+var CONSULT_ENDPOINT = 'https://potentia-assistant.thepotentianetwork.workers.dev/shed/consult';
 
 function getDesignConfig(){
   return {
@@ -12760,6 +12787,177 @@ function paintRedline(){
   el.innerHTML=html;
 }
 
+/* ---------------------------------------------------------------------------
+   TALK TO A DESIGNER
+   The designer used to capture a lead in exactly one place: the quote form on
+   step 12. Anyone who gave up on step 5 left no trace at all — no name, no
+   number, no record that they had been here. This is the other door.
+
+   Two ways in, and they are recorded separately because they mean different
+   things on the sales call. 'button' is someone who chose to ask. 'nudge' is
+   someone we offered to help because they had stopped moving.
+
+   What this deliberately does NOT do is block the designer. No modal on load,
+   no gate before the 3D view. The shed on screen is the reason anyone stays;
+   interrupting it to ask a favour spends the best asset on the page.
+--------------------------------------------------------------------------- */
+var CONSULT_TIMES = ['Anytime', 'Morning (8am-12pm)', 'Afternoon (12-5pm)', 'Evening (5-8pm)', 'Weekend'];
+
+function openConsult(trigger){
+  CONSULT_TRIGGER = (trigger === 'nudge') ? 'nudge' : 'button';
+  hideConsultNudge();              // never leave the card sitting behind the panel
+  var body = ''+
+    '<div style="font-size:13px;color:var(--mu);line-height:1.5;margin-bottom:4px">'+
+      'Give us a number and a good time, and one of our designers will walk you '+
+      'through it &mdash; sizes, layout, what it will cost. No charge, no obligation.</div>'+
+    '<div class="qsec-lbl">Your Info</div>'+
+    '<div class="grp"><span class="lbl">Name</span>'+
+      '<input id="cName" class="inp" type="text" autocomplete="name" placeholder="Full name"></div>'+
+    '<div class="grp"><span class="lbl">Phone</span>'+
+      '<input id="cPhone" class="inp" type="tel" autocomplete="tel" placeholder="(435) 555-0123"></div>'+
+    '<div class="grp"><span class="lbl">Email <span style="color:var(--mu);font-weight:400">(optional)</span></span>'+
+      '<input id="cEmail" class="inp" type="email" autocomplete="email" placeholder="you@example.com"></div>'+
+    '<div class="grp"><span class="lbl">Best time to reach you</span>'+
+      '<select id="cTime" class="inp">'+
+        CONSULT_TIMES.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+
+      '</select></div>'+
+    '<div class="qsec-lbl">Anything We Should Know?</div>'+
+    '<div class="grp"><textarea id="cQ" class="inp" rows="3" placeholder="What are you storing? Any questions? (optional)"></textarea></div>'+
+    '<div id="cErr" class="qerr-box"></div>'+
+    '<div id="cSend" class="cta" onclick="submitConsult()" style="margin-top:16px">Request a call &rarr;</div>'+
+    '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
+      'Rather call us now? <a href="tel:4352329516" style="color:var(--blue)">435-232-9516</a></div>';
+  openSubPage('Talk to a designer', body);
+  // Same prefill the quote form uses, for staff reopening a customer's design.
+  if(typeof prefillContactFromUrl === 'function'){
+    try {
+      var params = new URLSearchParams(location.search);
+      [['prefill_name','cName'],['prefill_email','cEmail'],['prefill_phone','cPhone']].forEach(function(pair){
+        var v = params.get(pair[0]); var el = document.getElementById(pair[1]);
+        if(v && el && !el.value) el.value = v;
+      });
+    } catch(e){}
+  }
+}
+
+function submitConsult(){
+  var g = function(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+  var err = document.getElementById('cErr');
+  function fail(m){ if(err){ err.textContent = m; err.style.display = 'block'; } }
+  var name = g('cName'), phone = g('cPhone'), email = g('cEmail');
+  if(!name) return fail('Please add your name.');
+  if(phone.replace(/\D/g,'').length < 10) return fail('Please add a 10-digit phone number.');
+  // Email is optional here — but a typo in one they DID type is worth catching,
+  // since a wrong address fails silently where a wrong phone number does not.
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('That email doesn\'t look right.');
+  if(err) err.style.display = 'none';
+
+  var btn = document.getElementById('cSend');
+  if(btn){ btn.textContent = 'Sending...'; btn.style.pointerEvents = 'none'; btn.style.opacity = '.6'; }
+
+  var contact = { name:name, phone:phone, email:email };
+  var step = (typeof WIZ_STEPS !== 'undefined' && WIZ_STEPS[wizStep]) ? WIZ_STEPS[wizStep].title : null;
+
+  // Save the design first so the call-back starts from what they were actually
+  // looking at. A failed save must not cost the lead — the whole point is that
+  // this person was already on their way out.
+  //
+  // Nothing to save on step 1 though: getDesignConfig() there returns the
+  // untouched defaults, so storing it would file a default 8x12 under this
+  // customer's name as if they had picked it. The server discards a step-1
+  // config for the same reason; this just avoids the pointless round trip and
+  // the junk saved_designs row that came with it.
+  var started = (typeof wizStep === 'number' && wizStep > 0);
+  var savePromise = started
+    ? saveDesignAndGetLink(contact).catch(function(){ return null; })
+    : Promise.resolve(null);
+  savePromise.then(function(link){
+    return fetch(CONSULT_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contact: contact,
+        bestTime: g('cTime'),
+        question: g('cQ'),
+        step: step,
+        stepIndex: (typeof wizStep === 'number') ? wizStep : null,
+        trigger: CONSULT_TRIGGER,
+        config: (typeof getDesignConfig === 'function') ? getDesignConfig() : null,
+        permalink: link,
+        page: location.href
+      })
+    });
+  }).then(function(r){
+    if(!r || !r.ok) throw new Error('consult request failed');
+    CONSULT_DONE = true;
+    try { sessionStorage.setItem('consultNudgeSeen','1'); } catch(e){}
+    closeSubPage();
+    if(typeof showToast === 'function'){
+      showToast('Got it — we\'ll call you at ' + phone + '. Keep designing in the meantime.');
+    }
+  }).catch(function(){
+    if(btn){ btn.textContent = 'Request a call →'; btn.style.pointerEvents = ''; btn.style.opacity = ''; }
+    fail('Couldn\'t send that — please try again, or call 435-232-9516.');
+  });
+}
+
+/* ---- the stall nudge ----------------------------------------------------
+   Fires only when someone is still on step 1 and has gone quiet for 45s. Any
+   interaction restarts the clock rather than cancelling it, so a confused
+   visitor who clicks around and then stalls still gets the offer; but the
+   moment they advance past step 1 they are engaged and the timer is retired
+   for good. Once per session, and never on a design opened from a shared
+   link — that visitor was sent here to look at something specific. */
+var CONSULT_NUDGE_MS = 45000;
+var CONSULT_TRIGGER = 'button';
+var CONSULT_DONE = false;
+var _consultTimer = null;
+var _consultRetired = false;
+
+function consultNudgeSeen(){
+  try { return sessionStorage.getItem('consultNudgeSeen') === '1'; } catch(e){ return false; }
+}
+function showConsultNudge(){
+  if(_consultRetired || CONSULT_DONE || consultNudgeSeen()) return;
+  if(typeof wizStep === 'number' && wizStep !== 0) return;
+  var el = document.getElementById('consultNudge');
+  if(el) el.classList.add('on');
+}
+function hideConsultNudge(){
+  var el = document.getElementById('consultNudge');
+  if(el) el.classList.remove('on');
+}
+function dismissConsultNudge(){
+  hideConsultNudge();
+  _consultRetired = true;
+  if(_consultTimer){ clearTimeout(_consultTimer); _consultTimer = null; }
+  try { sessionStorage.setItem('consultNudgeSeen','1'); } catch(e){}
+}
+function armConsultNudge(){
+  if(_consultRetired || CONSULT_DONE || consultNudgeSeen()) return;
+  if(_consultTimer) clearTimeout(_consultTimer);
+  _consultTimer = setTimeout(showConsultNudge, CONSULT_NUDGE_MS);
+}
+function consultNudgeInit(sharedDesign){
+  // A shared design is someone else's build sent to this visitor to look at.
+  // Offering to design it for them makes no sense, so retire the nudge.
+  if(sharedDesign){ _consultRetired = true; return; }
+  if(consultNudgeSeen()) return;
+  ['pointerdown','keydown','wheel'].forEach(function(ev){
+    document.addEventListener(ev, function(){
+      if(_consultRetired) return;
+      // Past step 1 means they are moving under their own steam.
+      if(typeof wizStep === 'number' && wizStep !== 0){
+        _consultRetired = true;
+        if(_consultTimer){ clearTimeout(_consultTimer); _consultTimer = null; }
+        return;
+      }
+      hideConsultNudge();
+      armConsultNudge();
+    }, {passive:true});
+  });
+  armConsultNudge();
+}
+
 (function(){
   function boot(){
     /* #diag — colour every part so a screenshot NAMES it instead of me guessing
@@ -12776,10 +12974,16 @@ function paintRedline(){
     // (#d=...) so links already sent out before this existed still work.
     if(typeof loadDesignFromQuery==='function'){
       loadDesignFromQuery().then(function(loaded){
-        if(!loaded && typeof loadDesignFromHash==='function') loadDesignFromHash();
+        if(!loaded && typeof loadDesignFromHash==='function') loaded = loadDesignFromHash();
+        // Armed only once we know whether this is a shared design, because
+        // that is the one case the nudge must never fire in.
+        consultNudgeInit(!!loaded || /[#&?]d=/.test(location.href));
       });
     } else if(typeof loadDesignFromHash==='function'){
-      loadDesignFromHash();
+      var loadedHash = loadDesignFromHash();
+      consultNudgeInit(!!loadedHash || /[#&?]d=/.test(location.href));
+    } else {
+      consultNudgeInit(false);
     }
   }
   if(document.readyState==='complete') setTimeout(boot,400);
