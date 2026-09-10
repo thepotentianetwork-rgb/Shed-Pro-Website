@@ -241,19 +241,37 @@ textarea.inp{resize:vertical}
 /* v480 — small orange tile badge. Top-LEFT, because tile-check owns top-right
    and a badged tile is often the selected one too. Deliberately small: it is a
    note on the tile, not a second headline competing with the tile's name. */
-.tile-rec{position:absolute;top:5px;left:5px;background:#F8921E;color:#1a1205;
+/* .tile-badge is a STANDING label on a tile — same look as .tile-rec, different
+   class on purpose. applyRecommendations() clears every .tile-rec before it
+   redraws, so a permanent badge sharing that class would be wiped the next time
+   a recommendation ran. */
+.tile-rec,.tile-badge{position:absolute;top:5px;left:5px;background:#F8921E;color:#1a1205;
   font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
   text-transform:uppercase;pointer-events:none;z-index:2;line-height:1.5}
 /* Standing badges on individual options, for the row-and-button controls that
-   are not .tile grids. Good / Better / Best carry a deliberate ramp — solid,
-   outlined, quiet — so the ladder reads at a glance and not only from the
-   words. Popular and Luxury use the solid form; they never appear beside a
-   foundation tier, so there is nothing for them to be confused with. */
+   are not .tile grids.
+   Good / Better / Best climb deliberately: outline in grey, then a warm fill,
+   then a lit gradient. Each step gains weight, colour and presence, so the
+   ladder is legible from the shape of the badges before a word is read — and
+   Best is the only one that carries a glow, which is what makes it pop out of
+   a list where every other row is flat.
+   Popular and Luxury use the plain solid form. They live on other steps and
+   never sit beside a foundation tier, so nothing competes. */
 .opt-badge{display:inline-block;margin-left:7px;background:#F8921E;color:#1a1205;
   font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
   text-transform:uppercase;line-height:1.5;vertical-align:middle;white-space:nowrap}
-.opt-badge.tier-better{background:transparent;color:#F8921E;border:1px solid rgba(248,146,30,.6)}
-.opt-badge.tier-good{background:transparent;color:var(--mu);border:1px solid var(--br)}
+
+/* 1 — quiet. Present, but asks for nothing. */
+.opt-badge.tier-good{background:transparent;color:var(--mu);border:1px solid var(--br);font-weight:800}
+
+/* 2 — warmed up. Takes the accent colour and a soft fill behind it. */
+.opt-badge.tier-better{background:rgba(248,146,30,.15);color:#FFC078;border:1px solid rgba(248,146,30,.55)}
+
+/* 3 — lit. Brighter gradient, a little more room, and the only glow on the
+   step, so the eye lands here first. */
+.opt-badge.tier-best{background:linear-gradient(135deg,#FFC96B 0%,#F8921E 55%,#EE7A05 100%);
+  color:#1a1205;border:1px solid rgba(255,201,107,.85);padding:2px 7px;font-size:8.5px;
+  letter-spacing:.06em;box-shadow:0 0 0 1px rgba(248,146,30,.25), 0 2px 10px rgba(248,146,30,.45)}
 .tile-check{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#06222e;font-size:12px;font-weight:800;display:none;align-items:center;justify-content:center}
 .tile.on .tile-check{display:flex}
 .placed-list{margin-top:12px;display:flex;flex-direction:column;gap:6px}
@@ -721,7 +739,7 @@ textarea.inp{resize:vertical}
            vent, door overhangs. Burying outdoor items at the bottom of an
            indoor step meant they were reached last, by someone already
            scrolling, which is the worst place for optional revenue. -->
-      <div class="wstep" data-step="9">
+      <div class="wstep" data-step="10">
         <div class="grp">
           <span class="lbl">Add-Ons</span>
           <div class="wstep-sub" style="margin:0 0 8px">Optional extras — tap to include.</div>
@@ -730,7 +748,7 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 10 · ELECTRICAL (upsell, near the end) -->
-      <div class="wstep" data-step="10">
+      <div class="wstep" data-step="9">
         <div class="grp">
           <span class="lbl">Electrical Package</span>
           <div class="wstep-sub" id="elecBarnNote" style="display:none;margin:0 0 8px;color:#ffb86b">Essential isn't available on Barn / Gambrel yet — Basic and Core are.</div>
@@ -2326,13 +2344,30 @@ var ITEM_BADGES = {
   // unbadged: it is the customer's own slab, not a tier we sell.
   'found:blocks':      {text:'Good',   tier:'good'},
   'found:gravel':      {text:'Better', tier:'better'},
-  'found:pad':         {text:'Best'}
+  'found:pad':         {text:'Best',   tier:'best'},
+  /* Floor upgrades. Both exist for a floor that will carry real weight — a
+     mower, a workbench, a vehicle — so both say so rather than only the dearer
+     one. The stock floor is fine for storage and is left unbadged; badging it
+     too would make the label mean nothing. */
+  'joist:j16x6':       {text:'Heavy duty'},
+  'joist:j12x6':       {text:'Heavy duty'}
 };
 
 function itemBadgeHTML(key){
   var b = ITEM_BADGES[key];
   if(!b) return '';
   return '<span class="opt-badge'+(b.tier?' tier-'+b.tier:'')+'">'+b.text+'</span>';
+}
+
+/* The corner form (.tile-badge, absolutely positioned top-left like .tile-rec)
+   is kept for tiles that have an IMAGE above their caption — the style grid —
+   where a corner badge sits over artwork. It is deliberately not used on the
+   floor-joist tiles: those are caption-only, so a corner badge lands squarely
+   on top of the name and hides it. Text-only controls take the inline form. */
+function tileBadgeHTML(key){
+  var b = ITEM_BADGES[key];
+  if(!b) return '';
+  return '<div class="tile-badge">'+b.text+'</div>';
 }
 
 /* Electrical and cupola are static markup rather than a rendered list, so their
@@ -2472,7 +2507,7 @@ function renderFloorJoist(){
             : ((typeof priceTag==='function') ? priceTag(amt) : ('$'+amt.toLocaleString()));
     return '<div class="tile'+(FLOOR_JOIST===j.k?' on':'')+
       '" onclick="setFloorJoist(\''+j.k+'\')">'+
-      '<div class="tile-cap"><div class="tile-name">'+j.name+'</div>'+
+      '<div class="tile-cap"><div class="tile-name">'+j.name+itemBadgeHTML('joist:'+j.k)+'</div>'+
       '<div class="tile-price">'+j.sub+' &middot; '+price+'</div></div>'+
       '<div class="tile-check">&#10003;</div></div>';
   }).join('');
@@ -8736,8 +8771,13 @@ var WIZ_STEPS = [
   {title:"Doors",              sub:"Pick a size, then a style."},
   {title:"Windows & Vents",    sub:"Tap to add, then move or delete."},
 {title:"Interior",           sub:"Finish the inside, add a loft or shelves."},
-  {title:"Add-Ons",         sub:"Optional extras."},
+  /* Electrical before Add-Ons: the package decides whether bulbs and porch
+     lights are on the table at all, so choosing extras first meant picking
+     from a list that could still change under you. Nothing here is keyed to a
+     step INDEX — wizIs() and the panel lookups all go by title — so the swap
+     is this table and the two data-step attributes, nothing more. */
   {title:"Electrical",         sub:"Power package (optional)."},
+  {title:"Add-Ons",         sub:"Optional extras."},
   {title:"Review & quote",     sub:"Looks good? Send it over."}
 ];
 var wizStep = 0;
@@ -10242,9 +10282,14 @@ function openStainPage(){ openSubPage('Concrete Stain Color', stainPageHTML()); 
 function renderFoundation(){
   var host=document.getElementById('foundationList'); if(!host) return;
   function pr(v){ if(PRICE_LOCKED) return ''; return v>0 ? ('+$'+v.toLocaleString()) : 'Ask for pricing'; }
+  /* Existing foundation sits first because it is the one option that is not on
+     the ladder — the customer already has a slab and is not choosing between
+     tiers at all. Putting it above keeps Good, Better and Best reading as an
+     unbroken climb; sandwiched in the middle, as it was, it broke the sequence
+     in half. */
   var opts=[
-    {k:'blocks',   name:'Leveled on Cinder Blocks', desc:'We level and set your shed on block piers \u2014 complimentary', price:'Included', visual:true},
     {k:'existing', name:'Existing Foundation', desc:'You already have a pad or slab \u2014 the shed sits flat on it, no leveling or blocks', price:'Included', visual:true},
+    {k:'blocks',   name:'Leveled on Cinder Blocks', desc:'We level and set your shed on block piers \u2014 complimentary', price:'Included', visual:true},
     {k:'gravel',   name:'Gravel Pad + Leveled on Blocks', desc:'We pour and level gravel over the site, then set your shed on block piers',
      price:pr(foundationBasePrice('gravel'))+' <span style="opacity:.6;font-weight:600">'+padSqft()+' sqft</span>', visual:true},
     {k:'pad',      name:'Concrete Pad \u2014 Poured by Us', desc:'4\u2033 level slab, same size as your shed', price:pr(foundationBasePrice('pad')), visual:true}
