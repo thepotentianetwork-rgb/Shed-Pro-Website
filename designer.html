@@ -34,6 +34,17 @@ header{background:rgba(12,12,12,.96);border-bottom:1px solid var(--br);padding:0
 @keyframes promoScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.promo-track{animation:none}}
 .logo{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.logo em{color:var(--blue);font-style:normal}
+/* Slogan sits against the wordmark. Lighter and smaller than SHEDPRO so it
+   reads as a tagline rather than part of the name, and the separator is a
+   pipe so it does not collide with the "/" the page label already uses. */
+.logo-slogan{color:var(--mu);font-size:12px;font-weight:600;font-style:italic;margin-left:8px;letter-spacing:.01em}
+.logo-slogan::before{content:'|';font-style:normal;font-weight:400;color:var(--br);margin-right:8px}
+/* The version string is hidden, NOT removed. Tapping it three times is the
+   only way to toggle DIAG mode where there is no URL bar to put #diag in
+   (see setDiag) — display:none would take the tap target with it. opacity:0
+   keeps a small invisible hit area beside the slogan. Set opacity back to 1
+   to read the build number again. */
+#buildTag{opacity:0;width:16px;display:inline-block;overflow:hidden;vertical-align:middle}
 .logo-sub{color:var(--mu);font-size:12px;font-weight:400;margin-left:6px}
 .hb{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .btn{font-family:'Barlow',sans-serif;font-weight:700;font-size:13px;padding:8px 18px;border-radius:var(--pill);border:none;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
@@ -45,6 +56,14 @@ header{background:rgba(12,12,12,.96);border-bottom:1px solid var(--br);padding:0
   display:inline-flex;align-items:center;justify-content:center;font-size:13px;
   line-height:1;cursor:pointer;opacity:.45;color:var(--mu);
   -webkit-user-select:none;user-select:none;flex-shrink:0}
+/* Same round pill as .lock-btn, but these are customer-facing so they carry
+   full opacity and light up on hover. Stroke icons at 2px to match the tile
+   artwork elsewhere in the file; currentColor so one colour drives both. */
+.ico-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--br);
+  display:inline-flex;align-items:center;justify-content:center;color:var(--mu);
+  text-decoration:none;flex-shrink:0;transition:color .15s,border-color .15s}
+.ico-btn svg{width:15px;height:15px;display:block}
+.ico-btn:hover{color:var(--blue);border-color:var(--blue)}
 .main{display:flex;flex:1;overflow:hidden}
 .vp{flex:1;position:relative;overflow:hidden}
 canvas{display:block;width:100%;height:100%}
@@ -70,9 +89,26 @@ canvas{display:block;width:100%;height:100%}
   header{padding:0 12px;height:50px}
   .hb{gap:5px}
   .logo-sub{display:none}     /* "/ Shed Designer" — the page is self-evident; drop it to give the title room */
+  /* At 12px with a pipe the slogan truncated to "Let's Build To…" here, which
+     looks broken rather than tight. Smaller, and the separator goes: the
+     wordmark's weight already separates them at this size. The header budget
+     on a 390px phone is 350px inner; the buttons take 157px, leaving 193px for
+     the wordmark (83px in Barlow Condensed), the slogan and the build tag's
+     hit area — which all fit at this size with room to spare. */
+  .logo-slogan{font-size:10px;margin-left:6px}
+  .logo-slogan::before{display:none}
   .bt-word{display:none}      /* "build" — keep the tap target, just the "v398" is worth the width on a phone */
   .btn{padding:7px 11px;font-size:12.5px;gap:4px}
+  /* Arrow only. Adding call and text to the header cost ~60px, which pushed
+     the slogan off a 390px phone; a bare back-arrow is a conventional mobile
+     pattern and buys most of it back. display:none takes the word out of the
+     accessibility tree as well as off the screen — which would leave the link
+     announced as just "←" — so the anchor carries aria-label="Back" and that
+     is what a screen reader reads at every width. */
+  .btn-word{display:none}
   .lock-btn{width:27px;height:27px;font-size:12px}
+  .ico-btn{width:27px;height:27px}
+  .ico-btn svg{width:14px;height:14px}
   .hint{bottom:8px;font-size:10px;padding:5px 12px}
   /* roomier tap targets and readable type in the panel */
   .wstep{padding:12px 14px}
@@ -144,6 +180,8 @@ canvas{display:block;width:100%;height:100%}
   .hb{gap:4px}
   .btn{padding:6px 9px;font-size:11.5px;gap:3px}
   .lock-btn{width:24px;height:24px;font-size:11px}
+  .ico-btn{width:24px;height:24px}
+  .ico-btn svg{width:13px;height:13px}
 }
 /* ---- SHORT VIEWPORTS (artifact/embed panes, small laptops) ---------------
    The sidebar's fixed chrome — progress bar, step head, nav buttons, summary
@@ -229,20 +267,20 @@ textarea.inp{resize:vertical}
 .consult-nudge-yes{flex:1;padding:9px;background:var(--blue);color:#000;border:none;border-radius:var(--pill);font-family:'Barlow',sans-serif;font-weight:800;font-size:12px;cursor:pointer}
 .consult-nudge-no{padding:9px 13px;background:none;border:1px solid rgba(255,255,255,.18);border-radius:var(--pill);color:var(--mu);font-family:'Barlow',sans-serif;font-weight:600;font-size:12px;cursor:pointer}
 @media (max-width:900px){.consult-nudge{left:12px;right:12px;bottom:12px;max-width:none}}
+/* Width only — deliberately NOT folded into the 400px block above, whose
+   aspect-ratio clause also matches a 390px portrait phone and would have
+   dropped the slogan on the most common screen there is. Measured in the real
+   Barlow Condensed, not a fallback face, and re-measured after the call and
+   text buttons joined the row: 375px still clears it by 14px, 360px is 1px
+   short. So 370px is the line. */
+@media (max-width:370px){.logo-slogan{display:none}}
 /* ===== WIZARD ===== */
 .wprog{display:flex;gap:4px;padding:12px 14px 0}
 .wprog-seg{flex:1;height:4px;border-radius:2px;background:var(--br);transition:background .25s}
 .wprog-seg.done{background:var(--blue)}
 .wprog-seg.cur{background:var(--blue);opacity:.55}
-.wstep-head{padding:10px 14px 2px;display:flex;align-items:baseline;gap:8px}
-/* nowrap keeps "Step 12 of 12" on one line no matter how tight it gets; the
-   text column takes the rest. min-width:0 is what lets a long caption wrap
-   inside the column instead of forcing the flex row wider than the sidebar. */
-.wstep-num{flex:0 0 auto;white-space:nowrap}
-.wstep-headtext{flex:1;min-width:0}
-.wstep-headtext .wstep-title{margin-top:0}
-.wstep-num{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}
-.wstep-title{font-size:19px;font-weight:800;color:var(--w);margin-top:2px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.01em}
+.wstep-head{padding:10px 14px 2px}
+.wstep-title{font-size:19px;font-weight:800;color:var(--w);margin-top:0;font-family:'Barlow Condensed',sans-serif;letter-spacing:.01em}
 .wstep-sub{font-size:11px;color:var(--mu);margin-top:2px}
 .wsteps{flex:1;overflow-y:auto;padding:8px 14px 14px}
 .wstep{display:none}.wstep.on{display:block;animation:wfade .25s ease}
@@ -308,7 +346,7 @@ textarea.inp{resize:vertical}
 </head>
 <body>
 <header>
-  <div class="logo">SHED<em>PRO</em> <span class="logo-sub">/ Shed Designer</span> <span id="buildTag" style="color:#F8921E;font-size:10px;font-weight:700;margin-left:6px;cursor:pointer;-webkit-user-select:none;user-select:none"><span class="bt-word">build&nbsp;</span>v489</span></div>
+  <div class="logo">SHED<em>PRO</em> <span class="logo-slogan">Let&rsquo;s Build Together</span> <span class="logo-sub">/ Shed Designer</span> <span id="buildTag" style="color:#F8921E;font-size:10px;font-weight:700;margin-left:6px;cursor:pointer;-webkit-user-select:none;user-select:none"><span class="bt-word">build&nbsp;</span>v489</span></div>
   <div class="hb">
     <!-- STAFF PRICING TOGGLE. A padlock in the header rather than a URL parameter, so
  the designer keeps one address and the sales flow is a tap. Deliberately quiet
@@ -320,8 +358,13 @@ textarea.inp{resize:vertical}
  below the title), which grew the header past its fixed height and ate into
  the 3D viewport below it. A flex sibling of Back/Get Quote never wraps with
  the title text, so the header stays one compact row on any width. -->
+    <!-- Call and text, same round pill family as the staff padlock but at full
+         opacity: these are for the customer, the padlock is not. tel: and sms:
+         both hand off to the phone's own dialer/messages app. -->
+    <a href="tel:4352329516" class="ico-btn" title="Call 435-232-9516" aria-label="Call us"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>
+    <a href="sms:4352329516" class="ico-btn" title="Text 435-232-9516" aria-label="Text us"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></a>
     <span id="priceLockBtn" class="lock-btn" onclick="togglePriceLock()" title="Staff pricing">&#128274;</span>
-    <a href="index.html" class="btn bg">&#8592; Back</a>
+    <a href="index.html" class="btn bg" aria-label="Back">&#8592;<span class="btn-word"> Back</span></a>
     <button class="btn bb" onclick="openQ()">Get Quote</button>
   </div>
 </header>
@@ -334,12 +377,12 @@ textarea.inp{resize:vertical}
          reader hears the message once, not on a 26s repeat. -->
     <div class="promo-set">
       <span>Built to withstand the Rocky Mountains</span><span class="promo-sep">&middot;</span>
-      <span>Quick turnaround</span><span class="promo-sep">&middot;</span>
+      <span>One crew, start to finish</span><span class="promo-sep">&middot;</span>
       <span>Have questions? Call us at <a href="tel:4352329516">435-232-9516</a></span><span class="promo-sep">&middot;</span>
     </div>
     <div class="promo-set" aria-hidden="true">
       <span>Built to withstand the Rocky Mountains</span><span class="promo-sep">&middot;</span>
-      <span>Quick turnaround</span><span class="promo-sep">&middot;</span>
+      <span>One crew, start to finish</span><span class="promo-sep">&middot;</span>
       <span>Have questions? Call us at <a href="tel:4352329516" tabindex="-1">435-232-9516</a></span><span class="promo-sep">&middot;</span>
     </div>
   </div>
@@ -363,24 +406,13 @@ textarea.inp{resize:vertical}
   <div class="sb" style="position:relative">
     <div class="wprog" id="wprog"></div>
 
-    <!-- Step counter to the LEFT of the title and caption rather than stacked
-         above them: three full-width lines for what is really one heading and
-         a label. The DESKTOP sidebar is the tightest column, not the phone —
-         270px wide against a phone's full 390px — so that is what the fit was
-         checked against: 241px usable, 38px counter, 8px gap, leaving 195px
-         for a widest caption of 188px ("Finish the inside, add a loft or
-         shelves.") and a widest title of 168px. Baseline-aligned so the
-         counter sits on the title's baseline rather than floating against the
-         top of a two-line block. -->
+    <!-- No step counter. The segmented progress bar directly above already
+         says how far along this is, and more legibly than a fraction does —
+         it shows the shape of the remaining work at a glance rather than
+         asking anyone to divide. Title and caption only. -->
     <div class="wstep-head">
-      <!-- Overwritten by wizRender on first paint; kept in sync so the markup
-           does not flash a stale step count. It said "Step 1 of 10" while
-           WIZ_STEPS held nine. -->
-      <div class="wstep-num" id="wStepNum">1 / 12</div>
-      <div class="wstep-headtext">
-        <div class="wstep-title" id="wStepTitle">What's it for?</div>
-        <div class="wstep-sub" id="wStepSub">We'll set a starting point for you.</div>
-      </div>
+      <div class="wstep-title" id="wStepTitle">What's it for?</div>
+      <div class="wstep-sub" id="wStepSub">We'll set a starting point for you.</div>
     </div>
 
     <div class="wsteps">
@@ -866,7 +898,14 @@ textarea.inp{resize:vertical}
            price and the CTA, and a line repeating what the 3D view is already
            showing was the one of those with no job to do. The dimensions live
            on the size step and the colours are on screen in 3D. -->
-      <div class="sum-row" style="align-items:center;margin-bottom:12px">
+      <!-- Staff only. A customer saw "Your Price / On request" sitting directly
+           above a "Request Free Quote" button — a row whose whole content was
+           an instruction the button was already giving. Hidden while pricing
+           is locked, which is every customer, and shown the moment the header
+           padlock unlocks it, which is the only time it says anything.
+           It is NOT deleted: #priceLbl's double-tap is the sole way into the
+           redline panel, and #priceVal is where staff read the real number. -->
+      <div class="sum-row" id="priceRow" style="align-items:center;margin-bottom:12px;display:none">
         <!-- Double-tap unlocks pricing when locked, and opens the redline once it is
      already unlocked — the redline is meaningless with the prices hidden. -->
 <span class="sum-lbl" id="priceLbl" style="cursor:pointer" ondblclick="if(PRICE_LOCKED){unlockPricing();}else{toggleRedline();}" title="">Your Price</span>
@@ -8931,12 +8970,6 @@ function wizRender(){
     }
     prog.innerHTML=html;
   }
-  // "1 / 12", not "Step 1 of 12". Beside the title now rather than above it,
-  // and the desktop sidebar is the tightest of the three at 241px usable —
-  // "STEP 12 OF 12" needs 84px there and overflowed the row by 41px, wrapping
-  // the titles. The short form needs 38px and clears every width. The word
-  // "Step" was carrying nothing the progress bar directly above does not.
-  document.getElementById('wStepNum').textContent=(wizStep+1)+' / '+WIZ_STEPS.length;
   document.getElementById('wStepTitle').textContent=WIZ_STEPS[wizStep].title;
   document.getElementById('wStepSub').textContent=WIZ_STEPS[wizStep].sub;
   dedupeStepHeadings();
@@ -12101,6 +12134,10 @@ function togglePriceLock(){
   if(PRICE_LOCKED) unlockPricing(); else lockPricing();
 }
 function syncPriceLockBtn(){
+  // Before the early return below: the row has to follow the lock even on a
+  // page where the padlock button itself is missing.
+  var row=document.getElementById('priceRow');
+  if(row) row.style.display = PRICE_LOCKED ? 'none' : 'flex';
   var b=document.getElementById('priceLockBtn'); if(!b) return;
   b.innerHTML = PRICE_LOCKED ? '&#128274;' : '&#128275;';       // closed / open padlock
   b.style.opacity = PRICE_LOCKED ? '.45' : '1';
