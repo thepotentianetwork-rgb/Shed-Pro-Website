@@ -244,6 +244,16 @@ textarea.inp{resize:vertical}
 .tile-rec{position:absolute;top:5px;left:5px;background:#F8921E;color:#1a1205;
   font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
   text-transform:uppercase;pointer-events:none;z-index:2;line-height:1.5}
+/* Standing badges on individual options, for the row-and-button controls that
+   are not .tile grids. Good / Better / Best carry a deliberate ramp — solid,
+   outlined, quiet — so the ladder reads at a glance and not only from the
+   words. Popular and Luxury use the solid form; they never appear beside a
+   foundation tier, so there is nothing for them to be confused with. */
+.opt-badge{display:inline-block;margin-left:7px;background:#F8921E;color:#1a1205;
+  font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
+  text-transform:uppercase;line-height:1.5;vertical-align:middle;white-space:nowrap}
+.opt-badge.tier-better{background:transparent;color:#F8921E;border:1px solid rgba(248,146,30,.6)}
+.opt-badge.tier-good{background:transparent;color:var(--mu);border:1px solid var(--br)}
 .tile-check{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#06222e;font-size:12px;font-weight:800;display:none;align-items:center;justify-content:center}
 .tile.on .tile-check{display:flex}
 .placed-list{margin-top:12px;display:flex;flex-direction:column;gap:6px}
@@ -2300,6 +2310,48 @@ var STYLE_BADGES = {
   '4peak':  'Luxury',
   'leanto': 'Modern'
 };
+/* Every standing badge on an individual option, in one table so the labels can
+   be read and changed together instead of hunted through four renderers.
+   Keyed <group>:<value> to match each control's own value, so a badge cannot
+   drift onto an option that no longer exists — an unknown key simply renders
+   nothing. */
+var ITEM_BADGES = {
+  'cupola:black':      {text:'Luxury'},
+  'cupola:copper':     {text:'Luxury'},
+  'addon:flowerboxes': {text:'Popular'},
+  'addon:shutters':    {text:'Popular'},
+  // The middle package, which is the one most people land on.
+  'elec:core':         {text:'Popular'},
+  // Good / Better / Best down the foundation list. 'existing' is deliberately
+  // unbadged: it is the customer's own slab, not a tier we sell.
+  'found:blocks':      {text:'Good',   tier:'good'},
+  'found:gravel':      {text:'Better', tier:'better'},
+  'found:pad':         {text:'Best'}
+};
+
+function itemBadgeHTML(key){
+  var b = ITEM_BADGES[key];
+  if(!b) return '';
+  return '<span class="opt-badge'+(b.tier?' tier-'+b.tier:'')+'">'+b.text+'</span>';
+}
+
+/* Electrical and cupola are static markup rather than a rendered list, so their
+   badges are stamped on once instead of emitted each render. Safe to call
+   repeatedly: it skips a control that already has one. The price painters
+   (paintElecTags, paintCupolaTag) only rewrite a nested price element, so a
+   badge appended here is not wiped by them. */
+function stampStaticBadges(){
+  var attrFor = { elec:'data-elec', cupola:'data-cup' };
+  Object.keys(ITEM_BADGES).forEach(function(key){
+    var parts = key.split(':');
+    var attr = attrFor[parts[0]];
+    if(!attr) return;
+    var el = document.querySelector('['+attr+'="'+parts[1]+'"]');
+    if(!el || el.querySelector('.opt-badge')) return;
+    el.insertAdjacentHTML('beforeend', itemBadgeHTML(key));
+  });
+}
+
 function applyRecommendations(){
   var old=document.querySelectorAll('.tile-rec');
   for(var i=0;i<old.length;i++) old[i].parentNode.removeChild(old[i]);
@@ -2325,6 +2377,7 @@ function applyRecommendations(){
   Object.keys(STYLE_BADGES).forEach(function(st){
     badge('[data-style="'+st+'"]', STYLE_BADGES[st]);
   });
+  stampStaticBadges();
 }
 function renderUseGrid(){
   var el=document.getElementById('useGrid'); if(!el) return;
@@ -10202,7 +10255,7 @@ function renderFoundation(){
   opts.forEach(function(o){
     var on=(FOUNDATION===o.k);
     html+='<div onclick="setFoundation(\''+o.k+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;margin-bottom:8px;border-radius:10px;cursor:pointer;background:'+(on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+'">'+
-      '<div><div style="font-size:13px;font-weight:700;color:var(--w)">'+o.name+(o.visual?' <span style="color:var(--blue);font-size:10px">· shown in 3D</span>':'')+'</div>'+
+      '<div><div style="font-size:13px;font-weight:700;color:var(--w)">'+o.name+itemBadgeHTML('found:'+o.k)+(o.visual?' <span style="color:var(--blue);font-size:10px">· shown in 3D</span>':'')+'</div>'+
       '<div style="font-size:11px;color:var(--mu);margin-top:2px">'+o.desc+'</div></div>'+
       '<div style="font-size:12px;font-weight:800;color:'+(on?'#8fe3ff':'var(--mu)')+';white-space:nowrap">'+o.price+'</div></div>';
   });
@@ -10326,7 +10379,7 @@ function renderAddons(){
     var showColors=(colorKey && on);
     html+='<div style="margin-bottom:6px">';
     html+='<div onclick="toggleAddon(\''+it.k+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:'+(showColors?'8px 8px 0 0':'8px')+';cursor:pointer;background:'+(on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+'">'+
-      '<div><div style="font-size:12px;font-weight:700;color:var(--w)">'+it.name+(it.visual?' <span style="color:var(--blue);font-size:10px">· shown in 3D</span>':'')+'</div><div style="font-size:11px;color:var(--mu)">'+addonPriceText(it)+'</div></div>'+
+      '<div><div style="font-size:12px;font-weight:700;color:var(--w)">'+it.name+itemBadgeHTML('addon:'+it.k)+(it.visual?' <span style="color:var(--blue);font-size:10px">· shown in 3D</span>':'')+'</div><div style="font-size:11px;color:var(--mu)">'+addonPriceText(it)+'</div></div>'+
       '<div style="width:22px;height:22px;border-radius:6px;flex-shrink:0;background:'+(on?'#2BB5E8':'transparent')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+';color:#06222e;font-weight:800;text-align:center;line-height:22px">'+(on?'\u2713':'')+'</div>'+
       '</div>';
     if(showColors){
@@ -12502,6 +12555,7 @@ function fetchQuote(){
     if(typeof paintCupolaTag==='function') paintCupolaTag();
     if(typeof paintSidingTags==='function') paintSidingTags();
     if(typeof paintElecTags==='function') paintElecTags();
+    if(typeof stampStaticBadges==='function') stampStaticBadges();
     if(typeof paintShelfDepthTags==='function') paintShelfDepthTags();
   }).catch(function(){ quoteCache.loading=false; quoteCache.failed=true; quoteCache.total=null; paintPrice(); });
 }
