@@ -603,7 +603,7 @@ textarea.inp{resize:vertical}
           </div>
         </div>
         <div class="grp" style="margin-top:14px">
-          <span class="lbl">Roof Pitch</span>
+          <span class="lbl" id="pitchGrpLbl">Roof Pitch</span>
           <div class="wstep-sub" id="pitchBarnNote" style="display:none;margin:0 0 8px;color:#ffb86b">Barn / Gambrel uses its own fixed roofline, not a selectable pitch.</div>
           <div class="optrow" id="pitchNormalRow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
             <div class="pitch-btn slope-btn on" onclick="setPitch(6,this)">6/12</div>
@@ -7959,7 +7959,16 @@ function buildFoundation(){
     var pad=new THREE.Mesh(new THREE.BoxGeometry(w+0.10, PAD_THK, l+0.10),
       new THREE.MeshStandardMaterial({color:weathered?0xB2B3AD:0xc4c4bf,
         roughness:weathered?0.97:0.92, metalness:0.0}));
-    pad.position.set(0, -lift-PAD_THK/2+0.004, 0); pad.receiveShadow=true; shedGroup.add(pad);
+    /* SIT THE SHED ON THE SLAB.
+       The old placement put the slab's top at 0.24in above grass while the
+       shed floor sits at `lift` — 3.3in — so the building hovered 3 inches
+       over its own concrete. The comment above ("the top stays at ground
+       level and the slab goes DOWN from there") was written when a pad had
+       lift 0; when the lift came in, the slab did not follow it.
+       Top at local 0 IS the floor line, so the shed lands flat on it, and the
+       slab then stands 3.3in proud of the lawn with 0.7in buried — which is
+       what a 4in slab poured on grade actually looks like. */
+    pad.position.set(0, -PAD_THK/2, 0); pad.receiveShadow=true; shedGroup.add(pad);
   } else if(FOUNDATION==='blocks' || FOUNDATION==='gravel'){
     // Shed raised onto pressure-treated SKIDS resting on CINDER-BLOCK piers placed
     // around the whole perimeter (corners + along every side) like the real builds.
@@ -11229,6 +11238,11 @@ function syncOverhangUI(){
   if(pnr) pnr.style.display=isLeanto?'none':'grid';
   if(pnn) pnn.style.display=isLeanto?'none':'block';
   if(ldw) ldw.style.display=isLeanto?'block':'none';
+  /* The pitch BUTTONS were already hidden on a lean-to; the heading over them
+     was not, so the step still announced "Roof Pitch" and then offered a drop
+     in feet. A lean-to has no pitch to choose — it has a fall. */
+  var pgl=document.getElementById('pitchGrpLbl');
+  if(pgl) pgl.textContent = isLeanto ? 'Roof Drop' : 'Roof Pitch';
   if(fow) fow.style.display=isLeanto?'block':'none';
   if(isLeanto){
     document.querySelectorAll('.leanto-drop-btn').forEach(function(b){
