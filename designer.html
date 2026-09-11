@@ -2428,6 +2428,23 @@ function captureStockBuild(){
   STOCK_BUILD={
     w:W, l:L, h:H, style:STYLE, elec:ELEC,
     finish:(typeof INT_FINISH!=='undefined') ? INT_FINISH : 'none',
+    /* Everything below was missing, and "Design My Own" is what exposed it:
+       it restored size, style, electrical, interior and doors, and left the
+       rest wherever the last preset had put it. Coming back from the golf
+       simulator you kept its concrete pad, its black-on-black colours and its
+       window — a "start from scratch" that started from someone else's build.
+       Captured at init(), before anything is applied, so these really are the
+       shed's opening state. */
+    foundation:(typeof FOUNDATION!=='undefined') ? FOUNDATION : 'blocks',
+    fndFinish:(typeof FOUNDATION_FINISH!=='undefined') ? FOUNDATION_FINISH : 'plain',
+    fndStain:(typeof FOUNDATION_STAIN!=='undefined') ? FOUNDATION_STAIN : 'none',
+    roofType:(typeof ROOFTYPE!=='undefined') ? ROOFTYPE : 'shingle',
+    loft:(typeof LOFT!=='undefined') ? LOFT : 'none',
+    trimFinish:(typeof TRIM_FINISH!=='undefined') ? TRIM_FINISH : 'paint',
+    sc:sc, sn:sn, tc:tc, tn:tn, rc:rc, rn:rn,
+    windows:((typeof windowsData!=='undefined') ? windowsData : []).map(function(wd){
+      return {wall:wd.wall, pos:wd.pos, w:wd.w, h:wd.h, cy:wd.cy, type:wd.type};
+    }),
     /* doorsData is [] until buildDoor first runs — it creates the default door
        lazily. init() captures before any real build has happened, so an empty
        snapshot here is normal and meant "no door", which is why Design My Own
@@ -2629,6 +2646,30 @@ function setShedUse(k){
       doorsData=STOCK_BUILD.doors.map(function(d){
         return {wall:d.wall, pos:d.pos, style:d.style, w:d.w, h:d.h};
       });
+      if(typeof FOUNDATION!=='undefined') FOUNDATION=STOCK_BUILD.foundation;
+      /* The pad finish and stain ride into the quote (see buildConfig's
+         foundationFinish/foundationStain), and they are NOT cleared by moving
+         off the pad — they just go quiet until a pad comes back. Left behind,
+         a coating chosen under a preset would reappear on the bill the moment
+         someone picked concrete again on their own build. */
+      if(typeof FOUNDATION_FINISH!=='undefined') FOUNDATION_FINISH=STOCK_BUILD.fndFinish;
+      if(typeof FOUNDATION_STAIN!=='undefined')  FOUNDATION_STAIN =STOCK_BUILD.fndStain;
+      if(typeof ROOFTYPE!=='undefined')   ROOFTYPE  =STOCK_BUILD.roofType;
+      if(typeof LOFT!=='undefined')       LOFT      =STOCK_BUILD.loft;
+      sc=STOCK_BUILD.sc; sn=STOCK_BUILD.sn;
+      tc=STOCK_BUILD.tc; tn=STOCK_BUILD.tn;
+      rc=STOCK_BUILD.rc; rn=STOCK_BUILD.rn;
+      if(typeof TRIM_FINISH!=='undefined') TRIM_FINISH=STOCK_BUILD.trimFinish;
+      if(typeof windowsData!=='undefined'){
+        windowsData=STOCK_BUILD.windows.map(function(wd){
+          return {wall:wd.wall, pos:wd.pos, w:wd.w, h:wd.h, cy:wd.cy, type:wd.type};
+        });
+        if(typeof selectedWindow!=='undefined') selectedWindow=-1;
+      }
+      // The colour strips and the scheme tick read from sc/tc/rc, so they have
+      // to be redrawn once those have moved back.
+      if(typeof renderWallColors==='function') renderWallColors();
+      if(typeof renderRoofColors==='function') renderRoofColors();
       if(typeof clampPorch==='function') clampPorch();
     }
     renderUseGrid();
@@ -2676,6 +2717,10 @@ function setShedUse(k){
      a preset has to be the whole picture, not a patch over whichever one was
      picked before it. */
   if(typeof FOUNDATION!=='undefined') FOUNDATION = u.foundation || (STOCK_BUILD?STOCK_BUILD.foundation:FOUNDATION) || 'blocks';
+  /* Same reason as in the custom branch: no preset asks for a pad coating, so
+     none should inherit the last build's. */
+  if(typeof FOUNDATION_FINISH!=='undefined') FOUNDATION_FINISH = u.fndFinish || 'plain';
+  if(typeof FOUNDATION_STAIN!=='undefined')  FOUNDATION_STAIN  = u.fndStain  || 'none';
   if(typeof LOFT!=='undefined')       LOFT       = u.loft       || 'none';
   if(typeof ROOFTYPE!=='undefined')   ROOFTYPE   = u.roofType   || (STOCK_BUILD?STOCK_BUILD.roofType:ROOFTYPE) || 'shingle';
 
