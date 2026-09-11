@@ -2381,20 +2381,35 @@ var SHED_USES = [
   {k:'golfsim',  name:'Golf Simulator',  sub:'10 ft walls for a full swing',
    w:12, l:16, h:10, style:'gable', elec:'core', door:'resfull', finish:'painted',
    foundation:'pad',
-   /* ONE high transom, on a SIDE wall at the door end — and nothing at all on
-      the back.
-      The back wall is where the screen goes. A window there is behind the
-      screen: it lets in no usable light, and it leaks light onto the back of
-      the very surface being projected onto. The first version of this preset
-      put it exactly there, which was wrong.
-      Sitting it on the left wall at pos 0.25 puts it behind the golfer rather
-      than down the projection path, and 90 inches up keeps the daylight off
-      the screen and out of eye line while a driver swings under it.
-      pos BELOW 0.5 is the front half on a side wall — checked, not assumed:
-      the front wall sits at z +1.6 and the back at -1.6, and posToAxis puts
-      0.25 at z +0.49. Raising this number walks the window back toward the
-      screen, which is the one direction it must not go. */
-   windows:[ {wall:'left', pos:0.25, w:60, h:10, cy:90, type:'White Transom 5x10'} ],
+   /* GLASS ON THE FRONT WALL ONLY, flanking the door.
+      A simulator is a dark room by function and every wall but the front has a
+      job that glass gets in the way of. The back wall carries the screen — a
+      window there lets in no usable light and spills it onto the back of the
+      very surface being projected onto. The side walls are the swing corridor
+      and the projector throw; daylight crossing either is glare on the screen
+      and a distraction mid-swing. An earlier version had a high band on the
+      left wall, which was better than the back but still lit the room from
+      the side.
+      The front wall is the one surface behind the golfer and out of the throw,
+      so light coming in there lands where nobody is looking. Two uprights, one
+      each side of the door, read as sidelights rather than as windows someone
+      forgot to leave out — and they can be shuttered or curtained as a pair
+      when the room needs to go properly dark.
+
+      14x36 uprights, stocked in both White and Black so the scheme can reframe
+      them either way. cy is left to defaultCyFor, which puts an upright at 52
+      — door height, which is the whole point of a sidelight. A band would have
+      been forced up under the plate instead.
+
+      pos: the front wall is W*12 = 144in and the door is 36in centred, so it
+      spans 54-90 and leaves a 54in field each side. 0.11 / 0.89 centres an
+      upright in each field, checked against posToAxis rather than assumed —
+      pos is NOT a plain fraction of the wall, it runs inside a half-window
+      margin at each end, so 0.11 lands at 27in and not at 16in. Symmetric
+      values stay symmetric either way, since 0.5 is the wall centre in both
+      conventions. */
+   windows:[ {wall:'front', pos:0.11, w:14, h:36, type:'Black Transom 14x36'},
+             {wall:'front', pos:0.89, w:14, h:36, type:'Black Transom 14x36'} ],
    /* No loft, and this one is not a cost decision. The 10ft walls exist so a
       driver clears the ceiling; hanging a loft in here would undo the single
       reason this preset is not just a shed. */
@@ -2684,7 +2699,13 @@ function setShedUse(k){
      takes the scheme's frame color a moment later, in applyColorScheme. */
   if(typeof windowsData!=='undefined'){
     windowsData = (u.windows||[]).map(function(wd){
-      return { wall:wd.wall, pos:wd.pos, w:wd.w, h:wd.h, cy:wd.cy,
+      /* cy is optional now. defaultCyFor is the same rule the picker uses when
+         a customer places one by hand — an upright lands at door height, a
+         band goes up under the plate — so a preset that leaves it out gets the
+         mount the shape calls for instead of an undefined that renders at 0. */
+      var _cy = (wd.cy!=null) ? wd.cy
+        : (typeof defaultCyFor==='function' ? defaultCyFor(wd.h, wd.type, wd.w) : 52);
+      return { wall:wd.wall, pos:wd.pos, w:wd.w, h:wd.h, cy:_cy,
                // Placeholder only — applyColorScheme reframes it to the
                // scheme's colour a moment later. 36x24 is stocked in both.
                type: wd.type || 'White Vinyl 36x24' };
@@ -10493,9 +10514,17 @@ function reframeWindowsTo(colorWord){
   if(typeof windowsData==='undefined' || !windowsData.length) return;
   windowsData.forEach(function(wd){
     var t=String(wd.type||'');
-    if(!/(Vinyl|Aluminum)/.test(t)) return;             // leave transoms alone
-    var want=t.replace(/^(White|Black|Brown)\s+/, colorWord+' ')
-              .replace(/Aluminum/, 'Vinyl');            // vinyl is the ask
+    /* Transoms used to be skipped here, back when they were an extra somebody
+       added on top of real windows. The Golf Simulator preset made that wrong:
+       its only glass is two uprights flanking the door, so skipping them left
+       black frames sitting on white trim — the exact mismatch this function
+       exists to prevent. They stock in White and Black in every size, so there
+       is no reason not to reframe them with everything else. */
+    var isTransom=/Transom/.test(t);
+    if(!isTransom && !/(Vinyl|Aluminum)/.test(t)) return;
+    var want=t.replace(/^(White|Black|Brown)\s+/, colorWord+' ');
+    // Vinyl is the ask for ordinary windows; a transom stays a transom.
+    if(!isTransom) want=want.replace(/Aluminum/, 'Vinyl');
     // Only retype to something the catalogue actually stocks in this size.
     for(var i=0;i<WINDOW_CATALOG.length;i++){
       if(WINDOW_CATALOG[i].key===want){ wd.type=want; return; }
@@ -10506,7 +10535,19 @@ function reframeWindowsTo(colorWord){
        to match it. The size has to follow, not just the name: a window is a
        product we order, so pretending a 24x30 exists in black would put a
        frame on the drawing that cannot be bought. */
-    var pool=WINDOW_CATALOG.filter(function(c){ return c.grp===colorWord+' Vinyl'; });
+    /* Stay inside the same family when falling back. A transom that missed
+       has to land on another transom — dropping an upright sidelight into the
+       nearest vinyl unit would change what the wall is, not just its colour.
+       Transoms are grouped as "Transom" with the colour only in the key, so
+       they are matched on the key rather than on grp. */
+    var pool=isTransom
+      ? WINDOW_CATALOG.filter(function(c){
+          return c.grp==='Transom' && c.key.indexOf(colorWord+' ')===0 &&
+                 // a vertical must not fall back to a horizontal band, or the
+                 // sidelight becomes a header and defaultCyFor moves it.
+                 ((c.w<c.h) === (wd.w<wd.h));
+        })
+      : WINDOW_CATALOG.filter(function(c){ return c.grp===colorWord+' Vinyl'; });
     if(!pool.length) return;
     var best=null, bestCost=Infinity;
     for(var j=0;j<pool.length;j++){
