@@ -250,6 +250,20 @@ textarea.inp{resize:vertical}
 .qsec-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
 .qsec-lbl::after{content:'';flex:1;height:1px;background:var(--br)}
 .qerr-box{display:none;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.3);border-radius:9px;padding:11px 13px;color:#ff8080;font-size:12px;font-weight:600;margin:10px 0}
+/* Colour schemes. Two columns rather than a scroll strip: eight is few enough
+   to show at once, and a row that scrolls hides the options nobody knows to
+   look for — which is the whole reason this exists. */
+.scheme-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;grid-auto-rows:1fr}
+.scheme-tile{background:var(--d3);border:1px solid var(--br);border-radius:10px;padding:9px 10px;cursor:pointer;transition:border-color .15s,background .15s}
+.scheme-tile:hover{border-color:rgba(43,181,232,.45)}
+.scheme-tile.on{border-color:#2BB5E8;background:rgba(43,181,232,.1)}
+/* Siding, trim, roof — in that order, left to right, same order every time so
+   the three chips can be read as a sentence rather than a palette. */
+.scheme-chips{display:flex;gap:4px;margin-bottom:7px}
+.scheme-chips span{width:22px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.22);flex-shrink:0}
+.scheme-name{font-size:12px;font-weight:800;color:var(--w);line-height:1.2}
+.scheme-sub{font-size:10px;color:var(--mu);line-height:1.3;margin-top:2px}
+@media (max-width:400px){.scheme-strip{grid-template-columns:1fr}}
 /* "Talk to a designer" — deliberately NOT a .cta. It sits directly under the
    Next button and the one thing it must never do is compete with it: someone
    who knows what they want should never have to pick between two buttons of
@@ -726,6 +740,14 @@ textarea.inp{resize:vertical}
             <span class="lbl" style="margin-top:10px;display:block">Stain</span>
             <div id="pineStainList"></div>
           </div>
+        </div>
+        <div class="grp" style="margin-top:14px">
+          <!-- Schemes first, swatches under them. Someone who knows they want
+               navy will scroll past this; someone who does not wants to be
+               shown what good looks like rather than handed 64 combinations
+               and left to it. -->
+          <span class="lbl">Color Schemes</span>
+          <div id="schemeStrip" class="scheme-strip"></div>
         </div>
         <div class="grp" style="margin-top:14px">
           <span class="lbl">Siding Color</span>
@@ -2333,7 +2355,23 @@ var SHED_USES = [
      until handover. Core is the successor: mid-tier then, mid-tier now, and a
      garage with a roll-up door wants outlets and an opener. */
   {k:'garage',   name:'Detached Garage', sub:'Roll-up door, fits a car',
-   w:12, l:16, h:9,  style:'gable', elec:'core', door:'rollup'},
+   w:12, l:16, h:9,  style:'gable', elec:'core', door:'rollup',
+   /* A concrete pad, not blocks. You are driving a car onto this and jacking
+      it up on this; gravel and piers are fine under a shed and wrong under a
+      garage, and quoting it any other way starts a conversation we would only
+      have later anyway. */
+   foundation:'pad',
+   /* Two windows on the long walls. A garage with no glass is a cave the
+      moment the door is down, and these are the cheapest light there is. */
+   /* 36x24 because it is stocked in BOTH White and Black Vinyl. 24x30 is
+      white-only and 24x36 black-only, so either would have forced a resize
+      the moment someone switched to a scheme with the other trim. Wide and
+      low also sits above a workbench rather than behind it. */
+   windows:[ {wall:'left',  pos:0.35, w:36, h:24, cy:60},
+             {wall:'right', pos:0.65, w:36, h:24, cy:60} ],
+   /* No loft at 9ft walls with a vehicle under it — headroom over the bonnet
+      is the point of the 9ft, and a loft gives it straight back. */
+   loft:'none', roofType:'shingle', scheme:'grayblack'},
 
   /* 10ft walls: 9ft is the stated minimum for a driver swing and 10ft the
      real-world standard, and ceiling is the one dimension nobody can change
@@ -2341,7 +2379,18 @@ var SHED_USES = [
      deducted, which clears the 10ft width and 15ft depth minimums — the
      largest even size that does so under the permit cap. */
   {k:'golfsim',  name:'Golf Simulator',  sub:'10 ft walls for a full swing',
-   w:12, l:16, h:10, style:'gable', elec:'core', door:'resfull', finish:'painted'},
+   w:12, l:16, h:10, style:'gable', elec:'core', door:'resfull', finish:'painted',
+   foundation:'pad',
+   /* ONE high transom, and deliberately not a window at eye level. A simulator
+      is a projection screen: side light washes the image and a window facing
+      the hitting bay puts glare exactly where the ball flight is read. A 5x10
+      transom up at 90 inches gives daylight off the ceiling without putting
+      any of it on the screen. */
+   windows:[ {wall:'back', pos:0.5, w:60, h:10, cy:90, type:'White Transom 5x10'} ],
+   /* No loft, and this one is not a cost decision. The 10ft walls exist so a
+      driver clears the ceiling; hanging a loft in here would undo the single
+      reason this preset is not just a shed. */
+   loft:'none', roofType:'shingle', scheme:'charwhite'},
 
   /* No preset at all. This one only records the choice and leaves the shed on
      its defaults — applying a "custom" preset would be a contradiction, and
@@ -2601,10 +2650,38 @@ function setShedUse(k){
   }
   if(u.door && typeof doorsData!=='undefined'){
     // one front door of the type the job implies, replacing the default
-    doorsData=[{wall:'front', pos:0.5, style:u.door,
-                w:(u.door==='rollup')?96:(/^res/.test(u.door)?36:60),
-                h:(u.door==='rollup')?84:(/^res/.test(u.door)?82.5:76)}];
+    var _d={wall:'front', pos:0.5, style:u.door,
+            w:(u.door==='rollup')?96:(/^res/.test(u.door)?36:60),
+            h:(u.door==='rollup')?84:(/^res/.test(u.door)?82.5:76)};
+    // State it rather than leaning on the fallback: the saved config and the
+    // quote line should both say which finish was chosen, not imply it.
+    if(u.door==='rollup') _d.color = u.doorColor || 'white';
+    doorsData=[_d];
   }
+
+  /* The rest of a complete build. Each of these falls back to the stock value
+     when a preset is silent, for the same reason style/elec/finish do above:
+     a preset has to be the whole picture, not a patch over whichever one was
+     picked before it. */
+  if(typeof FOUNDATION!=='undefined') FOUNDATION = u.foundation || (STOCK_BUILD?STOCK_BUILD.foundation:FOUNDATION) || 'blocks';
+  if(typeof LOFT!=='undefined')       LOFT       = u.loft       || 'none';
+  if(typeof ROOFTYPE!=='undefined')   ROOFTYPE   = u.roofType   || (STOCK_BUILD?STOCK_BUILD.roofType:ROOFTYPE) || 'shingle';
+
+  /* Windows are REPLACED, not added to, so switching presets cannot silently
+     accumulate glass from the last one. Anything without an explicit type
+     takes the scheme's frame color a moment later, in applyColorScheme. */
+  if(typeof windowsData!=='undefined'){
+    windowsData = (u.windows||[]).map(function(wd){
+      return { wall:wd.wall, pos:wd.pos, w:wd.w, h:wd.h, cy:wd.cy,
+               // Placeholder only — applyColorScheme reframes it to the
+               // scheme's colour a moment later. 36x24 is stocked in both.
+               type: wd.type || 'White Vinyl 36x24' };
+    });
+    if(typeof selectedWindow!=='undefined') selectedWindow=-1;
+  }
+
+  /* Last, because it reframes the windows this preset just placed. */
+  if(u.scheme && typeof applyColorScheme==='function') applyColorScheme(u.scheme);
   if(typeof clampPorch==='function') clampPorch();
   renderUseGrid();
   if(typeof applyRecommendations==='function') applyRecommendations();
@@ -6764,7 +6841,15 @@ function buildDoor(){
       ? new THREE.MeshStandardMaterial({color:0x191B1C, roughness:0.42, metalness:0.05})
       : new THREE.MeshStandardMaterial({color:0xeef0ec, roughness:0.5, metalness:0.0});
   } else if(isRollup){
-    leafMat=new THREE.MeshStandardMaterial({color:0xd9dbdd, roughness:0.5, metalness:0.35});
+    /* Glossy White, matching the door actually fitted — Clopay RU67GW, a
+         non-insulated glossy white steel curtain. It was #d9dbdd at metalness
+         0.35, which is brushed aluminium: grey against white siding and
+         obviously metallic next to a painted wall. A glossy white door is
+         near-white with a tight specular highlight, so the colour goes up,
+         the roughness comes down to carry the gloss, and the metalness comes
+         almost all the way off — steel under baked enamel reads as paint, not
+         as bare metal. */
+        leafMat=new THREE.MeshStandardMaterial({color:rollupColorHex(dd), roughness:0.22, metalness:0.04});
   }
   var muntinMat=trimMat;
   var panelMat=new THREE.MeshStandardMaterial({
@@ -6913,7 +6998,10 @@ function buildDoor(){
     if(DOOR==='rollup'){
       // ROLL-UP CURTAIN — horizontal slats with groove lines, guide tracks at
       // the sides, matching the catalog icon.
-      var grooveM=new THREE.MeshStandardMaterial({color:0xaeb1b4, roughness:0.6, metalness:0.3});
+      /* The groove between slats is a shadow line in the same white panel, not
+       a separate grey part. Following the curtain down keeps it reading as one
+       pressed sheet; at the old grey it looked like trim laid over the door. */
+    var grooveM=new THREE.MeshStandardMaterial({color:darken(rollupColorHex(dd),0.83), roughness:0.35, metalness:0.04});
       var slatH=0.075, gy=slatH;
       while(gy<dh-0.02){
         bx(lw-0.03, 0.006, 0.006, grooveM, x, gy, 0.028);
@@ -9799,6 +9887,10 @@ function addDoorByStyle(style, w, h){
      && doorsData[selectedDoor].wall===wall){
     var dd=doorsData[selectedDoor];
     dd.style=style; if(w){ dd.w=w; dd.h=h||dd.h; }
+    // Stock finish when a door becomes a roll-up; drop the field entirely when
+    // it stops being one, so a residential door never carries a curtain colour
+    // into the saved config or the quote.
+    if(style==='rollup'){ if(!dd.color) dd.color='white'; } else { delete dd.color; }
     buildShed(); renderPlacedDoors(); syncEditorPanel(); closeSubPage();
     return;
   }
@@ -9899,6 +9991,32 @@ function doorCatFor(dd){
    to a single (or a roll-up, cedar, residential...), the styles for the current
    size inline for a quick swap, and a Remove at the bottom. Picking any style
    swaps the selected door in place, which addDoorByStyle already handles. */
+/* Roll-up curtain colours. These are finishes on the same door, so they live
+   on the placed door as dd.color rather than as separate door STYLES — a style
+   change swaps the product, a colour change does not, and the price sheet
+   keys roll-ups by width alone.
+   White is the stock finish; black and brown carry a $100 finish upcharge each
+   (worker/pricing.js, ROLLUP_COLOR_UPCHARGE) — keep the two in step. */
+var ROLLUP_COLORS = [
+  {k:'white', name:'Glossy White', hex:0xF1F1EE, up:0},
+  {k:'black', name:'Black',        hex:0x1E1E1E, up:100},
+  {k:'brown', name:'Brown',        hex:0x4A3B2E, up:100}
+];
+function rollupColorHex(dd){
+  var k=String((dd&&dd.color)||'white').toLowerCase();
+  for(var i=0;i<ROLLUP_COLORS.length;i++) if(ROLLUP_COLORS[i].k===k) return ROLLUP_COLORS[i].hex;
+  return ROLLUP_COLORS[0].hex;
+}
+function setRollupColor(i, k){
+  if(!doorsData[i] || doorsData[i].style!=='rollup') return;
+  doorsData[i].color=k;
+  buildShed();
+  if(typeof updateSum==='function') updateSum();
+  // Redraw the panel so the tick and the price move with the choice.
+  if(typeof openOptionsForSelectedDoor==='function' && selectedDoor===i) openOptionsForSelectedDoor();
+  else if(typeof renderPlacedDoors==='function') renderPlacedDoors();
+}
+
 function doorEditHTML(i){
   var dd=doorsData[i], ci=doorCatFor(dd);
   var c=DOOR_SIZES[ci];
@@ -9909,6 +10027,23 @@ function doorEditHTML(i){
   var h='<div style="font-size:12px;color:var(--mu);margin-bottom:10px">'+
         'Editing the <b style="color:var(--w)">'+(names[dd.style]||dd.style)+'</b> on the '+dd.wall+' wall. '+
         'Drag it in the 3D view to move it.</div>';
+
+  /* Curtain colour. Only a roll-up has one — every other style takes its
+     colour from the siding and trim, which the walls already pay for. */
+  if(dd.style==='rollup'){
+    h+='<span class="lbl">Curtain color</span><div class="tgrid" style="margin-bottom:16px">';
+    ROLLUP_COLORS.forEach(function(rc2){
+      var on=(String(dd.color||'white')===rc2.k);
+      var pr = PRICE_LOCKED ? '' : (rc2.up>0 ? ('+'+priceTag(rc2.up)) : 'Included');
+      h+='<div class="tile'+(on?' on':'')+'" onclick="setRollupColor('+i+',\''+rc2.k+'\')">'+
+         '<div class="tile-img" style="background:#'+rc2.hex.toString(16).padStart(6,'0')+
+           ';aspect-ratio:auto;height:56px;border-radius:6px"></div>'+
+         '<div class="tile-cap"><div class="tile-name">'+rc2.name+'</div>'+
+         '<div class="tile-price">'+pr+'</div></div>'+
+         '<div class="tile-check">&#10003;</div></div>';
+    });
+    h+='</div>';
+  }
 
   // ---- size / type: every category, so double <-> single is one tap ----
   h+='<span class="lbl">Size &amp; type</span><div class="tgrid" style="margin-bottom:16px">';
@@ -10298,6 +10433,140 @@ var WALL_COLORS=[
   {hex:0x1A1A1A, name:'Black'},      {hex:0xC9BDA4, name:'Beige'},
   {hex:0x7C8A6E, name:'Sage'},       {hex:0x2C3E52, name:'Navy'}
 ];
+/* ---------------------------------------------------------------------------
+   COLOUR SCHEMES
+   Eight combinations that actually get built, rather than eight of the 64 a
+   customer could assemble from the siding and trim strips on their own. The
+   strips stay — this is a shortcut past them, not a replacement.
+
+   Each scheme names its window frame rather than deriving one, because the
+   catalogue only carries White Vinyl and Black Vinyl. There is no grey vinyl,
+   so "windows match the trim" is exact on a white or black trim and a judgment
+   call on the rest; making that call here, per scheme, beats a rule that
+   silently picks wrong on the ones in between.
+
+   Roofs are shingle hexes (SHINGLE_COLORS). A scheme does not change the roof
+   MATERIAL — someone who has chosen metal keeps metal, and the hex still
+   reads correctly against the metal palette.
+--------------------------------------------------------------------------- */
+var COLOR_SCHEMES = [
+  /* The modern-farmhouse default, and the one people arrive already wanting:
+     white on white with a black roof for the line at the eaves. */
+  {k:'whitewhite', name:'White on White',   sub:'Modern farmhouse',
+   s:0xF2F0EC, sName:'White',      t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
+
+  {k:'graywhite',  name:'Gray + White',     sub:'Never looks wrong',
+   s:0x6E7377, sName:'Gray',       t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
+
+  {k:'grayblack',  name:'Gray + Black',     sub:'Sharper, contemporary',
+   s:0x6E7377, sName:'Gray',       t:0x1A1A1A, tName:'Black',     r:0x28282A, rName:'Black Asphalt', win:'Black'},
+
+  /* Charcoal body with white trim is what most of the shed-as-studio and
+     backyard-office builds look like right now. High contrast, reads
+     expensive, hides dust and grass spatter along the bottom course. */
+  {k:'charwhite',  name:'Charcoal + White', sub:'Studio, high contrast',
+   s:0x3C3F43, sName:'Charcoal',   t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
+
+  /* Monochrome. Bold, and the one that most needs seeing in 3D before
+     committing — which is exactly what this tool is for. */
+  {k:'blackblack', name:'Black on Black',   sub:'Bold, monochrome',
+   s:0x1A1A1A, sName:'Black',      t:0x1A1A1A, tName:'Black',     r:0x28282A, rName:'Black Asphalt', win:'Black'},
+
+  {k:'navywhite',  name:'Navy + White',     sub:'Deep, without black',
+   s:0x2C3E52, sName:'Navy',       t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
+
+  {k:'sagewhite',  name:'Sage + White',     sub:'Warm, garden-friendly',
+   s:0x7C8A6E, sName:'Sage',       t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
+
+  /* Light body, dark trim — the inverse of Charcoal + White and a softer way
+     to the same contrast. Warm grey roof rather than black so the roof is not
+     the darkest thing on the building twice over. */
+  {k:'ltgraychar', name:'Light Gray + Charcoal', sub:'Softer contrast',
+   s:0xC8CBCE, sName:'Light Gray', t:0x3C3F43, tName:'Charcoal',  r:0x44413C, rName:'Gray Asphalt', win:'Black'}
+];
+
+/* Re-frames the windows already on the shed to match the trim. Only the vinyl
+   and aluminium sizes are remapped; a transom keeps its own identity because
+   an unnamed transom already follows tc in windowFrameHex(), and a named one
+   was a deliberate choice. Size is preserved — this changes the frame color,
+   not the opening, so nothing moves on the wall. */
+function reframeWindowsTo(colorWord){
+  if(typeof windowsData==='undefined' || !windowsData.length) return;
+  windowsData.forEach(function(wd){
+    var t=String(wd.type||'');
+    if(!/(Vinyl|Aluminum)/.test(t)) return;             // leave transoms alone
+    var want=t.replace(/^(White|Black|Brown)\s+/, colorWord+' ')
+              .replace(/Aluminum/, 'Vinyl');            // vinyl is the ask
+    // Only retype to something the catalogue actually stocks in this size.
+    for(var i=0;i<WINDOW_CATALOG.length;i++){
+      if(WINDOW_CATALOG[i].key===want){ wd.type=want; return; }
+    }
+    /* No exact match — and that happens, because the catalogue is not
+       symmetric: White Vinyl stocks 24x30 where Black Vinyl stocks 24x36.
+       Take the nearest stocked size in the right colour and move the opening
+       to match it. The size has to follow, not just the name: a window is a
+       product we order, so pretending a 24x30 exists in black would put a
+       frame on the drawing that cannot be bought. */
+    var pool=WINDOW_CATALOG.filter(function(c){ return c.grp===colorWord+' Vinyl'; });
+    if(!pool.length) return;
+    var best=null, bestCost=Infinity;
+    for(var j=0;j<pool.length;j++){
+      var cost=Math.abs(pool[j].w-wd.w)+Math.abs(pool[j].h-wd.h);
+      if(cost<bestCost){ bestCost=cost; best=pool[j]; }
+    }
+    if(best){ wd.type=best.key; wd.w=best.w; wd.h=best.h; }
+  });
+}
+
+function applyColorScheme(k){
+  var sch=null;
+  for(var i=0;i<COLOR_SCHEMES.length;i++) if(COLOR_SCHEMES[i].k===k) sch=COLOR_SCHEMES[i];
+  if(!sch) return;
+  COLOR_SCHEME=k;
+  sc=sch.s; sn=sch.sName;
+  tc=sch.t; tn=sch.tName;
+  rc=sch.r; rn=sch.rName;
+  // A painted scheme and a cedar trim finish cannot both be true; the scheme
+  // names a trim color, so it wins.
+  if(typeof TRIM_FINISH!=='undefined') TRIM_FINISH='paint';
+  reframeWindowsTo(sch.win);
+  if(typeof renderWallColors==='function') renderWallColors();
+  if(typeof renderRoofColors==='function') renderRoofColors();
+  if(typeof renderSchemeStrip==='function') renderSchemeStrip();
+  if(typeof buildShed==='function') buildShed();
+  if(typeof updateSum==='function') updateSum();
+}
+var COLOR_SCHEME=null;   // which scheme is showing as picked, if any
+
+/* Marks a scheme as current only when every one of its colours still matches.
+   Change one swatch by hand afterwards and the scheme quietly stops claiming
+   to be the thing on screen, which is the honest reading. */
+function currentSchemeKey(){
+  for(var i=0;i<COLOR_SCHEMES.length;i++){
+    var c=COLOR_SCHEMES[i];
+    if(c.s===sc && c.t===tc && c.r===rc) return c.k;
+  }
+  return null;
+}
+
+function renderSchemeStrip(){
+  var el=document.getElementById('schemeStrip'); if(!el) return;
+  var cur=currentSchemeKey();
+  el.innerHTML = COLOR_SCHEMES.map(function(c){
+    var hx=function(v){ return '#'+v.toString(16).padStart(6,'0'); };
+    var on=(cur===c.k);
+    return '<div class="scheme-tile'+(on?' on':'')+'" onclick="applyColorScheme(\''+c.k+'\')" title="'+c.sub+'">'+
+      '<div class="scheme-chips">'+
+        '<span style="background:'+hx(c.s)+'"></span>'+
+        '<span style="background:'+hx(c.t)+'"></span>'+
+        '<span style="background:'+hx(c.r)+'"></span>'+
+      '</div>'+
+      '<div class="scheme-name">'+c.name+'</div>'+
+      '<div class="scheme-sub">'+c.sub+'</div>'+
+    '</div>';
+  }).join('');
+}
+
 function _swatchStrip(list, curHex, part, curName){
   var h='<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-radius:10px;'+
         'background:var(--d3);border:1px solid var(--br)">';
@@ -10319,6 +10588,7 @@ function _swatchStrip(list, curHex, part, curName){
   return h;
 }
 function renderWallColors(){
+  if(typeof renderSchemeStrip==='function') renderSchemeStrip();
   var hs=document.getElementById('cg-s');
   var pine=(typeof SIDING!=='undefined' && SIDING==='pine');
   if(hs) hs.innerHTML = pine
