@@ -10979,8 +10979,16 @@ function renderFoundation(){
      price:pr(foundationBasePrice('gravel'))+' <span style="opacity:.6;font-weight:600">'+padSqft()+' sqft</span>', visual:true},
     {k:'pad',      name:'Concrete Pad \u2014 Poured by Us', desc:'4\u2033 level slab, same size as your shed', price:pr(foundationBasePrice('pad')), visual:true}
   ];
-  // The foundation cards go in an .optrow so they scroll side by side on a
-  // phone like every other option set. The finish block below stays stacked.
+  /* The foundation cards go in an .optrow so they scroll side by side on a
+     phone like every other option set. The finish block below stays stacked.
+     On a phone one card fills 80% of that strip, so "Concrete Pad" sits four
+     cards along — and rebuilding the strip's innerHTML throws its scrollLeft
+     away, which snapped you back to "Existing Foundation" every time you
+     picked anything. Carry the offset across the rebuild. Foundation is the
+     only step this bites: every other option strip is static markup that a
+     tap merely re-styles, so its node — and its scroll position — survives. */
+  var oldRow=host.querySelector('.optrow');
+  var keepX=oldRow ? oldRow.scrollLeft : 0;
   var html='<div class="optrow">';
   opts.forEach(function(o){
     var on=(FOUNDATION===o.k);
@@ -10990,8 +10998,9 @@ function renderFoundation(){
       '<div style="font-size:12px;font-weight:800;color:'+(on?'#8fe3ff':'var(--mu)')+';white-space:nowrap">'+o.price+'</div></div>';
   });
   html+='</div>';
-  host.innerHTML=html;
   // When the concrete pad is chosen, offer the interior finish + benefits.
+  // Built into the SAME string rather than appended with innerHTML+=, which
+  // re-parses the cards a second time and loses the scroll position again.
   if(FOUNDATION==='pad'){
     var fin=[
       {k:'plain', name:'No Color, No Finish', price:'Included'},
@@ -11037,8 +11046,11 @@ function renderFoundation(){
       sc+='</div>';
     }
     sc+='</div>';
-    host.innerHTML += sc;
+    html += sc;
   }
+  host.innerHTML=html;
+  var newRow=host.querySelector('.optrow');
+  if(newRow && keepX) newRow.scrollLeft=keepX;
 }
 function _foundApply(){
   // Show the INSIDE (x-ray) when picking a pad color, like the loft step.
