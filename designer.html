@@ -2618,7 +2618,11 @@ function renderFloorJoist(){
     return '<div class="tile'+(FLOOR_JOIST===j.k?' on':'')+
       '" onclick="setFloorJoist(\''+j.k+'\')">'+
       '<div class="tile-cap"><div class="tile-name">'+j.name+itemBadgeHTML('joist:'+j.k)+'</div>'+
-      '<div class="tile-price">'+j.sub+' &middot; '+price+'</div></div>'+
+      // priceTag() returns '' while pricing is locked, which is every customer.
+      // Concatenating the separator regardless left "Three 4x4 skids ·"
+      // hanging with nothing after it, so the separator comes with the price
+      // or not at all.
+      '<div class="tile-price">'+j.sub+(price?(' &middot; '+price):'')+'</div></div>'+
       '<div class="tile-check">&#10003;</div></div>';
   }).join('');
 }
