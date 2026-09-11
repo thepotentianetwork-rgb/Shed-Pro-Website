@@ -12426,16 +12426,30 @@ function addShedLights(){
         placeSoffit( sideX, yy, zz,  1, 0, 0, leanTilt, lit);
         placeSoffit(-sideX, yy, zz, -1, 0, 0, leanTilt, lit);
       }
-      // Front (high) and back (low) eaves: level rows seated flush under the
-      // horizontal eave soffit boards (fascia bottom).
-      var frontZ =  (l/2 + eaveOv/2);
+      /* Front (high) and back (low) eaves.
+
+         THE FRONT EAVE HAS ITS OWN OVERHANG. LEANTO_FRONT_OVH lets the tall
+         side project 1ft or 2ft independently of the general control, and
+         buildLeanToRoof honours that for the roof, the fascia and the soffit —
+         this row did not. It sat at l/2 + eaveOv/2 whatever the front was set
+         to, so picking 1ft or 2ft moved the soffit out from under the lights
+         and left them hanging over the wall instead of recessed in the board.
+
+         And they are no longer LEVEL rows: the eave soffits now follow the roof
+         slope, so a flat fixture in one sits proud at one edge — the same thing
+         the gable eave cans were doing. They take the slope too. */
+      var ovFrontL = (typeof LEANTO_FRONT_OVH!=='undefined' && LEANTO_FRONT_OVH!=='match')
+                   ? LEANTO_FRONT_OVH*INCH : eaveOv;
+      var frontZ =  (l/2 + ovFrontL/2);
       var backZ  = -(l/2 + eaveOv/2);
-      var frontY = leanRoofYAt(frontZ) - fbW - 0.008;
-      var backY  = leanRoofYAt(backZ)  - fbW - 0.008;
+      // measured square to the sloped board, not straight down
+      var leanCos = Math.cos(leanTilt);
+      var frontY = leanRoofYAt(frontZ) - fbW*leanCos - 0.008;
+      var backY  = leanRoofYAt(backZ)  - fbW*leanCos - 0.008;
       for(var j=0;j<nEnd;j++){
         var xx = -w/2 + ((j+0.5)/nEnd)*w;
-        placeSoffit(xx, frontY, frontZ, 0,  1, 0, 0, false);
-        placeSoffit(xx, backY,  backZ,  0, -1, 0, 0, false);
+        placeSoffit(xx, frontY, frontZ, 0,  1, 0, leanTilt, false);
+        placeSoffit(xx, backY,  backZ,  0, -1, 0, leanTilt, false);
       }
     } else {
       // ---- A-FRAME GABLE & BARN GAMBREL ----
