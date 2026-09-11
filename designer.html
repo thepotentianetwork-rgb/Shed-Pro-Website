@@ -147,6 +147,16 @@ canvas{display:block;width:100%;height:100%}
     scrollbar-width:none;
   }
   .tgrid::-webkit-scrollbar, .optrow::-webkit-scrollbar{ display:none }
+  /* HIDDEN BEATS EVERYTHING. The rule above carries !important, which also
+     overrides an inline display:none — so a control the code had switched off
+     stayed on screen, but only on a phone. The lean-to's 6/12 pitch buttons
+     were doing exactly that: hidden in the DOM, visible in the hand, sitting
+     under a "Roof Drop" heading offering a pitch a lean-to does not have.
+     Hiding is done with the `hidden` attribute now. It has to come AFTER the
+     rule it is overriding and name the same classes: [hidden] alone ties with
+     .optrow on specificity, and a tie is settled by source order — which is
+     how the first attempt at this changed nothing at all. */
+  .tgrid[hidden], .optrow[hidden], [hidden]{ display:none !important }
   /* An option set whose labels are sentences rather than words. .optrow turns
      every set into a nowrap side-scroll strip with a 118px floor, which is
      right for "8 ft" and wrong for "No Deck · posts on grade" — the decking
@@ -1955,11 +1965,40 @@ function init(){
     test(porchLightMeshes,'plight');
     return best;
   }
-  // Raycast against the invisible wall planes; returns 'front'/'back'/'left'/'right' or null.
+  /* Raycast against the invisible wall planes; returns 'front'/'back'/'left'/
+     'right' or null.
+
+     The planes are DoubleSide and are the only thing the ray is tested
+     against, so a ray that MISSES the wall in front of you — passing under a
+     shed up on blocks, over it into the gable, or past a corner — carries on
+     and hits the far side of a plane you cannot see. Tapping low on the front
+     of the shed selected the left wall, which is the "it picks the one across
+     from it" you get on a phone where a thumb lands wide.
+
+     So a hit only counts if you are on the side of that plane you could be
+     looking at it from: outside the building, the outward face; inside it, the
+     inward face. Nearest accepted hit wins, as before. */
   function pickWall(){
     raycaster.setFromCamera(ndc, camera);
     var inter=raycaster.intersectObjects(wallPickMeshes, false);
-    return inter.length ? inter[0].object.userData.wallPick : null;
+    if(!inter.length) return null;
+    var w=encWft()*0.2, l=encLft()*0.2;
+    var cp=camera.position;
+    // Is the eye in the room? Generous margins: the test only has to pick which
+    // FACE of a wall is the visible one, and a camera sitting in a wall is not
+    // a case the orbit rig produces.
+    var insideBox = (Math.abs(cp.x) < w/2) && (Math.abs(cp.z) < l/2)
+                 && (cp.y > 0) && (cp.y < H*0.2);
+    var want = insideBox ? -1 : 1;
+    var N={front:[0,0,1], back:[0,0,-1], left:[-1,0,0], right:[1,0,0]};
+    for(var i=0;i<inter.length;i++){
+      var wl=inter[i].object.userData.wallPick;
+      if(!wl || !N[wl]) continue;                 // roof pickers ride this list too
+      var c=inter[i].object.position, n=N[wl];
+      var dot=n[0]*(cp.x-c.x) + n[1]*(cp.y-c.y) + n[2]*(cp.z-c.z);
+      if(dot*want > 0) return wl;
+    }
+    return null;
   }
   // Tapping a highlighted roof slope selects it for the dormer controls.
   function pickRoof(){
@@ -4912,6 +4951,58 @@ function buildShed(){
   gB.rotation.y=Math.PI;
   roofG.add(gB);
 
+  /* BATTENS UP THE GABLE. The walls below now carry real ones, and a triangle
+     wearing painted stripes above a wall wearing built battens is worse than
+     either on its own — the render showed the stripes at a different pitch
+     too, because the gable maps its texture across ew+2*WALL_FACE while the
+     wall maps it across ew.
+     Positions come from the wall's own pitch and origin rather than from the
+     gable's UVs, so the batten that stops at the plate is continued by the one
+     above it instead of landing beside it. Each is cut to the rake at its own
+     x — that is what makes the triangle read as boards rather than as a
+     painted gable. */
+  if(typeof SIDING!=='undefined' && SIDING==='board-batten'){
+    var gIN=0.2/12;
+    var gPitch=sidingTileFor()/4;
+    var gBw=2.5*gIN, gBp=0.75*gIN;
+    var gbMat=applyXray(new THREE.MeshStandardMaterial({color:sc, roughness:0.62, metalness:0.0}));
+    var gWinHoles=[];
+    (typeof windowsData!=='undefined'?windowsData:[]).forEach(function(wd){
+      var topIn=(wd.cy||0)+wd.h/2;
+      if(topIn <= H*12+0.01) return;               // not in the triangle
+      gWinHoles.push({wall:wd.wall, cx:(wd.pos-0.5)*ew, hw:(wd.w*gIN)/2,
+                      y0:Math.max(0,((wd.cy||0)-wd.h/2-H*12))*gIN, y1:(topIn-H*12)*gIN});
+    });
+    [['front', el/2 + (fpD>0 ? fpD : WALL_FACE), 1],
+     ['back', -(el/2 + WALL_FACE), -1]].forEach(function(gg){
+      var wallId=gg[0], zFace=gg[1], sgn=gg[2];
+      for(var gx=-ew/2; gx<=ew/2+0.001; gx+=gPitch){
+        if(Math.abs(gx) >= gHalf-0.01) continue;
+        // the rake height directly above this batten
+        var top=gPeak*(1-Math.abs(gx)/gHalf) - 0.012;
+        if(top<=0.02) continue;
+        var segs=[[0, top]];
+        gWinHoles.forEach(function(hl){
+          if(hl.wall!==wallId) return;
+          if(gx < hl.cx-hl.hw-gBw/2 || gx > hl.cx+hl.hw+gBw/2) return;
+          var next=[];
+          segs.forEach(function(sg2){
+            if(hl.y0>sg2[0]+0.01) next.push([sg2[0], Math.min(sg2[1], hl.y0)]);
+            if(hl.y1<sg2[1]-0.01) next.push([Math.max(sg2[0], hl.y1), sg2[1]]);
+          });
+          segs=next;
+        });
+        segs.forEach(function(sg2){
+          var sh2=sg2[1]-sg2[0];
+          if(sh2<=0.02) return;
+          var bm=new THREE.Mesh(new THREE.BoxGeometry(gBw, sh2, gBp), gbMat);
+          bm.position.set(gx, h+(sg2[0]+sg2[1])/2, zFace + sgn*(gBp/2));
+          bm.castShadow=true; roofG.add(bm);
+        });
+      }
+    });
+  }
+
   // SOFFIT — finished underside of the roof overhang, sized to the actual eave/
   // gable overhang so it scales with 6" or 12". HORIZONTAL panels under the eave
   // (long) sides, SLOPED panels under the gable rake on each end.
@@ -6385,6 +6476,45 @@ function buildLeanToRoof(){
     m.rotation.y = Math.PI/2;
     m.receiveShadow=true;
     shedGroup.add(m);
+
+    /* BATTENS. A lean-to's side walls are trapezoids, so they are built here
+       rather than by buildWallWithOpenings — which is where the real battens
+       live. Without this the front of a lean-to had battens standing proud and
+       the long side beside it was flat painted stripes, which is the whole
+       complaint over again on one building.
+       Same pitch and the same origin as every other wall, each cut to the
+       sloping top at its own point along the wall. */
+    if(typeof SIDING!=='undefined' && SIDING==='board-batten'){
+      var tIN=0.2/12, tPitch=sidingTileFor()/4;
+      var tBw=2.5*tIN, tBp=0.75*tIN;
+      var tMat=applyXray(new THREE.MeshStandardMaterial({color:sc, roughness:0.62, metalness:0.0}));
+      for(var tz=-l/2; tz<=l/2+0.001; tz+=tPitch){
+        // wall top at this z: backTopY at the back (-l/2) rising to h at the front
+        var tTop=backTopY + ((tz + l/2)/l)*(h - backTopY) - 0.01;
+        if(tTop<=0.02) continue;
+        var segs2=[[0, tTop]];
+        windowsData.forEach(function(wdd){
+          if(wdd.wall!==wallId) return;
+          var wz2=posToAxis(wallId, wdd.pos, wdd.w);
+          var hw2=(wdd.w*tIN)/2, hh2=(wdd.h*tIN)/2;
+          var cy2=(wdd.cy!=null?wdd.cy:52)*tIN;
+          if(tz < wz2-hw2-tBw/2 || tz > wz2+hw2+tBw/2) return;
+          var nx2=[];
+          segs2.forEach(function(sg3){
+            if(cy2-hh2>sg3[0]+0.01) nx2.push([sg3[0], Math.min(sg3[1], cy2-hh2)]);
+            if(cy2+hh2<sg3[1]-0.01) nx2.push([Math.max(sg3[0], cy2+hh2), sg3[1]]);
+          });
+          segs2=nx2;
+        });
+        segs2.forEach(function(sg3){
+          var sh3=sg3[1]-sg3[0];
+          if(sh3<=0.02) return;
+          var bm2=new THREE.Mesh(new THREE.BoxGeometry(tBp, sh3, tBw), tMat);
+          bm2.position.set(xpos + sign*(tBp/2), (sg3[0]+sg3[1])/2, tz);
+          bm2.castShadow=true; shedGroup.add(bm2);
+        });
+      }
+    }
   }
   sideTrap(-w/2 - 0.001, -1);
   sideTrap( w/2 + 0.001,  1);
@@ -7763,8 +7893,61 @@ function buildWallWithOpenings(wall){
   // axis start (world coordinate at local 0) and direction
   var u = (f.ax==='x') ? f.ux : f.uz;          // +1 or -1
   var axisStart = f.ctr - u*(L_/2);             // world coord at the "left" corner
+
+  /* REAL BATTENS.
+     Board & batten was a painted stripe and a bump map — shading, but no
+     silhouette. Against vertical T1-11, which is a groove in a flat sheet, the
+     two read as the same wall: nothing stood out because nothing stuck out.
+     A batten is a 1x3 nailed ON TOP of the boards, so it is geometry: a strip
+     standing 3/4in proud, which catches its own light and breaks the corner
+     and the eave line the way the real thing does.
+     Pitch comes from sidingTileFor(), the same function that scales the
+     texture, so the built battens land exactly on the painted ones rather than
+     beside them — and both follow FRAMING_OC, because a batten covers a seam
+     and a seam lands on a stud. */
+  function addBattens(openings){
+    if(typeof SIDING==='undefined' || SIDING!=='board-batten') return;
+    var INCH=0.2/12;
+    var pitch=sidingTileFor()/4;                 // 4 battens per texture wrap
+    if(!(pitch>0.01)) return;
+    var bwid=2.5*INCH;                           // a 1x3 laid on the boards
+    var bproud=0.75*INCH;                        // and standing proud by its thickness
+    var mat=applyXray(new THREE.MeshStandardMaterial({
+      color:sc, roughness:0.62, metalness:0.0}));
+    // Outer face of the wall panel is half its 0.05 thickness out from f.fixed.
+    var outN=(f.ax==='x') ? f.nz : f.nx;
+    var off=0.025 + bproud/2;
+    for(var bl=0; bl<=L_+0.001; bl+=pitch){
+      // Vertical runs of this batten that are NOT crossed by an opening.
+      var segs=[[0, h]];
+      (openings||[]).forEach(function(hl){
+        var a0=hl.local-hl.half-bwid/2, a1=hl.local+hl.half+bwid/2;
+        if(bl<a0 || bl>a1) return;               // this batten misses the opening
+        var next=[];
+        segs.forEach(function(sg){
+          if(hl.bot>sg[0]+0.01) next.push([sg[0], Math.min(sg[1], hl.bot)]);
+          if(hl.top<sg[1]-0.01) next.push([Math.max(sg[0], hl.top), sg[1]]);
+        });
+        segs=next;
+      });
+      segs.forEach(function(sg){
+        var segH=sg[1]-sg[0];
+        if(segH<=0.02) return;
+        var ac=axisStart + u*bl;
+        var px,pz,sx,sz;
+        if(f.ax==='x'){ px=ac; pz=f.fixed + outN*off; sx=bwid; sz=bproud; }
+        else          { px=f.fixed + outN*off; pz=ac; sx=bproud; sz=bwid; }
+        var bm=new THREE.Mesh(new THREE.BoxGeometry(sx, segH, sz), mat);
+        bm.position.set(px, (sg[0]+sg[1])/2, pz);
+        bm.castShadow=true; bm.receiveShadow=true;
+        shedGroup.add(bm);
+      });
+    }
+  }
+
   if(holes.length===0){
     panelSeg(L_, h, 0, h/2, 0);                 // solid wall
+    addBattens([]);
     return;
   }
   // sort holes left→right in LOCAL coordinates (distance from axisStart along u)
@@ -7780,7 +7963,8 @@ function buildWallWithOpenings(wall){
     if(b2<=0.001 || a>=L_-0.001) return false;   // entirely off this wall
     return true;
   });
-  if(holes.length===0){ panelSeg(L_, h, 0, h/2, 0); return; }
+  if(holes.length===0){ panelSeg(L_, h, 0, h/2, 0); addBattens([]); return; }
+  addBattens(holes);
 
   /* SIDING IN BANDS, NOT ONE SWEEP.
      This walked left to right once, and for each opening cut a strip above it
@@ -11294,7 +11478,13 @@ function syncOverhangUI(){
   var isLeanto=(STYLE==='leanto');
   var pnr=document.getElementById('pitchNormalRow'), pnn=document.getElementById('pitchNormalNote'),
       ldw=document.getElementById('leantoDropWrap'), fow=document.getElementById('leantoFrontOvhWrap');
-  if(pnr) pnr.style.display=isLeanto?'none':'grid';
+  /* `hidden`, not style.display — see the [hidden] rule in the CSS. This row is
+     an .optrow, and on a phone that class sets display:flex !important, which
+     an inline display:none cannot beat. It was set, it just did nothing, so a
+     lean-to still showed 6/12 / 8/12 / 10/12 / 12/12 under a "Roof Drop"
+     heading. The inline display still has to be cleared as well, or un-hiding
+     leaves the old 'none' behind. */
+  if(pnr){ pnr.hidden=isLeanto; pnr.style.display=isLeanto?'':'grid'; }
   if(pnn) pnn.style.display=isLeanto?'none':'block';
   if(ldw) ldw.style.display=isLeanto?'block':'none';
   /* The pitch BUTTONS were already hidden on a lean-to; the heading over them
