@@ -147,6 +147,13 @@ canvas{display:block;width:100%;height:100%}
     scrollbar-width:none;
   }
   .tgrid::-webkit-scrollbar, .optrow::-webkit-scrollbar{ display:none }
+  /* An option set whose labels are sentences rather than words. .optrow turns
+     every set into a nowrap side-scroll strip with a 118px floor, which is
+     right for "8 ft" and wrong for "No Deck · posts on grade" — the decking
+     buttons were clipping mid-word. These stack full width and wrap instead. */
+  .optstack{ display:grid !important; grid-template-columns:1fr !important; gap:7px }
+  .optstack > .pitch-btn{ width:100%; min-width:0; white-space:normal; text-align:left;
+                          padding:11px 14px; line-height:1.25 }
   .tgrid > *, .optrow > *{ flex:0 0 auto; scroll-snap-align:start }
   /* Sized so the icon and the full name both fit, with a sliver of the next
      card showing at the right edge. */
@@ -4209,10 +4216,18 @@ function buildShed(){
     shedGroup.remove(child);
   }
 
-  // Foundation lift: 'blocks' raises the shed onto skids + cinder-block piers.
+  /* Foundation lift: 'blocks' raises the shed onto skids + cinder-block piers.
+
+     'existing' used to fall through to 0 and the shed sat with its floor
+     exactly on the grass plane. The porch deck is built at floor level and is
+     only 1.3in thick, so the whole deck ended up at or under the ground and
+     vanished — the bug you could see from the porch step.
+
+     An existing foundation IS a slab: the card says "you already have a pad or
+     slab", so the shed stands on one, at the same height as one we pour. */
   FOUNDATION_LIFT = (typeof FOUNDATION==='undefined') ? 0
     : (FOUNDATION==='blocks' || FOUNDATION==='gravel') ? 0.14
-    : (FOUNDATION==='pad') ? 0.055 : 0;
+    : (FOUNDATION==='pad' || FOUNDATION==='existing') ? 0.055 : 0;
   shedGroup.position.y = FOUNDATION_LIFT;
 
   var w=encWft()*0.2, l=encLft()*0.2, h=H*0.2;
@@ -7849,15 +7864,24 @@ function buildFloor(){
   // Floor deck built as part of the main shell so it's visible from below when the
   // shed is raised on blocks. Plywood/OSB normally; concrete when on a poured pad.
   var w=encWft()*0.2, l=encLft()*0.2;
-  var onPad = (typeof FOUNDATION!=='undefined' && FOUNDATION==='pad');
+  /* Concrete inside whenever the shed stands on a slab, ours or theirs —
+     plywood over an existing slab would have been the giveaway that the two
+     halves of the model disagreed about what it was sitting on. */
+  var onSlab  = (typeof FOUNDATION!=='undefined' && (FOUNDATION==='pad' || FOUNDATION==='existing'));
+  var ourPour = (typeof FOUNDATION!=='undefined' && FOUNDATION==='pad');
   var mat;
-  if(onPad){
+  if(onSlab){
     var fHex=0xc4c4bf;
-    if(typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none' && typeof STAIN_COLORS!=='undefined'){
+    if(!ourPour) fHex=0xB9BAB4;      // their slab, weathered, never stained by us
+    // Stain is a finish WE apply, and it is only sold on a pad we pour. Gating
+    // on ourPour rather than on the stain value alone means a stain left over
+    // from an earlier pick can't colour somebody's existing slab.
+    if(ourPour && typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none' && typeof STAIN_COLORS!=='undefined'){
       var scf=STAIN_COLORS.filter(function(c){return c.k===FOUNDATION_STAIN;})[0];
       if(scf) fHex=parseInt(scf.hex.slice(1),16);
     }
-    mat=new THREE.MeshStandardMaterial({color:fHex, roughness:(FOUNDATION_STAIN==='none'?0.95:0.5), metalness:0.0});
+    var stained=(ourPour && typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none');
+    mat=new THREE.MeshStandardMaterial({color:fHex, roughness:(stained?0.5:0.95), metalness:0.0});
   } else {
     var ft=makeOSBFloor(); ft.repeat.set(Math.max(1,Math.round(w/0.8)), Math.max(1,Math.round(l/0.8)));
     mat=new THREE.MeshStandardMaterial({map:ft, roughness:1.0, metalness:0.0});
@@ -7870,9 +7894,15 @@ function buildFoundation(){
   if(typeof FOUNDATION==='undefined') return;
   if(WALLS_XRAY) return;
   var w=encWft()*0.2, l=encLft()*0.2;
-  if(FOUNDATION==='pad'){
+  if(FOUNDATION==='pad' || FOUNDATION==='existing'){
     // 4" concrete slab the shed sits ON — the EXTERIOR pad is always bare concrete;
     // the chosen stain color is applied to the INSIDE floor only.
+    /* 'existing' draws the slab too. The option card has always claimed
+       "shown in 3D" and nothing was drawn for it, so the promise was empty —
+       and once the shed is lifted to slab height it would otherwise float on
+       nothing. Older concrete reads greyer and flatter than a fresh pour, so
+       the two are still told apart at a glance. */
+    var weathered=(FOUNDATION==='existing');
     var lift=FOUNDATION_LIFT;
     /* v435 — A REAL 4in SLAB. lift is 0 for a pad, so the box was lift+0.01 =
        0.01 world = 0.6in: a sheet of paper, with no visible edge. Customers
@@ -7881,7 +7911,8 @@ function buildFoundation(){
        goes DOWN from there, so nothing else has to move. */
     var PAD_THK=4*0.2/12;                          // 4 inches
     var pad=new THREE.Mesh(new THREE.BoxGeometry(w+0.10, PAD_THK, l+0.10),
-      new THREE.MeshStandardMaterial({color:0xc4c4bf, roughness:0.92, metalness:0.0}));
+      new THREE.MeshStandardMaterial({color:weathered?0xB2B3AD:0xc4c4bf,
+        roughness:weathered?0.97:0.92, metalness:0.0}));
     pad.position.set(0, -lift-PAD_THK/2+0.004, 0); pad.receiveShadow=true; shedGroup.add(pad);
   } else if(FOUNDATION==='blocks' || FOUNDATION==='gravel'){
     // Shed raised onto pressure-treated SKIDS resting on CINDER-BLOCK piers placed
@@ -10733,11 +10764,16 @@ function renderRoofColors(){
 
 // ---- Drill-in sub-page overlay ----
 var _spStack=[];
-function _spRender(){
+function _spRender(keepScroll){
   var t=document.getElementById('subPageTitle'), b=document.getElementById('subPageBody'), sp=document.getElementById('subPage');
   if(!sp) return;
   var top=_spStack[_spStack.length-1];
-  t.textContent=top.t; b.innerHTML=top.b; sp.style.display='flex'; b.scrollTop=0;
+  /* Opening or backing out of a page starts at the top, which is right. A page
+     REDRAWING ITSELF in place is not navigation, and resetting the scroll there
+     threw you back up to "Porch Style" every time you tapped a deck colour —
+     so you could never see the swatch you had just picked. */
+  var keep = keepScroll ? b.scrollTop : 0;
+  t.textContent=top.t; b.innerHTML=top.b; sp.style.display='flex'; b.scrollTop=keep;
 }
 function openSubPage(title, bodyHTML){
   // Pages STACK: categories -> sizes -> styles. The back arrow pops one level;
@@ -11294,7 +11330,9 @@ function porchPageHTML(){
          ' ft, so the porch can\'t go higher \u2014 it follows the wall.</div>';
     }
     h+='<span class="lbl" style="margin-top:12px;display:block">Decking</span>';
-    h+='<div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px;margin:6px 0 8px">';
+    /* .optstack, not .optrow — see the CSS. These three carry descriptions, not
+       one-word values, and the side-scroll strip cut them off. */
+    h+='<div class="optstack" style="margin:6px 0 8px">';
     h+=btn(PORCH_DECK==='none','setPorchDeck(\'none\')','No Deck &middot; posts on grade');
     h+=btn(PORCH_DECK==='pt','setPorchDeck(\'pt\')','Treated Pine &middot; Included');
     h+=btn(PORCH_DECK==='composite','setPorchDeck(\'composite\')','Composite Decking');
@@ -11326,7 +11364,7 @@ function porchRefresh(){
   buildShed();                       // must run BEFORE the page re-renders, so
   syncPorchBtn();                    // the readout below shows THIS build
   if(typeof renderPlacedDoors==='function') renderPlacedDoors();
-  if(_spStack.length){ _spStack[_spStack.length-1].b=porchPageHTML(); _spRender(); }
+  if(_spStack.length){ _spStack[_spStack.length-1].b=porchPageHTML(); _spRender(true); }
 }
 // The door belongs on the wall the porch opens onto.
 function porchMoveDoor(){
