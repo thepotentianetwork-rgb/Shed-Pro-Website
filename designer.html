@@ -12411,11 +12411,23 @@ function addShedLights(){
         var lit2=(i2===eaveMid);
         var inR = dSofR && Math.abs(zz2)<=dSofR.half;
         var inL = dSofL && Math.abs(zz2)<=dSofL.half;
+        /* LIE IN THE SOFFIT, DON'T SIT ON IT.
+           These eave soffits FOLLOW THE ROOF PITCH — eaveSoffitY subtracts
+           eaveOv*tan(eaveAng) for exactly that reason, and a 12in overhang at
+           6/12 drops 6.35in across its run. The cans were placed dead flat
+           (tiltZ 0), so a horizontal disc in a sloping board buries one edge
+           and stands the other one proud. That is the edge you can see.
+           mkPuck has taken a tilt all along and the lean-to fixtures above
+           already pass one; the eave and dormer runs just never did.
+           Rotating the puck's +Y axis by z gives (-sin z, cos z, 0), so the
+           slope angle itself is the rotation, negated on the far side.
+           The dormer's own soffit is a shallower 2/12, not the main roof's. */
+        var _dTilt=Math.atan2(2,12);
         if(spLightOn)   placePorchDown(spLx, spLy, zz2, spTilt);
-        else if(inR)    placeSoffit( dSofR.x, dSofR.y, zz2,  1, 0, 0, 0, lit2);
-        else            placeSoffit( eaveSoffitX, eaveSoffitY, zz2, 1, 0, 0, 0, lit2);
-        if(inL)         placeSoffit( dSofL.x, dSofL.y, zz2, -1, 0, 0, 0, lit2);
-        else            placeSoffit(-eaveSoffitX, eaveSoffitY, zz2, -1, 0, 0, 0, lit2);
+        else if(inR)    placeSoffit( dSofR.x, dSofR.y, zz2,  1, 0,  _dTilt,  0, lit2);
+        else            placeSoffit( eaveSoffitX, eaveSoffitY, zz2, 1, 0,  eaveAng, 0, lit2);
+        if(inL)         placeSoffit( dSofL.x, dSofL.y, zz2, -1, 0, -_dTilt,  0, lit2);
+        else            placeSoffit(-eaveSoffitX, eaveSoffitY, zz2, -1, 0, -eaveAng, 0, lit2);
       }
       // DOOR OVERHANG — its soffit gets fixtures too, over the doorstep.
       if(typeof ADDONS!=='undefined' && ADDONS.doorAwning && typeof doorsData!=='undefined'){
