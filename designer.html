@@ -1151,6 +1151,39 @@ function porchWall(){
   if(typeof STYLE!=='undefined' && STYLE!=='gable') return null;
   return (PORCH_LOC==='front') ? 'front' : 'right';
 }
+/* WHERE A SIDE PORCH MEETS THE SHED — one answer, used by the roof geometry
+   and by the soffit lights that hang under it.
+
+   Two things went wrong from having this worked out twice.
+
+   The roof: pinning the porch lower than the eave means it LEDGERS ONTO THE
+   WALL — the comment in buildShed said exactly that — but only the HEIGHT was
+   pinned. The inner edge stayed out at the eave-overhang line, so dropping a
+   porch under a 10ft wall opened a slot between the wall and the roof you
+   could see daylight through. Ledgered onto the wall means starting at the
+   wall face.
+
+   The lights: the soffit fixtures recomputed the eave height from scratch and
+   never applied the pin at all, so the cans stayed up at the main eave while
+   the porch roof they were supposed to be recessed into dropped away below
+   them. */
+function porchSideAttach(){
+  var IN=0.2/12, tw=0.06;
+  var eaveOv=(OVTYPE==='gable') ? (tw/2+0.026) : (OVH*IN);
+  var gr=gableRoof();
+  var eaveX=gr.run+eaveOv;                 // the shed's eave TIP
+  var eaveY=gr.ridgeY-eaveX*gr.tan;        // and its height
+  var d=(typeof SIDE_PORCH!=='undefined'?SIDE_PORCH:0)*0.2;
+  var pinTo=(PORCH_H>0) ? PORCH_H*0.2 : eaveY;
+  var pinned=(pinTo < eaveY-1e-6);
+  return {
+    eaveOv:eaveOv, eaveX:eaveX, eaveY:eaveY, pinned:pinned,
+    attY:   pinned ? pinTo   : eaveY,      // where the roof's inner edge sits
+    startX: pinned ? gr.run  : eaveX,      // the wall face once it is ledgered
+    postX:  gr.run + d,
+    outX:   gr.run + d + eaveOv
+  };
+}
 var PORCH_DECK='pt';                 // 'none' | 'pt' | 'composite'
 /* PORCH FINISH TIER — drives price. 'standard' is the flat End/Side Porch
    fee; anything else is one of the front-porch finish tier keys the server
@@ -5053,16 +5086,18 @@ function buildShed(){
       spOut   = spPost + spGableOv;
       spLen   = w + spEaveOv*2;                     // matches the shed's eave width
     } else {
-      var spEaveX=_grP.run + spEaveOv;              // = w/2 + WALL_FACE + overhang
-      spAttY = _grP.ridgeY - spEaveX*_grP.tan;      // the shed's ACTUAL eave tip
       /* Pinned height: the porch roof ledgers onto the WALL below the eave
          rather than hanging off it, so raising the walls leaves the porch where
          it was and exposes the siding above. Capped so it can never sit higher
-         than the eave it would otherwise attach to. */
-      if(PORCH_H>0) spAttY = Math.min(spAttY, PORCH_H*0.2);
-      spStart = spEaveX;
-      spPost  = _grP.run + spD;
-      spOut   = spPost + spEaveOv;
+         than the eave it would otherwise attach to.
+         startX follows the pin — see porchSideAttach. Height alone left the
+         roof's inner edge hanging out at the eave line with a see-through slot
+         behind it. */
+      var _spA=porchSideAttach();
+      spAttY  = _spA.attY;
+      spStart = _spA.startX;
+      spPost  = _spA.postX;
+      spOut   = _spA.outX;
       spLen   = l + spGableOv*2;                    // matches the shed's rake depth
     }
     buildPorchDeck(Math.min(_grP.run, spPost), Math.max(_grP.run, spPost), -l/2, l/2, 0.0);
@@ -12295,17 +12330,16 @@ function addShedLights(){
       var spLightOn=(STYLE==='gable' && typeof PORCH_LOC!=='undefined' && PORCH_LOC==='side' && SIDE_PORCH>0);
       var spLx=0, spLy=0, spTilt=0;
       if(spLightOn){
-        var qIN=0.2/12, qTw=0.06;
-        var qEaveOv, qFasciaW;
-        if(OVTYPE==="gable"){ qEaveOv=qTw/2+0.026; qFasciaW=OVH*qIN; }
-        else { qEaveOv=OVH*qIN; qFasciaW=4*qIN; }
-        var _grX=gableRoof();
-        var qRh=_grX.rise, qAng=_grX.ang;
-        var qEaveX=_grX.run+qEaveOv, qEaveY=_grX.ridgeY-qEaveX*_grX.tan;
-        var qD=SIDE_PORCH*0.2, qOutX=w/2+qD+qEaveOv;
-        var qPAng=Math.atan2(3,12);
-        spLx=(qEaveX+qOutX)/2;                                  // mid-porch
-        spLy=qEaveY-(spLx-qEaveX)*Math.tan(qPAng)-0.055;         // just under its ceiling
+        /* Read the porch's real attachment rather than re-deriving the eave.
+           This block used to work out qEaveY from the roof and never apply the
+           PORCH_H pin, so lowering a porch to 8ft under 10ft walls left the
+           cans hanging at the old eave height with the porch roof well below
+           them. It also measured qOutX from w/2 instead of the wall face,
+           putting every fixture 1.5in inboard of mid-porch. */
+        var _spL=porchSideAttach();
+        var qPAng=Math.atan2(3,12);                              // 3/12 porch slope
+        spLx=(_spL.startX+_spL.outX)/2;                          // mid-porch
+        spLy=_spL.attY-(spLx-_spL.startX)*Math.tan(qPAng)-0.055; // just under its ceiling
         spTilt=qPAng;                                            // lie flat on the sloped soffit
       }
       // Porch fixtures get their OWN budget and point STRAIGHT DOWN — a porch
