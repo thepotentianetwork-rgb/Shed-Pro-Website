@@ -670,7 +670,7 @@ textarea.inp{resize:vertical}
             <div class="pitch-btn soffit-btn" onclick="setSoffit('cedar',this)">Cedar</div>
           </div>
         </div>
-        <div class="grp" style="margin-top:14px">
+        <div class="grp" style="margin-top:14px" id="cupolaGrp">
           <span class="lbl">Cupola<span id="cupolaPriceTag"></span></span>
           <div style="display:flex;gap:5px">
             <div class="pitch-btn cupola-btn on" data-cup="none" onclick="setCupola('none')">None</div>
@@ -8075,8 +8075,11 @@ function buildFoundation(){
 function buildCupola(){
   if(typeof ADDONS==='undefined' || !ADDONS.cupola || ADDONS.cupola==='none') return;
   if(WALLS_XRAY) return;
+  // Belt and braces for a saved design carrying a cupola on a roof that no
+  // longer offers one.
+  if(typeof cupolaAllowed==='function' && !cupolaAllowed()) return;
   var w=encWft()*0.2, h=H*0.2, rh=gableRoof().rise;
-  var peakY = (STYLE==='leanto') ? h : (h+rh);
+  var peakY = h+rh;
   var white=new THREE.MeshStandardMaterial({color:0xf3f2ee, roughness:0.6});
   var trimW=new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.55});
   var louver=new THREE.MeshStandardMaterial({color:0xd7d9da, roughness:0.7});
@@ -10516,6 +10519,17 @@ function setStyle(style,el){
   STYLE=style;
   document.querySelectorAll('.style-btn').forEach(function(b){b.classList.remove('on');});
   el.classList.add('on');
+  /* Drop a cupola the new roof cannot carry. Hiding the control alone would
+     leave one standing on a lean-to AND on the quote, priced, with no way left
+     to remove it. */
+  if(typeof cupolaAllowed==='function' && !cupolaAllowed() &&
+     typeof ADDONS!=='undefined' && ADDONS.cupola && ADDONS.cupola!=='none'){
+    ADDONS.cupola='none';
+    document.querySelectorAll('.cupola-btn').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-cup')==='none'); });
+    if(typeof showToast==='function') showToast('Cupola removed \u2014 it needs an A-Frame or Barn roof.');
+  }
+  if(typeof syncOverhangUI==='function') syncOverhangUI();
   buildShed();
 }
 
@@ -11244,6 +11258,9 @@ function syncOverhangUI(){
   var pgl=document.getElementById('pitchGrpLbl');
   if(pgl) pgl.textContent = isLeanto ? 'Roof Drop' : 'Roof Pitch';
   if(fow) fow.style.display=isLeanto?'block':'none';
+  // Cupola: A-Frame and Barn only — see cupolaAllowed.
+  var cg=document.getElementById('cupolaGrp');
+  if(cg) cg.style.display = (typeof cupolaAllowed==='function' && !cupolaAllowed()) ? 'none' : '';
   if(isLeanto){
     document.querySelectorAll('.leanto-drop-btn').forEach(function(b){
       b.classList.toggle('on', b.getAttribute('onclick').indexOf('setLeantoDrop('+LEANTO_DROP+',')>-1);
@@ -11559,6 +11576,15 @@ function paintSidingTags(){
     var v = sp && sp[k];
     el.textContent = ' · ' + (v>0 ? ('+'+priceTag(v)) : 'included');
   });
+}
+/* A cupola sits on a RIDGE. Only the A-Frame and the Barn have one — a porch
+   A-Frame is still an A-Frame, so it is covered by the same test. A lean-to has
+   a single slope with no ridge at all, and a hip roof peaks at a point rather
+   than along a line, so a cupola on either is standing on nothing. The build
+   already had to special-case leanto ("peakY = h") to put one somewhere, which
+   is the tell that it did not belong there. */
+function cupolaAllowed(){
+  return (typeof STYLE==='undefined') || STYLE==='gable' || STYLE==='barn';
 }
 function setCupola(v){
   ADDONS.cupola=v;
