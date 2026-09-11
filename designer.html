@@ -6837,7 +6837,15 @@ function buildDoor(){
       ? new THREE.MeshStandardMaterial({color:0x191B1C, roughness:0.42, metalness:0.05})
       : new THREE.MeshStandardMaterial({color:0xeef0ec, roughness:0.5, metalness:0.0});
   } else if(isRollup){
-    leafMat=new THREE.MeshStandardMaterial({color:0xd9dbdd, roughness:0.5, metalness:0.35});
+    /* Glossy White, matching the door actually fitted — Clopay RU67GW, a
+         non-insulated glossy white steel curtain. It was #d9dbdd at metalness
+         0.35, which is brushed aluminium: grey against white siding and
+         obviously metallic next to a painted wall. A glossy white door is
+         near-white with a tight specular highlight, so the colour goes up,
+         the roughness comes down to carry the gloss, and the metalness comes
+         almost all the way off — steel under baked enamel reads as paint, not
+         as bare metal. */
+        leafMat=new THREE.MeshStandardMaterial({color:0xF1F1EE, roughness:0.22, metalness:0.04});
   }
   var muntinMat=trimMat;
   var panelMat=new THREE.MeshStandardMaterial({
@@ -6986,7 +6994,10 @@ function buildDoor(){
     if(DOOR==='rollup'){
       // ROLL-UP CURTAIN — horizontal slats with groove lines, guide tracks at
       // the sides, matching the catalog icon.
-      var grooveM=new THREE.MeshStandardMaterial({color:0xaeb1b4, roughness:0.6, metalness:0.3});
+      /* The groove between slats is a shadow line in the same white panel, not
+       a separate grey part. Following the curtain down keeps it reading as one
+       pressed sheet; at the old grey it looked like trim laid over the door. */
+    var grooveM=new THREE.MeshStandardMaterial({color:0xC9C9C5, roughness:0.35, metalness:0.04});
       var slatH=0.075, gy=slatH;
       while(gy<dh-0.02){
         bx(lw-0.03, 0.006, 0.006, grooveM, x, gy, 0.028);
