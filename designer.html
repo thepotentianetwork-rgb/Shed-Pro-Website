@@ -1137,6 +1137,17 @@ var PORCH_LOC="none";
 var PORCH_H=0;                       // 0 = match walls, else feet
 function porchCeilY(){
   var wallY=H*0.2;
+  /* A FRONT porch has no roof of its own — the main gable roof is extended out
+     over it (see the fpD extension in the roof builder). So there is nothing to
+     lower: dropping the ceiling only moves the flat soffit panel and leaves an
+     unbuilt band between it and the roof above, open to the sky. At 8ft under
+     10ft walls that band is a full 2 feet, which is the hole you can see
+     straight through.
+     A SIDE porch is a different building: it has its own shed roof that
+     ledgers onto the wall, and lowering it is a real thing to build. The
+     control is only offered there (see porchPageHTML), and this guard makes
+     sure a saved design carrying a stale porchH still renders correctly. */
+  if(typeof PORCH_LOC!=='undefined' && PORCH_LOC==='front') return wallY;
   if(!(PORCH_H>0)) return wallY;
   return Math.min(wallY, PORCH_H*0.2);   // never higher than the wall it hangs off
 }
@@ -11377,17 +11388,28 @@ function porchPageHTML(){
     var totalPrice=(totalLine?totalLine.price:0);
     h+='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">Porch total: <b style="color:#8fe3ff">'+
        (totalLine&&totalLine.unpriced?'price TBD':money(totalPrice))+'</b></div>';
-    h+='<span class="lbl" style="margin-top:12px;display:block">Porch Ceiling Height</span>';
-    h+='<div class="optrow" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;margin:6px 0 4px">';
-    h+=btn(!(PORCH_H>0),'setPorchH(0)','Match walls');
-    [8,9,10].forEach(function(ft){ h+=btn(PORCH_H===ft,'setPorchH('+ft+')',ft+" ft"); });
-    h+='</div>';
-    if(PORCH_H>0 && PORCH_H<H){
-      h+='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">Porch sits '+
-         (H-PORCH_H)+' ft below the '+H+' ft walls \u2014 siding shows above it.</div>';
-    } else if(PORCH_H>=H && PORCH_H>0){
-      h+='<div style="font-size:11px;color:#ffd7a0;margin-bottom:8px">Walls are '+H+
-         ' ft, so the porch can\'t go higher \u2014 it follows the wall.</div>';
+    /* Ceiling height is a SIDE-porch setting. A front porch is covered by the
+       main roof carried out over it, so there is no porch roof to lower —
+       offering the control just let you open a two-foot hole between the
+       dropped ceiling and the roof. Say why rather than silently dropping it,
+       or it reads as a missing option. */
+    if(PORCH_LOC==='side'){
+      h+='<span class="lbl" style="margin-top:12px;display:block">Porch Ceiling Height</span>';
+      h+='<div class="optrow" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;margin:6px 0 4px">';
+      h+=btn(!(PORCH_H>0),'setPorchH(0)','Match walls');
+      [8,9,10].forEach(function(ft){ h+=btn(PORCH_H===ft,'setPorchH('+ft+')',ft+" ft"); });
+      h+='</div>';
+      if(PORCH_H>0 && PORCH_H<H){
+        h+='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">Porch sits '+
+           (H-PORCH_H)+' ft below the '+H+' ft walls \u2014 siding shows above it.</div>';
+      } else if(PORCH_H>=H && PORCH_H>0){
+        h+='<div style="font-size:11px;color:#ffd7a0;margin-bottom:8px">Walls are '+H+
+           ' ft, so the porch can\'t go higher \u2014 it follows the wall.</div>';
+      }
+    } else {
+      h+='<div style="font-size:11px;color:var(--mu);margin:12px 0 8px">The main roof carries '+
+         'straight out over a front porch, so its ceiling follows the '+H+' ft walls. '+
+         'A side porch has its own roof and can sit lower.</div>';
     }
     h+='<span class="lbl" style="margin-top:12px;display:block">Decking</span>';
     /* .optstack, not .optrow — see the CSS. These three carry descriptions, not
@@ -11445,6 +11467,10 @@ function porchMoveDoor(){
 function setPorchLoc(v){
   if(v!=='none' && STYLE!=='gable'){ showToast('Porches are available on the A-Frame style.'); return; }
   PORCH_LOC=v;
+  /* Clear the pin when it stops being a thing you can build. Left set, it would
+     ride along in the saved config and the quote for a porch whose ceiling
+     cannot move, and come back the moment you switched to Side. */
+  if(v!=='side') PORCH_H=0;
   if(v==='none') SIDE_PORCH=0;
   else if(SIDE_PORCH<=0) SIDE_PORCH=4;
   // Side porch only comes in the one fixed, flat-priced size — no tiers.
