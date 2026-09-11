@@ -1616,26 +1616,23 @@ function init(){
   // scene and fill shadows; the sun is softened so shadows are gentle, not harsh.
   ambLight=new THREE.AmbientLight(0xffffff,0.18);
   scene.add(ambLight);
-  /* v472 — the sky light follows the sunset. A hemisphere light IS the sky as
-     far as the model is concerned, so leaving it cool blue would light the shed
-     for a sky that is no longer behind it. */
-  hemiLight=new THREE.HemisphereLight(0xe0a483, 0x46402f, 0.40);   // v477 — cooler with the sky
+  /* A hemisphere light IS the sky as far as the model is concerned, so this
+     tracks whatever is behind the shed. Blue sky, blue sky light.
+     These now match the DAY branch of applyLighting() exactly. They did not:
+     init built a sunset rig and the first re-light swapped it for a daylight
+     one, so the opening frame was lit by a sun that was no longer there. */
+  hemiLight=new THREE.HemisphereLight(0xbcd0e0, 0x3a5030, 0.40);
   scene.add(hemiLight);
 
   // KEY (warm sun) — main directional, casts soft shadows.
-  /* Low and warm, but the sun has only just set — there is still real light in
-     the sky, so this stays close to full strength rather than dropping to the
-     dusk level v472 used. */
-  /* Low and warm. v474 pushed this to 1.62 to match a brighter sky; with the
-     sky back down, so is this. */
-  sunLight=new THREE.DirectionalLight(0xffcf94,1.45);
+  sunLight=new THREE.DirectionalLight(0xfff4e2,1.7);
   // SUN ELEVATION — at y=1.0 the sun sat 4.4 degrees above the horizon, almost
   // horizontal, so it grazed the roof and barely lit it (N.L 0.31 on a 6/12
   // slope, 0 on the far slope). y=5.5 puts it at ~23 degrees: N.L 0.57 lit /
   // 0.13 shaded. Raise or lower this ONE value to change how bright the roof
   // reads — but keep it in sync with the DAY branch of applyLighting(), which
   // resets the rig every rebuild.
-  sunLight.position.set(9,2.6,11);   // v472 — dropped from 5.5 for a low sunset sun
+  sunLight.position.set(7,5.5,11);
   sunLight.castShadow=true;
   sunLight.shadow.mapSize.set(2048,2048);
   sunLight.shadow.camera.left=-10;sunLight.shadow.camera.right=10;
@@ -1647,7 +1644,7 @@ function init(){
   scene.add(sunLight);
 
   // FILL (cool, opposite side) — brighter so the shadow side stays well-lit.
-  fillLight=new THREE.DirectionalLight(0xb98fbf,0.80);   // v472 — violet sky fill opposite the sun
+  fillLight=new THREE.DirectionalLight(0xfff0dc,0.95);
   fillLight.position.set(-7,2.5,-11);   // lifted with the sun so the far slope isn't flat
   scene.add(fillLight);
 
@@ -3459,10 +3456,7 @@ function makeSunsetSky(){
 }
 
 // Daytime sky gradient — a real clear-day blue at the zenith fading through
-// mid blue to a pale atmospheric haze at the horizon. The old version topped
-// out at a pale, washed-out blue (#7fa8d0) that read as overcast more than
-// clear — this is a deeper, more saturated blue up top with an extra
-// gradient stop so the falloff to the horizon haze looks smooth, not banded.
+// mid blue to a pale atmospheric haze at the horizon.
 function makeDaySky(){
   var c=document.createElement('canvas');c.width=16;c.height=256;
   var ctx=c.getContext('2d');
@@ -3472,58 +3466,19 @@ function makeDaySky(){
      photo's high sky is far richer. The horizon band still pales out, because
      that gradient is what gives the backdrop depth — flattening it would make
      the dome read as a painted wall behind the shed. */
-  /* v472 — SUNSET. Blue at the zenith through violet and rose to a hot band at
-     the horizon. Seven stops rather than five: the violet-to-rose crossover is
-     where a sunset either reads or turns muddy, and it needs a stop each side.
-     The horizon stays bright (lum 221 against the old 228). That is what keeps
-     the dome reading as distance rather than a painted wall, and it is what the
-     shed is silhouetted against. The zenith drops from 83 to 40. */
-  /* v473 — more orange low down. Two changes, not one: the orange band starts
-     HIGHER (0.62 rather than 0.75, with the violet handing over at 0.36
-     instead of 0.42), and the horizon stops going pale — it was drifting to a
-     washed gold that read as haze rather than as the sun.
-     Bottom half of the dome goes from R228 G157 B106 to R241 G156 B76, warmth
-     R-B from +122 to +165. Brightness is barely touched, so the shed still has
-     something to be silhouetted against. */
-  /* v474 — THE SUN HAS JUST GONE DOWN, not been down a while.
-     v473's zenith was luminance 40 — that is dusk, twenty minutes later, and it
-     made the whole scene dim. Lifting it to 99 puts the light back.
-     The trap is that lifting a gradient washes the colour out of it: a
-     straight brighten took overall warmth from +69 down to +47 and the orange
-     went peach. So the top lifts and the lower band holds its saturation
-     instead, which is what the sky actually does in that first minute — the
-     high sky is still lit while the horizon burns.
-     Overall luminance 120 -> 151, zenith 40 -> 99, and warmth still rises,
-     +69 -> +78 overall and +165 -> +178 low down. */
-  /* v475 — HALFWAY. v473 sat at luminance 121 with a zenith of 40, which was
-     dusk; v474 went to 151 / 99, which was a shade too lit. This is a straight
-     45% blend of the two, stop by stop, so the curve keeps its shape instead
-     of me re-picking eight colours by eye and drifting the hue.
-     Lands at 135 overall with a zenith of 66 — the deeper top is back without
-     the near-navy — and the orange band is untouched at +169, because the two
-     versions barely differed down there. */
-  /* v476 — BACK TO THE ORIGINAL DEPTH. v474 and v475 lifted the whole dome and
-     it read as daylight with a warm filter. These are the v473 stops exactly:
-     luminance 121 with a zenith of 40, deep blue up top burning to orange low
-     down. The orange you asked for in v473 stays — only the brightening is
-     undone. */
-  /* v477 — LESS ORANGE, MORE BLUE. Two moves, because "less orange" alone
-     just mutes the sky:
-       the warm stops move DOWN the dome — orange starts at 0.70 rather than
-       0.62 — so blue and violet hold more of the height, and
-       each warm stop cools slightly, so the band that is left is orange rather
-       than the near-amber it had become.
-     Warmth R-B 56 -> 44, blue-dominant area 41% -> 43%. Brightness is
-     unchanged at 115, so this reads as a cooler sunset rather than a dimmer
-     one. A full cool-down took warmth to +22 and it went washed and grey; this
-     is 35% of the way there. */
-  g.addColorStop(0.00,'#162d59');   // deep blue at the zenith
-  g.addColorStop(0.22,'#3c467f');   // blue into violet, holding higher
-  g.addColorStop(0.40,'#775687');   // violet
-  g.addColorStop(0.56,'#b8696a');   // rose
-  g.addColorStop(0.70,'#e08452');   // orange starts lower down
-  g.addColorStop(0.84,'#ee9a49');   // hot band
-  g.addColorStop(1.00,'#f9c46e');   // amber at the horizon
+  /* v478 — BACK TO BLUE. v472 through v477 turned this function into a sunset
+     while leaving its name and its "clear-day blue" comment in place, so the
+     DAY sky was violet-to-amber and only the dusk sky was still called dusk.
+     These are the v444 stops, recovered from the commit rather than re-picked
+     by eye, so the gradient's shape is the one that was there before.
+     Reverting the gradient alone is not enough: a hemisphere light IS the sky
+     as far as the model is concerned, and the key and fill were retuned warm
+     and violet to sit under a sunset. Those go back with it, below. */
+  g.addColorStop(0.00,'#145bc4');   // deep clear-day blue at the zenith
+  g.addColorStop(0.30,'#2c7cd8');   // mid blue
+  g.addColorStop(0.60,'#62a2e4');   // lighter blue
+  g.addColorStop(0.82,'#a9cbea');   // atmospheric haze near the horizon
+  g.addColorStop(1.00,'#d8e7f2');   // pale horizon line
   ctx.fillStyle=g; ctx.fillRect(0,0,16,256);
   var t=new THREE.CanvasTexture(c);
   t.colorSpace=THREE.SRGBColorSpace;
@@ -11921,7 +11876,11 @@ function applyLighting(){
     // hardest, so it lands mostly on the roof, which is what we want here.
     hemiLight.intensity=0.40; hemiLight.color.setHex(0xbcd0e0); hemiLight.groundColor.setHex(0x3a5030);
     sunLight.intensity=1.7; sunLight.color.setHex(0xfff4e2);
-    sunLight.position.set(9,2.6,11);   // v472 — dropped from 5.5 for a low sunset sun    // keep in sync with the init rig above
+    /* Back up to 23 degrees. Everything else in this branch was already the
+       daylight rig; only the sun's elevation was still the low sunset one, so
+       daylight came in raking across the walls with sunset-length shadows.
+       Keep in sync with the init rig above. */
+    sunLight.position.set(7,5.5,11);
     fillLight.intensity=0.95; fillLight.color.setHex(0xfff0dc);
     rimLight.intensity=0.4;  rimLight.color.setHex(0x2BB5E8);
   }
