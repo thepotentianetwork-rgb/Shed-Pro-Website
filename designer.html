@@ -2650,9 +2650,13 @@ function setShedUse(k){
   }
   if(u.door && typeof doorsData!=='undefined'){
     // one front door of the type the job implies, replacing the default
-    doorsData=[{wall:'front', pos:0.5, style:u.door,
-                w:(u.door==='rollup')?96:(/^res/.test(u.door)?36:60),
-                h:(u.door==='rollup')?84:(/^res/.test(u.door)?82.5:76)}];
+    var _d={wall:'front', pos:0.5, style:u.door,
+            w:(u.door==='rollup')?96:(/^res/.test(u.door)?36:60),
+            h:(u.door==='rollup')?84:(/^res/.test(u.door)?82.5:76)};
+    // State it rather than leaning on the fallback: the saved config and the
+    // quote line should both say which finish was chosen, not imply it.
+    if(u.door==='rollup') _d.color = u.doorColor || 'white';
+    doorsData=[_d];
   }
 
   /* The rest of a complete build. Each of these falls back to the stock value
@@ -6845,7 +6849,7 @@ function buildDoor(){
          the roughness comes down to carry the gloss, and the metalness comes
          almost all the way off — steel under baked enamel reads as paint, not
          as bare metal. */
-        leafMat=new THREE.MeshStandardMaterial({color:0xF1F1EE, roughness:0.22, metalness:0.04});
+        leafMat=new THREE.MeshStandardMaterial({color:rollupColorHex(dd), roughness:0.22, metalness:0.04});
   }
   var muntinMat=trimMat;
   var panelMat=new THREE.MeshStandardMaterial({
@@ -6997,7 +7001,7 @@ function buildDoor(){
       /* The groove between slats is a shadow line in the same white panel, not
        a separate grey part. Following the curtain down keeps it reading as one
        pressed sheet; at the old grey it looked like trim laid over the door. */
-    var grooveM=new THREE.MeshStandardMaterial({color:0xC9C9C5, roughness:0.35, metalness:0.04});
+    var grooveM=new THREE.MeshStandardMaterial({color:darken(rollupColorHex(dd),0.83), roughness:0.35, metalness:0.04});
       var slatH=0.075, gy=slatH;
       while(gy<dh-0.02){
         bx(lw-0.03, 0.006, 0.006, grooveM, x, gy, 0.028);
@@ -9883,6 +9887,10 @@ function addDoorByStyle(style, w, h){
      && doorsData[selectedDoor].wall===wall){
     var dd=doorsData[selectedDoor];
     dd.style=style; if(w){ dd.w=w; dd.h=h||dd.h; }
+    // Stock finish when a door becomes a roll-up; drop the field entirely when
+    // it stops being one, so a residential door never carries a curtain colour
+    // into the saved config or the quote.
+    if(style==='rollup'){ if(!dd.color) dd.color='white'; } else { delete dd.color; }
     buildShed(); renderPlacedDoors(); syncEditorPanel(); closeSubPage();
     return;
   }
@@ -9983,6 +9991,32 @@ function doorCatFor(dd){
    to a single (or a roll-up, cedar, residential...), the styles for the current
    size inline for a quick swap, and a Remove at the bottom. Picking any style
    swaps the selected door in place, which addDoorByStyle already handles. */
+/* Roll-up curtain colours. These are finishes on the same door, so they live
+   on the placed door as dd.color rather than as separate door STYLES — a style
+   change swaps the product, a colour change does not, and the price sheet
+   keys roll-ups by width alone.
+   White is the stock finish; black and brown carry a $100 finish upcharge each
+   (worker/pricing.js, ROLLUP_COLOR_UPCHARGE) — keep the two in step. */
+var ROLLUP_COLORS = [
+  {k:'white', name:'Glossy White', hex:0xF1F1EE, up:0},
+  {k:'black', name:'Black',        hex:0x1E1E1E, up:100},
+  {k:'brown', name:'Brown',        hex:0x4A3B2E, up:100}
+];
+function rollupColorHex(dd){
+  var k=String((dd&&dd.color)||'white').toLowerCase();
+  for(var i=0;i<ROLLUP_COLORS.length;i++) if(ROLLUP_COLORS[i].k===k) return ROLLUP_COLORS[i].hex;
+  return ROLLUP_COLORS[0].hex;
+}
+function setRollupColor(i, k){
+  if(!doorsData[i] || doorsData[i].style!=='rollup') return;
+  doorsData[i].color=k;
+  buildShed();
+  if(typeof updateSum==='function') updateSum();
+  // Redraw the panel so the tick and the price move with the choice.
+  if(typeof openOptionsForSelectedDoor==='function' && selectedDoor===i) openOptionsForSelectedDoor();
+  else if(typeof renderPlacedDoors==='function') renderPlacedDoors();
+}
+
 function doorEditHTML(i){
   var dd=doorsData[i], ci=doorCatFor(dd);
   var c=DOOR_SIZES[ci];
@@ -9993,6 +10027,23 @@ function doorEditHTML(i){
   var h='<div style="font-size:12px;color:var(--mu);margin-bottom:10px">'+
         'Editing the <b style="color:var(--w)">'+(names[dd.style]||dd.style)+'</b> on the '+dd.wall+' wall. '+
         'Drag it in the 3D view to move it.</div>';
+
+  /* Curtain colour. Only a roll-up has one — every other style takes its
+     colour from the siding and trim, which the walls already pay for. */
+  if(dd.style==='rollup'){
+    h+='<span class="lbl">Curtain color</span><div class="tgrid" style="margin-bottom:16px">';
+    ROLLUP_COLORS.forEach(function(rc2){
+      var on=(String(dd.color||'white')===rc2.k);
+      var pr = PRICE_LOCKED ? '' : (rc2.up>0 ? ('+'+priceTag(rc2.up)) : 'Included');
+      h+='<div class="tile'+(on?' on':'')+'" onclick="setRollupColor('+i+',\''+rc2.k+'\')">'+
+         '<div class="tile-img" style="background:#'+rc2.hex.toString(16).padStart(6,'0')+
+           ';aspect-ratio:auto;height:56px;border-radius:6px"></div>'+
+         '<div class="tile-cap"><div class="tile-name">'+rc2.name+'</div>'+
+         '<div class="tile-price">'+pr+'</div></div>'+
+         '<div class="tile-check">&#10003;</div></div>';
+    });
+    h+='</div>';
+  }
 
   // ---- size / type: every category, so double <-> single is one tap ----
   h+='<span class="lbl">Size &amp; type</span><div class="tgrid" style="margin-bottom:16px">';
