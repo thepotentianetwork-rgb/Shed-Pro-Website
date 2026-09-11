@@ -6460,15 +6460,45 @@ function buildLeanToRoof(){
   ltSoffMat.side=THREE.DoubleSide;
   // FRONT eave soffit — its own overhang amount, gated independently so it
   // still shows even when the general Overhang control is flush.
+  /* THE EAVE SOFFITS FOLLOW THE ROOF.
+     Both of these were HORIZONTAL boards pinned to the height at the eave TIP
+     (yHi-fb / yLo-fb). The roof is a single slope, so across an overhang it
+     rises or falls by slope*overhang — which means a flat board is only at the
+     right height at one end of it.
+
+     At the front that put the board THROUGH the roof at the inboard end
+     whenever slope*ovFront exceeded the fascia width. Front overhang is where
+     it shows because that is the only overhang that gets to be 1ft or 2ft, and
+     shed LENGTH is what decides it: the slope is drop/length, so a short shed
+     is a steep one.
+
+       10ft wide, 12in overhang, 4in fascia, measured at the wall line
+       length   drop   front ovh   soffit vs roof underside
+        8 ft     2ft      24in      +2.36in   through the roof
+       10 ft     2ft      24in      +1.16in   through the roof
+       12 ft     2ft      24in      +0.36in   through the roof
+       16 ft     2ft      24in      -0.64in   (which is why a 16ft test
+                                               never showed it)
+
+     Tilted to the panel they sit under it the whole way, and the back one
+     stops wedging open at the wall as well. This is what the SIDE rake
+     soffits below have always done — these two were the odd ones out. */
+  var soffDrop = fb*Math.cos(panelTilt);        // measured square to the roof
+  var soffCos  = Math.cos(panelTilt);
   if(ovFront>0.02){
-    var fs=new THREE.Mesh(new THREE.BoxGeometry(panelWidth, ltSoffThk, ovFront+0.012), ltSoffMat);
-    fs.position.set(0, yHi - fb + 0.006, l/2 + ovFront/2 - 0.004);
+    // FRONT eave soffit — spans the overhang along the SLOPE, not the ground.
+    var fsLen=ovFront/soffCos;
+    var fs=new THREE.Mesh(new THREE.BoxGeometry(panelWidth, ltSoffThk, fsLen+0.012), ltSoffMat);
+    fs.position.set(0, (h + slope*(ovFront/2)) - soffDrop + 0.006, l/2 + ovFront/2 - 0.004);
+    fs.rotation.x=panelTilt;
     shedGroup.add(fs);
   }
   if(ov>0.02){
     // BACK eave soffit
-    var bs2=new THREE.Mesh(new THREE.BoxGeometry(panelWidth, ltSoffThk, ov+0.012), ltSoffMat);
-    bs2.position.set(0, yLo - fb + 0.006, -(l/2 + ov/2 - 0.004));
+    var bsLen=ov/soffCos;
+    var bs2=new THREE.Mesh(new THREE.BoxGeometry(panelWidth, ltSoffThk, bsLen+0.012), ltSoffMat);
+    bs2.position.set(0, (backTopY - slope*(ov/2)) - soffDrop + 0.006, -(l/2 + ov/2 - 0.004));
+    bs2.rotation.x=panelTilt;
     shedGroup.add(bs2);
     // SIDE rake soffits — sloped boards under each side overhang, following the
     // roof plane from wall face out to the rake board.
