@@ -12112,9 +12112,22 @@ function addShedLights(){
            the wall instead of burning a hotspot into it. The feather over the
            first 18% (was 5%) is what removes the hard bright mouth at the
            fixture — that edge is most of the "spotlight" read. */
-        var v=Math.pow(1-t,1.9)*0.26 + (1-t)*0.04;      // decay with distance
-        var sigma=(0.20+0.14*t)*W;                      // broad at the source
-        var topFeather=Math.min(1, t/0.18);             // no hard mouth at the source
+        /* v479 — SOFTER STILL. v395 made this a wash rather than a beam; it was
+           still reading sharp because almost all of the light sat in the top
+           quarter. Three changes, and the point is that they trade PEAK for
+           SPREAD rather than dimming anything:
+             the gaussian starts half again as wide (0.20 -> 0.30 of the panel)
+               and opens further, so there is no defined column,
+             the decay slows (1.9 -> 1.45) with a fatter tail, so light carries
+               down the wall instead of stopping, and
+             the feather at the fixture runs over the first 30% rather than 18%.
+           Peak alpha 0.2096 -> 0.1573, down 25%. Total light 705 -> 703, which
+           is to say unchanged: the same wash, just not concentrated into a
+           bright mouth. Down the panel it goes 0.143 -> 0.077 at the top and
+           0.028 -> 0.040 near the grass. */
+        var v=Math.pow(1-t,1.45)*0.20 + (1-t)*0.055;    // decay with distance
+        var sigma=(0.30+0.20*t)*W;                      // broad at the source
+        var topFeather=Math.min(1, t/0.30);             // no hard mouth at the source
         for(var x=0;x<W;x++){
           var dx=x-cx;
           /* The gaussian alone still had real alpha left when it ran out of
@@ -12124,7 +12137,7 @@ function addShedLights(){
              A raised-sine window forces a true zero at both edges while
              staying ~1 across the middle, so the beam ends because it faded,
              not because the image ran out. */
-          var win=Math.pow(Math.sin(Math.PI*(x+0.5)/W), 1.15);
+          var win=Math.pow(Math.sin(Math.PI*(x+0.5)/W), 1.35);
           var a=v*Math.exp(-(dx*dx)/(2*sigma*sigma))*topFeather*win;
           var i=(y*W+x)*4;
           img.data[i]=_wR; img.data[i+1]=_wG; img.data[i+2]=_wB;
@@ -12200,14 +12213,17 @@ function addShedLights(){
       // faint rings where the interpolation changes slope, which read as edges.
       var _pc=(typeof bulbHex==='function')?bulbHex():0xFFF3DC;
       var _pR=(_pc>>16)&255, _pG=(_pc>>8)&255, _pB=_pc&255;
-      var img=g.createImageData(128,128), c0=63.5, sg=22;
+      /* Same trade as the wall wash: the pool was a 17%-wide gaussian, which
+         is a spotlight circle on the grass. Wider and shallower reads as spill
+         from a fixture rather than a beam aimed at the lawn. */
+      var img=g.createImageData(128,128), c0=63.5, sg=30;
       for(var y=0;y<128;y++) for(var x=0;x<128;x++){
         var dx=x-c0, dy=y-c0;
         // Same treatment: taper to a hard zero at the disc edge so the plane's
         // own square boundary can never show as a faint corner.
         var r=Math.sqrt(dx*dx+dy*dy)/64;
         var rw=r>=1 ? 0 : Math.pow(Math.cos(r*Math.PI/2), 0.7);
-        var a=0.24*Math.exp(-(dx*dx+dy*dy)/(2*sg*sg))*rw;
+        var a=0.185*Math.exp(-(dx*dx+dy*dy)/(2*sg*sg))*rw;
         var i=(y*128+x)*4;
         img.data[i]=_pR; img.data[i+1]=_pG; img.data[i+2]=_pB;
         img.data[i+3]=Math.max(0,Math.min(255,a*255));
