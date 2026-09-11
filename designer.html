@@ -2323,8 +2323,17 @@ var SHED_USES = [
      threshold. They are not the same shed: the garage gets a roll-up door and
      9ft walls, the simulator gets 10ft walls, a finished interior and a
      full-lite door. Same footprint, different building. */
+  /* elec was 'standard' until Sep 2026, when that tier was retired from the
+     price sheet and this preset was not updated with it. ELEC_MAP in
+     worker/pricing.js only knows basic/core/essential, so 'standard' matched
+     nothing and the engine priced the garage with NO electrical — $10,840,
+     to the dollar the same as choosing None — while the 3D view happily lit
+     the interior because its own check still listed 'standard'. A customer
+     could have been quoted an unpowered garage and nobody would have seen it
+     until handover. Core is the successor: mid-tier then, mid-tier now, and a
+     garage with a roll-up door wants outlets and an opener. */
   {k:'garage',   name:'Detached Garage', sub:'Roll-up door, fits a car',
-   w:12, l:16, h:9,  style:'gable', elec:'standard', door:'rollup'},
+   w:12, l:16, h:9,  style:'gable', elec:'core', door:'rollup'},
 
   /* 10ft walls: 9ft is the stated minimum for a driver swing and 10ft the
      real-world standard, and ceiling is the one dimension nobody can change
@@ -2562,7 +2571,8 @@ function setShedUse(k){
       if(typeof clampPorch==='function') clampPorch();
     }
     renderUseGrid();
-  if(typeof applyRecommendations==='function') applyRecommendations();
+    if(typeof applyRecommendations==='function') applyRecommendations();
+    if(typeof syncControlsFromState==='function') syncControlsFromState();
     if(typeof buildShed==='function') buildShed();
     if(typeof updateSum==='function') updateSum();
     return;
@@ -2577,9 +2587,18 @@ function setShedUse(k){
   // and the sliders themselves, which read their own value attribute
   var _sl=document.querySelectorAll('.wstep[data-step="1"] input[type=range]');
   if(_sl.length>=3){ _sl[0].value=u.w; _sl[1].value=u.l; _sl[2].value=u.h; }
-  if(u.style) STYLE=u.style;
-  if(u.elec)  ELEC=u.elec;
-  if(u.finish && typeof INT_FINISH!=='undefined') INT_FINISH=u.finish;
+  /* Fall back to the stock build for anything this preset does not name,
+     rather than leaving whatever the last one set. Each preset is supposed to
+     be a complete starting point, and only the fields it mentions were being
+     assigned — so picking Golf Simulator (painted interior) and then changing
+     to Detached Garage left the garage painted, carrying a finish cost nobody
+     asked for on a garage. Size, style and doors were already replaced
+     wholesale on every switch; this brings the rest in line. */
+  STYLE = u.style || (STOCK_BUILD ? STOCK_BUILD.style : STYLE);
+  ELEC  = u.elec  || (STOCK_BUILD ? STOCK_BUILD.elec  : ELEC);
+  if(typeof INT_FINISH!=='undefined'){
+    INT_FINISH = u.finish || (STOCK_BUILD ? STOCK_BUILD.finish : INT_FINISH);
+  }
   if(u.door && typeof doorsData!=='undefined'){
     // one front door of the type the job implies, replacing the default
     doorsData=[{wall:'front', pos:0.5, style:u.door,
@@ -2590,6 +2609,15 @@ function setShedUse(k){
   renderUseGrid();
   if(typeof applyRecommendations==='function') applyRecommendations();
   if(typeof renderStyleTiles==='function') renderStyleTiles();
+  /* A preset assigns ELEC and INT_FINISH but the buttons that display them
+     were never told. renderStyleTiles() covered the style step, so the gap was
+     invisible there and wide open everywhere else: picking Golf Simulator set
+     Core electrical and billed $2,300 for it, while the Electrical step went
+     on showing "None" highlighted. The customer was paying for something the
+     screen told them they had not chosen. Same helper the reopened-design
+     path uses — it marks every control from current state, so a preset and a
+     restored design can no longer disagree with the panel. */
+  if(typeof syncControlsFromState==='function') syncControlsFromState();
   if(typeof buildShed==='function') buildShed();
   if(typeof updateSum==='function') updateSum();
 }
@@ -6655,7 +6683,7 @@ function buildDoor(){
     // Door glass — SAME technique AND the same tint/opacity as the windows, so a
     // glazed door reads identically to a window in the same scene. It used to be
     // noticeably denser (0.13/0.09), which made it look like a reflective panel.
-    var litInsideDoor=(ELEC==='basic'||ELEC==='standard'||ELEC==='core'||ELEC==='essential');
+    var litInsideDoor=(ELEC==='basic'||ELEC==='core'||ELEC==='essential');
     var glassMat=new THREE.MeshBasicMaterial({
       color: litInsideDoor?0xffe9c4:0xdfeaf0, transparent:true,
       opacity: litInsideDoor?0.10:0.045,
@@ -7860,7 +7888,7 @@ function buildWindows(){
     return tc;                       // unnamed (plain transoms) follow the trim
   }
   var frameCol=0x1a1a1a;
-  var litInside = (ELEC==='basic'||ELEC==='standard'||ELEC==='core'||ELEC==='essential');
+  var litInside = (ELEC==='basic'||ELEC==='core'||ELEC==='essential');
   function mkGlass(){
     // UNLIT material — lights can't hit it, so it can never blow out into a solid
     // bright pane (a lit material next to the interior light did exactly that).
@@ -8351,7 +8379,7 @@ function applyWallTransform(grp, wall, pos, widthIn){
 // through the windows and BLOCKS interior light from leaking through the shell.
 // Built whenever there's something to see inside (windows or interior lighting).
 function buildInterior(){
-  var hasInteriorLight = (ELEC==='basic'||ELEC==='standard'||ELEC==='core'||ELEC==='essential');
+  var hasInteriorLight = (ELEC==='basic'||ELEC==='core'||ELEC==='essential');
   var hasWindows = windowsData.length>0;
   /* v391 — A GLAZED DOOR IS A WAY IN, THE SAME AS A WINDOW.
      This bailed out unless there was a window, a light, a loft or shelves, so a
