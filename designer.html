@@ -3940,6 +3940,15 @@ var TRIM_FINISH='paint';        // 'paint' | 'cedar'
 /* INTERIOR FINISH — 'none' leaves the OSB and studs showing, which is what a
    bare shed looks like. Drywall covers them; paint colours them. */
 var INT_FINISH='none';          // 'none' | 'drywall' | 'painted'
+/* How deep a finished opening's return runs, measured INWARD from the wall's
+   centre plane. NEAR is the drywall's room face (sheathing 0.055 in, drywall a
+   further 0.055, plus half its 0.012 thickness); FAR stops just inside the wall
+   body so no hairline can open at the outside edge.
+   Module scope on purpose: the interior builder wraps the reveal with these and
+   the fairytale door finishes the back of its own arch infill with them, and
+   the two have to land on the same plane to the millimetre. */
+var INT_RETURN_NEAR = 0.116;
+var INT_RETURN_FAR  = 0.020;
 /* DOLLHOUSE VIEW. The interior was only ever visible through WALLS_XRAY, which
    makes the siding 22% translucent — so you saw the drywall THROUGH a ghost of
    the exterior, which reads as neither. Taking the roof off instead and leaving
@@ -6894,6 +6903,14 @@ function buildDoor(){
     var leafFace=0.026;   // leaf's outer face ~ wall outer face (flush)
 
     function darken(hex,ff){var r=((hex>>16)&255)*ff,g=((hex>>8)&255)*ff,b=(hex&255)*ff;return ((r&255)<<16)|((g&255)<<8)|(b&255);}
+    /* darken() with a factor above 1 does NOT lighten — it multiplies past 255
+       and the &255 wraps, so a near-white turns near-black. Mixing toward white
+       is the operation that actually wanted doing. */
+    function lighten(hex,amt){
+      var r=(hex>>16)&255, g=(hex>>8)&255, bl=hex&255;
+      r=Math.round(r+(255-r)*amt); g=Math.round(g+(255-g)*amt); bl=Math.round(bl+(255-bl)*amt);
+      return (r<<16)|(g<<8)|bl;
+    }
     var doorTex, dRepX, dRepY;
     /* v452 — the door face must use the WALL'S tile, not the old global. Its
        whole point is matching the wall it sits in, and with a tile per style
@@ -6996,10 +7013,21 @@ function buildDoor(){
   // hardware so it stops reading as a pair of French doors.
   var isSlider=/^slideglass/.test(String(DOOR));
   var leafMat=doorMat;
+  /* The fairytale leaf's paint colour, and the two tones derived from it. It
+     was three hard-coded near-blacks, so the door could only ever be black.
+     The panel ring stands PROUD of the leaf, so it catches light — lighter.
+     The grooves are shadow lines — darker. Deriving both from the one hex is
+     what lets white and brown work without a second table to keep in step. */
+  var ftHex   = isFairytale ? doorPaintHex(dd) : 0x121212;
+  /* Tuned so the DEFAULT black door comes out exactly the two tones it always
+     was — 0x1b1b1b and 0x0a0a0a — rather than quietly restyling every fairytale
+     door already saved. White and brown then pick up the same relative step. */
+  var ftPanel = lighten(ftHex, 0.04);
+  var ftGroove= darken(ftHex, 0.58);
   if(isFairytale){
-    // Painted black board-and-groove, not bare cedar. Flat-ish sheen. It was
-    // sharing the cedar branch, which is why it rendered as brown wood.
-    leafMat=new THREE.MeshStandardMaterial({color:0x121212, roughness:0.62, metalness:0.0});
+    // Painted board-and-groove, not bare cedar. Flat-ish sheen. It was sharing
+    // the cedar branch, which is why it rendered as brown wood.
+    leafMat=new THREE.MeshStandardMaterial({color:ftHex, roughness:0.62, metalness:0.0});
   } else if(isCedar){
     var cedTex=makeCedar(); cedTex.wrapS=cedTex.wrapT=THREE.RepeatWrapping;
     cedTex.repeat.set(2,1); cedTex.anisotropy=16;
@@ -7309,10 +7337,29 @@ function buildDoor(){
       fillM.position.set(x, 0, -0.025);                  // flush with the wall
       fillM.castShadow=true; DG.add(fillM);
 
-      /* Both arcs are always WHITE, not the Trim Color — painted white whatever
-         the shed is trimmed in. One constant, so it's a single edit if that
-         ever changes. */
-      var FT_ARCH_WHITE=0xF4F2ED;
+      /* THE ROOM SIDE OF THE SAME INFILL. From inside a finished shed the arch
+         corners were the raw back of that siding panel — a grey band round the
+         top of the doorway that no amount of drywall on the flat wall reached,
+         because the wall stops at the opening and this piece is the opening.
+         Extruded from the SAME Shape, so the finished arch cannot land anywhere
+         but exactly on the leaf's own outline, and running from the drywall's
+         room face back into the wall so the reveal round the arch is finished
+         too, not just its face. */
+      if(typeof INT_FINISH!=='undefined' && INT_FINISH!=='none'){
+        var inFillM=new THREE.Mesh(
+          new THREE.ExtrudeGeometry(fillO,{depth:INT_RETURN_NEAR-INT_RETURN_FAR, bevelEnabled:false}),
+          interiorWallMat());
+        inFillM.material.side=THREE.DoubleSide;
+        inFillM.position.set(x, 0, -INT_RETURN_NEAR);
+        DG.add(inFillM);
+      }
+
+      /* The two arcs and the field between them are the fairytale door's TRIM,
+         and trim follows the shed — same as the head, jamb and sill boards
+         every other door gets from casingMat. They used to be pinned to one
+         white constant, so an arched door on a black- or brown-trimmed shed
+         wore a white surround no other opening on the building had. */
+      var FT_ARCH_MAT=casingMat;
       function archRing(halfW, top){
         var sp=Math.max(0.05, top-halfW);
         var sh=new THREE.Shape();
@@ -7330,8 +7377,7 @@ function buildDoor(){
       var trO=archRing(rOut, dh+trGap+trW);
       trO.holes.push(archRing(rIn, dh+trGap));
       var trM=new THREE.Mesh(
-        new THREE.ExtrudeGeometry(trO,{depth:0.014,bevelEnabled:false}),
-        new THREE.MeshStandardMaterial({color:FT_ARCH_WHITE, roughness:0.6}));
+        new THREE.ExtrudeGeometry(trO,{depth:0.014,bevelEnabled:false}), FT_ARCH_MAT);
       trM.position.set(x, 0, 0.025);
       trM.castShadow=true; DG.add(trM);
 
@@ -7342,21 +7388,20 @@ function buildDoor(){
       var csO=archRing(lw/2+csW, dh+csW);
       csO.holes.push(archRing(lw/2-0.002, dh-0.002));    // right up to the leaf
       var csM=new THREE.Mesh(
-        new THREE.ExtrudeGeometry(csO,{depth:0.016,bevelEnabled:false}),
-        new THREE.MeshStandardMaterial({color:FT_ARCH_WHITE, roughness:0.6}));
+        new THREE.ExtrudeGeometry(csO,{depth:0.016,bevelEnabled:false}), FT_ARCH_MAT);
       csM.position.set(x, 0, 0.025);
       csM.castShadow=true; DG.add(csM);
 
-      /* THE FIELD BETWEEN THE ARCS IS WHITE, not siding. On a white shed the two
-         read the same — which is why the reference photo misleads — but on a
-         grey or stained shed it has to stay white or the door loses its frame.
+      /* THE FIELD BETWEEN THE ARCS IS TRIM, not siding. On a white-trimmed shed
+         the two read the same — which is why the reference photo misleads — but
+         on a grey or stained shed it has to stay trim or the door loses its
+         frame.
          Sits a touch shallower than the two arcs so they still read as raised
          lines rather than everything merging into one flat slab. */
       var gapO=archRing(lw/2+trGap+0.001, dh+trGap);
       gapO.holes.push(archRing(lw/2+csW-0.001, dh+csW));
       var gapM=new THREE.Mesh(
-        new THREE.ExtrudeGeometry(gapO,{depth:0.009,bevelEnabled:false}),
-        new THREE.MeshStandardMaterial({color:FT_ARCH_WHITE, roughness:0.62}));
+        new THREE.ExtrudeGeometry(gapO,{depth:0.009,bevelEnabled:false}), FT_ARCH_MAT);
       gapM.position.set(x, 0, 0.025);
       gapM.castShadow=true; DG.add(gapM);
 
@@ -7374,21 +7419,21 @@ function buildDoor(){
       pnO.holes.push(fairytaleShape(lw, dh, 0.012+stileW));
       var pnM=new THREE.Mesh(
         new THREE.ExtrudeGeometry(pnO,{depth:0.005,bevelEnabled:false}),
-        new THREE.MeshStandardMaterial({color:0x1b1b1b, roughness:0.62}));
+        new THREE.MeshStandardMaterial({color:ftPanel, roughness:0.62}));
       pnM.position.set(x, 0, 0.025);
       pnM.castShadow=true; DG.add(pnM);
 
       // Bottom rail across the leaf.
       var railH=7.0*FIN, leafHalf=lw/2-0.012;
       bx(leafHalf*2-0.004, railH, 0.005,
-         new THREE.MeshStandardMaterial({color:0x1b1b1b, roughness:0.62}),
+         new THREE.MeshStandardMaterial({color:ftPanel, roughness:0.62}),
          x, 0.010+railH/2, 0.0275);
 
       /* Plank grooves. Each is cut short at the arch: for a groove offset gx
          from centre the boundary is spring + sqrt(a^2 - gx^2), so they follow
          the curve instead of poking through the top of the door. */
       var aRad=lw/2-0.012, aSpr=Math.max(0.05, dh-aRad-0.012);
-      var grMat=new THREE.MeshStandardMaterial({color:0x0a0a0a, roughness:0.7});
+      var grMat=new THREE.MeshStandardMaterial({color:ftGroove, roughness:0.7});
       var gStep=5.5*FIN;
       for(var gx=-aRad+gStep; gx<aRad-0.004; gx+=gStep){
         var lim=(Math.abs(gx)<aRad) ? aSpr+Math.sqrt(Math.max(0,aRad*aRad-gx*gx)) : aSpr;
@@ -8736,6 +8781,51 @@ function buildInterior(){
   var sheathIn=0.055;   // panel center this far inside the wall center plane
   var studIn=0.095;     // studs sit proud of the sheathing, inside the room
   var studSpacing=studSpacingWorld();   // v487 — 16" or 12" OC
+  /* Is the inside actually finished? Drywall and paint both count; bare studs
+     and house wrap do not. One test, so the wall face, the framing and the
+     openings can't disagree about it. */
+  var wallFinished = (typeof INT_FINISH!=='undefined' && INT_FINISH!=='none');
+  /* OPENING RETURNS.
+     A finished wall hangs 0.055 further into the room than the sheathing it
+     replaces, so every door and window opening was left with a raw drywall edge
+     and a band of bare siding-back showing all the way round it — from inside
+     you looked straight into the wall cavity, on every shed and every door.
+     A finished opening is WRAPPED: the finish returns down both jambs, across
+     the head, and along the sill on a window.
+     Built as ONE extruded ring per opening, so the ring's inner surface IS the
+     return and its face IS the edge that laps onto the wall. Two meshes would
+     be two places to keep a dimension in step, which is the exact trap this
+     file keeps falling into. */
+  var RET_NEAR = INT_RETURN_NEAR, RET_FAR = INT_RETURN_FAR;
+  function lineOpening(f, hl){
+    var hw=hl.half, y0=Math.max(0, hl.bot), y1=hl.top;
+    if(!(y1-y0 > 0.02) || !(hw > 0.01)) return;
+    var LIP=0.6*0.2/12;                       // finish laps ~5/8in onto the wall face
+    var sh=new THREE.Shape();
+    // A door runs to the floor, so there is no sill to lap onto down there.
+    var oy0=(y0 > 0.002) ? y0-LIP : y0;
+    sh.moveTo(-hw-LIP, oy0);   sh.lineTo(hw+LIP, oy0);
+    sh.lineTo(hw+LIP, y1+LIP); sh.lineTo(-hw-LIP, y1+LIP); sh.closePath();
+    var ho=new THREE.Path();
+    ho.moveTo(-hw, y0); ho.lineTo(hw, y0); ho.lineTo(hw, y1); ho.lineTo(-hw, y1); ho.closePath();
+    sh.holes.push(ho);
+    var m=new THREE.Mesh(
+      new THREE.ExtrudeGeometry(sh, {depth:RET_NEAR-RET_FAR, bevelEnabled:false}),
+      interiorWallMat());
+    m.material.side=THREE.DoubleSide;         // the return is seen from inside the reveal
+    /* The ring occupies the slab between RET_NEAR and RET_FAR measured inward
+       along the wall's outward normal. ExtrudeGeometry always grows along its
+       own +Z, so place it at whichever END of that interval the extrusion grows
+       away from — expressed as min/max of the two ends rather than four sign
+       cases, which is how the same idea got miscounted twice before. */
+    if(f.ax==='x'){
+      m.position.set(hl.c, 0, Math.min(f.fixed-f.nz*RET_NEAR, f.fixed-f.nz*RET_FAR));
+    } else {
+      m.rotation.y=-Math.PI/2;                // local +Z -> world -X, local +X -> world +Z
+      m.position.set(Math.max(f.fixed-f.nx*RET_NEAR, f.fixed-f.nx*RET_FAR), 0, hl.c);
+    }
+    shedGroup.add(m);
+  }
   function interiorWall(wall){
     // LEAN-TO SIDE WALLS are TRAPEZOIDS (high at the front, low at the back) — the
     // exterior side is built that way in buildLeanToRoof(). Sheathing them as flat
@@ -8749,15 +8839,34 @@ function buildInterior(){
       var shpI=new THREE.Shape();
       shpI.moveTo(-l/2,0); shpI.lineTo(l/2,0);
       shpI.lineTo(l/2,backTopY); shpI.lineTo(-l/2,h); shpI.closePath();
+      /* Both kinds of opening, in one list, so the wall face and the returns
+         below are cut from the same numbers. DOORS were missing entirely: put a
+         door on a lean-to's side wall and the inside showed an unbroken sheet
+         across it — solid drywall where the doorway is. */
+      var trapHoles=[];
       windowsData.forEach(function(wdd){
         if(wdd.wall!==wall) return;
         var wz=posToAxis(wall, wdd.pos, wdd.w);
-        var sxC=-wz;                                   // world z -> shape x (see sideTrap)
         var hw=(wdd.w*0.2/12)/2, hh=(wdd.h*0.2/12)/2;
         var cy=(wdd.cy!=null?wdd.cy:52)*0.2/12;
+        trapHoles.push({c:wz, half:hw, bot:cy-hh, top:cy+hh});
+      });
+      doorsData.forEach(function(ddd){
+        if(ddd.wall!==wall) return;
+        var dz=posToAxis(wall, ddd.pos, ddd.w);
+        // The wall's top slopes, so clamp the head to the roof line above THIS
+        // door rather than to a single wall height that only the front has.
+        var topHere = backTopY + ((dz + l/2)/l)*(h - backTopY);
+        var dTop=Math.min(ddd.h*0.2/12, topHere-0.12);
+        // Leave a sliver of wall under the door: a hole that touches the shape's
+        // own boundary triangulates badly, and the floor deck hides it anyway.
+        if(dTop > 0.02) trapHoles.push({c:dz, half:(ddd.w*0.2/12)/2, bot:0.004, top:dTop});
+      });
+      trapHoles.forEach(function(hl){
+        var sxC=-hl.c;                                 // world z -> shape x (see sideTrap)
         var hole=new THREE.Path();
-        hole.moveTo(sxC-hw,cy-hh); hole.lineTo(sxC+hw,cy-hh);
-        hole.lineTo(sxC+hw,cy+hh); hole.lineTo(sxC-hw,cy+hh); hole.closePath();
+        hole.moveTo(sxC-hl.half,hl.bot); hole.lineTo(sxC+hl.half,hl.bot);
+        hole.lineTo(sxC+hl.half,hl.top); hole.lineTo(sxC-hl.half,hl.top); hole.closePath();
         shpI.holes.push(hole);
       });
       var g=new THREE.ShapeGeometry(shpI);
@@ -8774,7 +8883,7 @@ function buildInterior(){
          seg() and studsVisible: drywall REPLACES the sheathing face rather
          than covering it, it hangs a stud-depth further into the room, and the
          studs stop being drawn once it is up. */
-      var trapFinished = (typeof INT_FINISH!=='undefined' && INT_FINISH!=='none');
+      var trapFinished = wallFinished;   // one test for the whole interior
       var mTrap=new THREE.Mesh(g, trapFinished
         ? interiorWallMat()
         : osbMat(Math.max(1,l/0.5), Math.max(1,h/0.5)));
@@ -8784,6 +8893,10 @@ function buildInterior(){
       mTrap.position.set(xIn + (trapFinished ? ((wall==='left') ? 0.055 : -0.055) : 0), 0, 0);
       mTrap.rotation.y = Math.PI/2;
       shedGroup.add(mTrap);
+      // Same wrapped reveal the rectangular walls get. wallFrame() describes a
+      // lean-to side wall correctly for this purpose — only the TOP edge slopes,
+      // and no opening reaches it.
+      if(trapFinished) trapHoles.forEach(function(hl){ lineOpening(wallFrame(wall), hl); });
 
       // Studs, each trimmed to the sloped top at its own Z position.
       var xS = (wall==='left') ? (-w/2 + studIn) : (w/2 - studIn);
@@ -8834,7 +8947,7 @@ function buildInterior(){
       if(f.ax==='x'){ px=ac; pz=f.fixed - f.nz*sheathIn; sx=segLen; sz=0.012; }
       else { px=f.fixed - f.nx*sheathIn; pz=ac; sx=0.012; sz=segLen; }
       // Finished walls replace the OSB face entirely — that's what drywall is.
-      var finished = (typeof INT_FINISH!=='undefined' && INT_FINISH!=='none');
+      var finished = wallFinished;
       var _im = finished
         ? interiorWallMat()
         : (wrapOn?wrapMat():osbMat(Math.max(1,segLen/0.5), Math.max(1,segH/0.5)));
@@ -8885,6 +8998,9 @@ function buildInterior(){
         if(endLen>0.001) seg(endLen, bH, axisStart+u*(cursor+endLen/2), bMid);
       }
     }
+    // Wrap each opening's reveal. Only once the wall is finished — a bare-stud
+    // shed is meant to show its framing, and the cavity edge IS the product.
+    if(wallFinished) holes.forEach(function(hl){ lineOpening(f, hl); });
     // 16" OC STUDS in front of the sheathing, skipping openings. Height follows the
     // wall's TRUE height, so the lean-to's short back wall doesn't grow studs that
     // spear up through the sloped roof.
@@ -8892,7 +9008,7 @@ function buildInterior(){
     // Drywall covers the framing — leaving studs standing in front of a finished
     // wall is the giveaway that the finish is only skin deep. Skip them once the
     // walls are hung; the sheathing layer above is doing the job now.
-    var studsVisible = !(typeof INT_FINISH!=='undefined' && INT_FINISH!=='none');
+    var studsVisible = !wallFinished;
     var sPos=0.1;
     while(studsVisible && sPos<=L_-0.1){
       var inHole=holes.some(function(hl){ return sPos>hl.local-hl.half-0.02 && sPos<hl.local+hl.half+0.02; });
@@ -8954,7 +9070,7 @@ function buildInterior(){
      shell, so this puts a real ceiling in and returns before any of it runs.
      Lean-to's flat ceiling comes off the back wall height like its walls do,
      so the lid sits where the low wall stops rather than at the front. */
-  if(typeof INT_FINISH!=='undefined' && INT_FINISH!=='none'){
+  if(wallFinished){
     var dcY = (STYLE==='leanto')
       ? ((typeof LEAN_BACK_H!=='undefined' && LEAN_BACK_H>0) ? LEAN_BACK_H : h*0.7)
       : h;
@@ -9060,7 +9176,7 @@ function buildInterior(){
       var tri=new THREE.Shape();
       tri.moveTo(-w/2+0.03, 0); tri.lineTo(w/2-0.03, 0); tri.lineTo(0, rh-0.05); tri.closePath();
       var tg=new THREE.Mesh(new THREE.ShapeGeometry(tri),
-        (typeof INT_FINISH!=='undefined' && INT_FINISH!=='none') ? interiorWallMat() : osbMat(2,2));
+        wallFinished ? interiorWallMat() : osbMat(2,2));
       tg.position.set(0, h, gdir*(l/2-0.05));
       shedGroup.add(tg);
     }
@@ -9134,7 +9250,7 @@ function buildInterior(){
       btri.lineTo(0, bRY-h);     btri.lineTo(bKX, bKY-h);
       btri.lineTo(w/2-0.03, 0);  btri.closePath();
       var btg=new THREE.Mesh(new THREE.ShapeGeometry(btri),
-        (typeof INT_FINISH!=='undefined' && INT_FINISH!=='none') ? interiorWallMat() : osbMat(2,2));
+        wallFinished ? interiorWallMat() : osbMat(2,2));
       btg.position.set(0, h, bd*(l/2-0.05));
       shedGroup.add(btg);
     }
@@ -10126,10 +10242,17 @@ function addDoorByStyle(style, w, h){
      && doorsData[selectedDoor].wall===wall){
     var dd=doorsData[selectedDoor];
     dd.style=style; if(w){ dd.w=w; dd.h=h||dd.h; }
-    // Stock finish when a door becomes a roll-up; drop the field entirely when
-    // it stops being one, so a residential door never carries a curtain colour
-    // into the saved config or the quote.
-    if(style==='rollup'){ if(!dd.color) dd.color='white'; } else { delete dd.color; }
+    /* Stock finish when a door becomes one that HAS a finish; drop the field
+       entirely when it stops being one, so a residential door never carries a
+       colour into the saved config or the quote. Swapping BETWEEN two coloured
+       styles keeps the key if the new style offers it — brown is brown, and the
+       customer chose it — and falls back to the new style's own default only
+       when it doesn't (the defaults differ: a roll-up is white, a fairytale is
+       black). Note dd.style was already reassigned above, so this must read
+       `style`, not dd.style. */
+    var _ns=DOOR_COLOR_SETS[style];
+    if(_ns){ if(!_ns.opts.some(function(o){return o.k===dd.color;})) dd.color=_ns.dflt; }
+    else delete dd.color;
     buildShed(); renderPlacedDoors(); syncEditorPanel(); closeSubPage();
     return;
   }
@@ -10178,7 +10301,11 @@ function addDoorByStyle(style, w, h){
     showToast(noRoomMessage(wall, (w||60), dProbe));
     return;
   }
-  doorsData.push({wall:wall, pos:slot, style:style, w:w||60, h:h||76});
+  var _nd={wall:wall, pos:slot, style:style, w:w||60, h:h||76};
+  // Record the finish the door is actually going to render in, rather than
+  // leaving the field off and relying on every reader to re-derive the default.
+  if(DOOR_COLOR_SETS[style]) _nd.color=DOOR_COLOR_SETS[style].dflt;
+  doorsData.push(_nd);
   var n=doorsData.filter(function(d){return d.wall===wall;}).length;
   buildShed(); renderPlacedDoors(); closeSubPage();
   if(n>1) showToast('Added a second door to the '+wall+' wall. Drag it to move it.');
@@ -10230,24 +10357,60 @@ function doorCatFor(dd){
    to a single (or a roll-up, cedar, residential...), the styles for the current
    size inline for a quick swap, and a Remove at the bottom. Picking any style
    swaps the selected door in place, which addDoorByStyle already handles. */
-/* Roll-up curtain colours. These are finishes on the same door, so they live
-   on the placed door as dd.color rather than as separate door STYLES — a style
-   change swaps the product, a colour change does not, and the price sheet
-   keys roll-ups by width alone.
-   White is the stock finish; black and brown carry a $100 finish upcharge each
-   (worker/pricing.js, ROLLUP_COLOR_UPCHARGE) — keep the two in step. */
-var ROLLUP_COLORS = [
-  {k:'white', name:'Glossy White', hex:0xF1F1EE, up:0},
-  {k:'black', name:'Black',        hex:0x1E1E1E, up:100},
-  {k:'brown', name:'Brown',        hex:0x4A3B2E, up:100}
-];
-function rollupColorHex(dd){
-  var k=String((dd&&dd.color)||'white').toLowerCase();
-  for(var i=0;i<ROLLUP_COLORS.length;i++) if(ROLLUP_COLORS[i].k===k) return ROLLUP_COLORS[i].hex;
-  return ROLLUP_COLORS[0].hex;
+/* PAINTED-FINISH COLOURS, by door style. These are finishes on the same door,
+   so they live on the placed door as dd.color rather than as separate door
+   STYLES — a style change swaps the product, a colour change does not, and the
+   price sheet keys these doors by width alone.
+
+   Keyed by style because the product differs — a roll-up has a glossy steel
+   curtain, the fairytale is a painted wood leaf — but the three KEYS are
+   deliberately identical, so dd.color means one thing everywhere and a saved
+   design reads back the same whichever door carries it.
+
+   Money: roll-up black and brown carry a $100 finish upcharge each
+   (worker/pricing.js, ROLLUP_COLOR_UPCHARGE) — keep the two in step. The
+   fairytale's are paint on a wood door the price sheet already covers, so they
+   are included; rollUpColorUpcharge() gates on the style, so nothing here can
+   bill them by accident.
+
+   Defaults differ ON PURPOSE. A roll-up has always been white and a fairytale
+   has always been black, and designs already saved carry no dd.color at all —
+   so each style falls back to the colour it has always rendered as, and no
+   existing design changes appearance. */
+var DOOR_COLOR_SETS = {
+  rollup: {label:'Curtain color', dflt:'white', opts:[
+    {k:'white', name:'Glossy White', hex:0xF1F1EE, up:0},
+    {k:'black', name:'Black',        hex:0x1E1E1E, up:100},
+    {k:'brown', name:'Brown',        hex:0x4A3B2E, up:100}
+  ]},
+  fairytale: {label:'Door color', dflt:'black', opts:[
+    {k:'white', name:'White', hex:0xF1EFEA, up:0},
+    {k:'black', name:'Black', hex:0x121212, up:0},
+    {k:'brown', name:'Brown', hex:0x4A3B2E, up:0}
+  ]}
+};
+// Kept as a name because the roll-up UI and tests already read it; it is the
+// same array, not a copy, so the two can't drift.
+var ROLLUP_COLORS = DOOR_COLOR_SETS.rollup.opts;
+function doorColorSet(dd){ return DOOR_COLOR_SETS[String(dd&&dd.style)] || null; }
+// The key actually in force: the door's own, or the style's default, and never
+// a key the style doesn't offer.
+function doorColorKey(dd){
+  var st=doorColorSet(dd); if(!st) return null;
+  var k=String((dd&&dd.color)||st.dflt).toLowerCase();
+  for(var i=0;i<st.opts.length;i++) if(st.opts[i].k===k) return k;
+  return st.dflt;
 }
-function setRollupColor(i, k){
-  if(!doorsData[i] || doorsData[i].style!=='rollup') return;
+function doorPaintHex(dd){
+  var st=doorColorSet(dd); if(!st) return 0xF1F1EE;
+  var k=doorColorKey(dd);
+  for(var i=0;i<st.opts.length;i++) if(st.opts[i].k===k) return st.opts[i].hex;
+  return st.opts[0].hex;
+}
+// The roll-up builder's old name. One lookup, so a colour can't mean two things.
+function rollupColorHex(dd){ return doorPaintHex(dd); }
+function setDoorColor(i, k){
+  if(!doorsData[i] || !doorColorSet(doorsData[i])) return;
   doorsData[i].color=k;
   buildShed();
   if(typeof updateSum==='function') updateSum();
@@ -10255,6 +10418,8 @@ function setRollupColor(i, k){
   if(typeof openOptionsForSelectedDoor==='function' && selectedDoor===i) openOptionsForSelectedDoor();
   else if(typeof renderPlacedDoors==='function') renderPlacedDoors();
 }
+// Old name, kept so nothing that still calls it breaks.
+function setRollupColor(i, k){ setDoorColor(i, k); }
 
 function doorEditHTML(i){
   var dd=doorsData[i], ci=doorCatFor(dd);
@@ -10271,14 +10436,19 @@ function doorEditHTML(i){
         'Editing the <b style="color:var(--w)">'+(names[dd.style]||dd.style)+'</b> on the '+dd.wall+' wall. '+
         'Drag it in the 3D view to move it.</div>';
 
-  /* Curtain colour. Only a roll-up has one — every other style takes its
-     colour from the siding and trim, which the walls already pay for. */
-  if(dd.style==='rollup'){
-    h+='<span class="lbl">Curtain color</span><div class="tgrid" style="margin-bottom:16px">';
-    ROLLUP_COLORS.forEach(function(rc2){
-      var on=(String(dd.color||'white')===rc2.k);
+  /* Painted colour. The roll-up curtain and the fairytale leaf are the two
+     doors that come in a finish of their own; every other style takes its
+     colour from the siding and trim, which the walls already pay for. Driven
+     off DOOR_COLOR_SETS so the label, the swatches, the tick and the price all
+     come from the one table — the door itself renders from the same one. */
+  var _cs=doorColorSet(dd);
+  if(_cs){
+    var _ck=doorColorKey(dd);
+    h+='<span class="lbl">'+_cs.label+'</span><div class="tgrid" style="margin-bottom:16px">';
+    _cs.opts.forEach(function(rc2){
+      var on=(_ck===rc2.k);
       var pr = PRICE_LOCKED ? '' : (rc2.up>0 ? ('+'+priceTag(rc2.up)) : 'Included');
-      h+='<div class="tile'+(on?' on':'')+'" onclick="setRollupColor('+i+',\''+rc2.k+'\')">'+
+      h+='<div class="tile'+(on?' on':'')+'" onclick="setDoorColor('+i+',\''+rc2.k+'\')">'+
          '<div class="tile-img" style="background:#'+rc2.hex.toString(16).padStart(6,'0')+
            ';aspect-ratio:auto;height:56px;border-radius:6px"></div>'+
          '<div class="tile-cap"><div class="tile-name">'+rc2.name+'</div>'+
@@ -10360,6 +10530,17 @@ function renderPlacedDoors(){
                 "rollup" to the customer. */
              rollup:'Roll-Up Garage Door',
              slideglass:'Sliding Glass Door (White)',slideglassB:'Sliding Glass Door (Black)'};
+  /* The colour on the row. Two door styles come in three finishes now, and a
+     row that reads only "3' Fairytale · front" hides which one was picked —
+     the one thing you'd want to spot before sending the quote. The style's own
+     default is left unsaid, matching doorColorLabel() in worker/pricing.js so
+     the row and the quote line say the same thing. */
+  function colorSuffix(dd){
+    var st=doorColorSet(dd); if(!st) return '';
+    var k=doorColorKey(dd); if(k===st.dflt) return '';
+    var o=st.opts.filter(function(x){return x.k===k;})[0];
+    return o ? (' &middot; '+o.name) : '';
+  }
   var html='';
   doorsData.forEach(function(dd,i){
     /* Roll-ups come in 6/7/8ft and this ladder stopped at 6ft, so a 96in
@@ -10369,7 +10550,7 @@ function renderPlacedDoors(){
                                   : (dd.w<=38?"3'":(dd.w<=64?"5'":"6'"));
     var sel=(selectedKind==='door' && selectedDoor===i);
     html+='<div class="placed-row" onclick="editDoorIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+szl+' '+(names[dd.style]||dd.style)+' &middot; '+dd.wall+
+      '<span>'+szl+' '+(names[dd.style]||dd.style)+colorSuffix(dd)+' &middot; '+dd.wall+
       (dd.awning?' <span style="color:var(--blue);font-size:10px">&middot; overhang</span>':'')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
       '<span class="placed-x" onclick="event.stopPropagation();removeDoorIdx('+i+')">&times;</span></div>';
