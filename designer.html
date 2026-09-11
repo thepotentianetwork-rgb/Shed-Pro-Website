@@ -2398,7 +2398,11 @@ var SHED_USES = [
    /* No loft, and this one is not a cost decision. The 10ft walls exist so a
       driver clears the ceiling; hanging a loft in here would undo the single
       reason this preset is not just a shed. */
-   loft:'none', roofType:'shingle', scheme:'charwhite'},
+   /* Was charwhite, which is gone now the list is four. Black on Black is the
+      nearest thing in what remains and arguably the better fit anyway: a
+      simulator is a dark room by function, and the white full-lite door gives
+      the contrast the charcoal scheme was providing. */
+   loft:'none', roofType:'shingle', scheme:'blackblack'},
 
   /* No preset at all. This one only records the choice and leaves the shed on
      its defaults — applying a "custom" preset would be a contradiction, and
@@ -10458,6 +10462,11 @@ var WALL_COLORS=[
    reads correctly against the metal palette.
 --------------------------------------------------------------------------- */
 var COLOR_SCHEMES = [
+  /* Four, not eight. Eight was a palette to work through; four is a set of
+     choices, and these are the four that actually get asked for. Adding one
+     back is a row in this table — the picker, the reframing and the "is a
+     scheme still current" check all read from it. */
+
   /* The modern-farmhouse default, and the one people arrive already wanting:
      white on white with a black roof for the line at the eaves. */
   {k:'whitewhite', name:'White on White',   sub:'Modern farmhouse',
@@ -10469,28 +10478,10 @@ var COLOR_SCHEMES = [
   {k:'grayblack',  name:'Gray + Black',     sub:'Sharper, contemporary',
    s:0x6E7377, sName:'Gray',       t:0x1A1A1A, tName:'Black',     r:0x28282A, rName:'Black Asphalt', win:'Black'},
 
-  /* Charcoal body with white trim is what most of the shed-as-studio and
-     backyard-office builds look like right now. High contrast, reads
-     expensive, hides dust and grass spatter along the bottom course. */
-  {k:'charwhite',  name:'Charcoal + White', sub:'Studio, high contrast',
-   s:0x3C3F43, sName:'Charcoal',   t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
-
   /* Monochrome. Bold, and the one that most needs seeing in 3D before
      committing — which is exactly what this tool is for. */
   {k:'blackblack', name:'Black on Black',   sub:'Bold, monochrome',
-   s:0x1A1A1A, sName:'Black',      t:0x1A1A1A, tName:'Black',     r:0x28282A, rName:'Black Asphalt', win:'Black'},
-
-  {k:'navywhite',  name:'Navy + White',     sub:'Deep, without black',
-   s:0x2C3E52, sName:'Navy',       t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
-
-  {k:'sagewhite',  name:'Sage + White',     sub:'Warm, garden-friendly',
-   s:0x7C8A6E, sName:'Sage',       t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
-
-  /* Light body, dark trim — the inverse of Charcoal + White and a softer way
-     to the same contrast. Warm grey roof rather than black so the roof is not
-     the darkest thing on the building twice over. */
-  {k:'ltgraychar', name:'Light Gray + Charcoal', sub:'Softer contrast',
-   s:0xC8CBCE, sName:'Light Gray', t:0x3C3F43, tName:'Charcoal',  r:0x44413C, rName:'Gray Asphalt', win:'Black'}
+   s:0x1A1A1A, sName:'Black',      t:0x1A1A1A, tName:'Black',     r:0x28282A, rName:'Black Asphalt', win:'Black'}
 ];
 
 /* Re-frames the windows already on the shed to match the trim. Only the vinyl
