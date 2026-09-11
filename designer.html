@@ -4030,33 +4030,25 @@ function flooringVisible(){
   try{ return /[?&#]flooring=1(?![0-9])/.test(String(location.search)+String(location.hash)); }
   catch(e){ return false; }
 }
-var FLOOR='none';               // 'none' | 'good' | 'better' | 'best'
-/* Customer-facing only. What actually goes down — coats of enamel, plank
-   thickness, wear layer, vapour barrier — is install spec and stays on the
-   server side of the fence with the costs; none of it belongs in page source.
-   `blurb` is a function because the Sealed Floor is a different product on
-   plywood than it is on concrete, and the card has to say which one you are
-   buying. */
+var FLOOR='none';               // 'none' | 'better' | 'best'
+/* Customer-facing only. What actually goes down — plank thickness, wear
+   layer, vapour barrier — is install spec and stays on the server side of the
+   fence with the costs; none of it belongs in page source.
+
+   NO SEALED / PAINTED TIER. Sealing a floor is already sold, one step earlier,
+   as the Foundation step's Stained & Sealed Coating. Offering it here as well
+   meant two prices for one job ($300 there, $290 here) and nothing stopping a
+   customer buying both — $590 to seal one slab, on two lines of the same
+   quote. This page is for the thing the Foundation step does not cover: plank
+   over whatever the shed stands on. */
 var FLOOR_TIERS = [
   {k:'none',   tier:'',       name:'Standard Floor',
-   blurb:function(slab){ return slab ? 'Broom-finish concrete, as poured.'
-                                     : 'Bare \u00be\u2033 tongue-and-groove subfloor.'; }},
-  {k:'good',   tier:'Good',   name:'Sealed Floor',
-   blurb:function(slab){ return slab ? 'Sealed concrete that resists stains, oil, and dust.'
-                                     : 'Durable painted floor that sweeps clean and resists stains.'; }},
+   blurb:'Bare \u00be\u2033 tongue-and-groove subfloor, or the concrete as poured.'},
   {k:'better', tier:'Better', name:'Luxury Vinyl Plank',
-   blurb:function(){ return 'Waterproof rigid-core planks with a real wood look, built for hot summers and freezing winters. Includes baseboard and door transition.'; }},
+   blurb:'Waterproof rigid-core planks with a real wood look, built for hot summers and freezing winters. Includes baseboard and door transition.'},
   {k:'best',   tier:'Best',   name:'Premium Luxury Vinyl Plank',
-   blurb:function(){ return 'Thicker planks with a heavy-duty wear layer and a quieter, more solid feel underfoot. Best for offices, studios, and high-traffic spaces. Includes baseboard and door transition.'; }}
+   blurb:'Thicker planks with a heavy-duty wear layer and a quieter, more solid feel underfoot. Best for offices, studios, and high-traffic spaces. Includes baseboard and door transition.'}
 ];
-/* Multiply a hex colour toward black. There is a darken() nested inside the
-   door builder, but it is local to that function and this is a different file
-   region — one small top-level helper beats reaching into another closure or
-   copying four lines of bit-shifting a second time. */
-function darkenHex(hex, f){
-  var r=Math.round(((hex>>16)&255)*f), g=Math.round(((hex>>8)&255)*f), b=Math.round((hex&255)*f);
-  return (Math.min(255,r)<<16)|(Math.min(255,g)<<8)|Math.min(255,b);
-}
 function floorOnSlab(){
   return (typeof FOUNDATION!=='undefined' && (FOUNDATION==='pad' || FOUNDATION==='existing'));
 }
@@ -4254,11 +4246,15 @@ function setIntFinish(v,el){
    A drill-in page, like the stain colours and the porch styles, because each
    tier carries a sentence of copy and four of those do not fit on the step. */
 function flooringPageHTML(){
-  var slab=floorOnSlab();
   var area=floorAreaSqft();
   var h='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">'+
-    'Priced for this shed\u2019s '+area+' sq ft of floor. Every option works on '+
-    'a wood floor or a concrete pad, and costs the same on either.</div>';
+    'Priced for this shed\u2019s '+area+' sq ft of floor. Plank goes down over a '+
+    'wood floor or a concrete pad, and costs the same on either.'+
+    /* Point at the step that DOES sell sealing rather than pretending it isn't
+       a thing — someone on a pad who wants a sealed floor should be sent one
+       step back, not left thinking we don't offer it. */
+    (floorOnSlab() ? ' Sealing or staining the concrete itself is on the Foundation step.' : '')+
+    '</div>';
   h+='<div class="optstack">';
   FLOOR_TIERS.forEach(function(t){
     var on=(FLOOR===t.k);
@@ -4272,7 +4268,7 @@ function flooringPageHTML(){
        '</span>'+
        '<span style="font-size:12px;font-weight:800;white-space:nowrap;color:'+(on?'#8fe3ff':'var(--mu)')+'">'+tag+'</span></div>'+
        '<div style="font-size:11px;color:var(--mu);margin-top:3px;font-weight:600;line-height:1.3;white-space:normal">'+
-         t.blurb(slab)+'</div>';
+         t.blurb+'</div>';
     /* Two notes that inform without blocking. Neither hides an option or
        changes a price — a customer who wants plank in a garage can have it,
        they just get told what it is rated for. */
@@ -4287,6 +4283,7 @@ function flooringPageHTML(){
 }
 function openFlooringPage(){ openSubPage('Flooring', flooringPageHTML()); }
 function setFloor(k){
+  if(!FLOOR_TIERS.some(function(t){return t.k===k;})) k='none';
   FLOOR=k;
   buildShed();
   syncFlooringUI();
@@ -8177,16 +8174,10 @@ function buildFloor(){
       if(scf) fHex=parseInt(scf.hex.slice(1),16);
     }
     var stained=(ourPour && typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none');
-    /* SEALED CONCRETE. Same slab, two coats of clear sealer: it darkens a
-       little and it stops being chalky. Deliberately keeps the stain colour
-       if one was bought, because sealer over stain is what actually happens —
-       it doesn't paint over it. */
-    if(floorTier==='good') mat=new THREE.MeshStandardMaterial({color:darkenHex(fHex,0.88), roughness:0.34, metalness:0.02});
-    else mat=new THREE.MeshStandardMaterial({color:fHex, roughness:(stained?0.5:0.95), metalness:0.0});
-  } else if(floorTier==='good'){
-    // PAINTED PLYWOOD. Two coats of porch-and-floor enamel: solid satin grey,
-    // no grain left showing through.
-    mat=new THREE.MeshStandardMaterial({color:0x8E9295, roughness:0.42, metalness:0.0});
+    /* Sealing the slab is the Foundation step's Stained & Sealed Coating, and
+       it is already drawn from FOUNDATION_STAIN above — there is deliberately
+       no second sealed tier here to render. */
+    mat=new THREE.MeshStandardMaterial({color:fHex, roughness:(stained?0.5:0.95), metalness:0.0});
   } else {
     var ft=makeOSBFloor(); ft.repeat.set(Math.max(1,Math.round(w/0.8)), Math.max(1,Math.round(l/0.8)));
     mat=new THREE.MeshStandardMaterial({map:ft, roughness:1.0, metalness:0.0});
@@ -13240,7 +13231,12 @@ function applyDesignConfig(c){
        it for a browser that asked to see the feature. Otherwise it reads as
        Standard — a preview link forwarded to a customer must not put an
        upgrade on their design or their quote. */
-    if(c.floor && flooringVisible())FLOOR=c.floor; else FLOOR='none';
+    /* Validated against the tier list, not just copied. A preview link saved
+       while the sealed tier briefly existed carries floor:'good', which is no
+       longer a thing we sell — it reads as Standard rather than as a tier the
+       picker can't show and the server won't price. */
+    FLOOR = (c.floor && flooringVisible() && FLOOR_TIERS.some(function(t){return t.k===c.floor;}))
+          ? c.floor : 'none';
     // Missing on old permalinks (added after they were generated) reads as
     // "no add-ons selected" rather than throwing — same "missing = leave
     // default" treatment every other field here already gets.
