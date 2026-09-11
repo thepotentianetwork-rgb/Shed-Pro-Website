@@ -9740,8 +9740,12 @@ var DOOR_SIZES=[
   {cat:'sliding',  section:'residential', name:'Sliding Glass Door', w:70, kind:'residential',
     styles:[['slideglass',"6' Slider \u00b7 White Vinyl",80,70],
             ['slideglassB',"6' Slider \u00b7 Black Vinyl",80,70]]},
-  {cat:'garage',   section:'garage', name:'Roll-Up Garage', w:72, kind:'rollup',
-    styles:[['rollup',"6' Roll Up",84,72],['rollup',"7' Roll Up",84,84],['rollup',"8' Roll Up",84,96]]},
+  {cat:'garage',   section:'garage', name:'Roll-Up Garage Door', w:72, kind:'rollup',
+    /* The section above already says "Roll-Up Garage Doors", so the sizes only
+       carry the size — repeating the full name three times is noise on a tile.
+       These are display strings; the price lookup goes through style+'@'+width
+       (doorUpcharge), never through this label. */
+    styles:[['rollup',"6' Roll-Up",84,72],['rollup',"7' Roll-Up",84,84],['rollup',"8' Roll-Up",84,96]]},
   {cat:'cedar',    section:'custom', name:'Cedar Double', w:60, kind:'cedar',
     styles:[['cedar','5\' Cedar',76,60],['cedar','6\' Cedar',76,72],['cedar','7\' Cedar',84,84],['cedar','8\' Cedar',84,96]]},
   {cat:'fairytale',section:'custom', name:'Fairytale Entry', w:36, kind:'fairytale',
@@ -9755,7 +9759,7 @@ function doorUpcharge(style, w){
   var v = dp && dp[style+'@'+w];
   return v!=null ? v : 0;
 }
-var DOOR_SECTIONS=[['single','Single Doors'],['double','Double Doors'],['residential','Residential Doors'],['garage','Garage Doors'],['custom','Custom Doors']];
+var DOOR_SECTIONS=[['single','Single Doors'],['double','Double Doors'],['residential','Residential Doors'],['garage','Roll-Up Garage Doors'],['custom','Custom Doors']];
 var openDoorCat=null;
 
 // Rich door-style icons matching the reference (single vs double aware).
@@ -10152,6 +10156,10 @@ function doorEditHTML(i){
   var names={basic:'Standard',craftsman:'Craftsman',xtrim:'X-Trim',arch:'Arch',panel4:'4-Panel',
              cedar:'Cedar',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
              resDouble:'Residential Double (6-Panel)',resDoubleFull:'Residential Double (Full Lite · White)',resDoubleFullB:'Residential Double (Full Lite · Black)',
+             /* rollup was missing from this map entirely, so both places that
+                read it fell through to the raw key and showed the word
+                "rollup" to the customer. */
+             rollup:'Roll-Up Garage Door',
              slideglass:'Sliding Glass Door (White)',slideglassB:'Sliding Glass Door (Black)'};
   var h='<div style="font-size:12px;color:var(--mu);margin-bottom:10px">'+
         'Editing the <b style="color:var(--w)">'+(names[dd.style]||dd.style)+'</b> on the '+dd.wall+' wall. '+
@@ -10241,10 +10249,18 @@ function renderPlacedDoors(){
   var names={basic:'Standard',craftsman:'Craftsman',xtrim:'X-Trim',arch:'Arch',panel4:'4-Panel',
              cedar:'Cedar',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
              resDouble:'Residential Double (6-Panel)',resDoubleFull:'Residential Double (Full Lite · White)',resDoubleFullB:'Residential Double (Full Lite · Black)',
+             /* rollup was missing from this map entirely, so both places that
+                read it fell through to the raw key and showed the word
+                "rollup" to the customer. */
+             rollup:'Roll-Up Garage Door',
              slideglass:'Sliding Glass Door (White)',slideglassB:'Sliding Glass Door (Black)'};
   var html='';
   doorsData.forEach(function(dd,i){
-    var szl=dd.w<=38?"3'":(dd.w<=64?"5'":"6'");
+    /* Roll-ups come in 6/7/8ft and this ladder stopped at 6ft, so a 96in
+       roll-up listed itself as a 6-footer. Same widths the server maps in
+       sellDoorName, so the row and the quote line agree. */
+    var szl=(dd.style==='rollup') ? (dd.w<=76?"6'":dd.w<=90?"7'":"8'")
+                                  : (dd.w<=38?"3'":(dd.w<=64?"5'":"6'"));
     var sel=(selectedKind==='door' && selectedDoor===i);
     html+='<div class="placed-row" onclick="editDoorIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
       '<span>'+szl+' '+(names[dd.style]||dd.style)+' &middot; '+dd.wall+
