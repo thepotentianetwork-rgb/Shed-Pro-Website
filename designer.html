@@ -2381,12 +2381,20 @@ var SHED_USES = [
   {k:'golfsim',  name:'Golf Simulator',  sub:'10 ft walls for a full swing',
    w:12, l:16, h:10, style:'gable', elec:'core', door:'resfull', finish:'painted',
    foundation:'pad',
-   /* ONE high transom, and deliberately not a window at eye level. A simulator
-      is a projection screen: side light washes the image and a window facing
-      the hitting bay puts glare exactly where the ball flight is read. A 5x10
-      transom up at 90 inches gives daylight off the ceiling without putting
-      any of it on the screen. */
-   windows:[ {wall:'back', pos:0.5, w:60, h:10, cy:90, type:'White Transom 5x10'} ],
+   /* ONE high transom, on a SIDE wall at the door end — and nothing at all on
+      the back.
+      The back wall is where the screen goes. A window there is behind the
+      screen: it lets in no usable light, and it leaks light onto the back of
+      the very surface being projected onto. The first version of this preset
+      put it exactly there, which was wrong.
+      Sitting it on the left wall at pos 0.25 puts it behind the golfer rather
+      than down the projection path, and 90 inches up keeps the daylight off
+      the screen and out of eye line while a driver swings under it.
+      pos BELOW 0.5 is the front half on a side wall — checked, not assumed:
+      the front wall sits at z +1.6 and the back at -1.6, and posToAxis puts
+      0.25 at z +0.49. Raising this number walks the window back toward the
+      screen, which is the one direction it must not go. */
+   windows:[ {wall:'left', pos:0.25, w:60, h:10, cy:90, type:'White Transom 5x10'} ],
    /* No loft, and this one is not a cost decision. The 10ft walls exist so a
       driver clears the ceiling; hanging a loft in here would undo the single
       reason this preset is not just a shed. */
