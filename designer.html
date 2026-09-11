@@ -788,6 +788,11 @@ textarea.inp{resize:vertical}
             <div class="pitch-btn int-btn" data-int="drywall" onclick="setIntFinish('drywall',this)">Drywall &amp; Mud</div>
             <div class="pitch-btn int-btn" data-int="painted" onclick="setIntFinish('painted',this)">Drywall, Mud &amp; Paint</div>
           </div>
+          <div id="flooringWrap" style="display:none;margin-top:14px">
+            <span class="lbl">Flooring</span>
+            <div class="wstep-sub" style="margin-bottom:6px">Finished floor over the subfloor or the slab.</div>
+            <div id="flooringBtn" class="pitch-btn" onclick="openFlooringPage()"></div>
+          </div>
           <div id="insideViewBtn" class="pitch-btn" style="margin-top:10px"
                onclick="setInsideView(!INSIDE_VIEW)">Step inside</div>
           <div id="insideHint" class="wstep-sub" style="display:none;margin-top:6px">
@@ -2226,6 +2231,7 @@ function init(){
   if(typeof renderDormerUI==='function') renderDormerUI();
   // Interior tier is keyed to W x D, so the label has to follow the size.
   if(typeof syncIntFinishUI==='function') syncIntFinishUI();
+  if(typeof syncFlooringUI==='function') syncFlooringUI();
   document.querySelectorAll('[data-icon^="style-"]').forEach(function(el){
     el.innerHTML=shedStyleIcon(el.getAttribute('data-icon').replace('style-',''));
   });
@@ -3353,6 +3359,68 @@ function makeOSBFloor(){
   return t;
 }
 
+/* LVP PLANK TEXTURE. Drawn once per tone into a canvas covering a fixed
+   REAL-WORLD patch of floor, so the repeat can be worked out in feet by the
+   caller rather than guessed — the same per-style tile approach the siding
+   uses. TILE_FT is how many feet of floor one wrap of this texture covers;
+   get that wrong and the planks come out doll's-house or barn-sized.
+   Plank width and length are given in inches and the canvas is laid out from
+   them, so 7x48 and 9x60 differ in the render the way they differ on the
+   pallet, not just in tone. End joints stagger by a third of a plank per
+   course, which is what stops it reading as tiled. */
+function makePlankFloor(key, plankWin, plankLin, base, grainA, grainB, jointHex){
+  var ck='plank-'+key;
+  if(_canvasCache[ck]) return texFromCanvas(_canvasCache[ck], true);
+  var TILE_IN = 96;                       // one wrap = 8 ft of floor, square
+  var PX = 768, ppi = PX / TILE_IN;       // 8 px per inch
+  var c=document.createElement('canvas'); c.width=PX; c.height=PX;
+  var ctx=c.getContext('2d');
+  ctx.fillStyle=base; ctx.fillRect(0,0,PX,PX);
+  var pw = plankWin*ppi, pl = plankLin*ppi;
+  var rows = Math.ceil(PX/pw)+1;
+  for(var r=0; r<rows; r++){
+    var y0 = r*pw;
+    // A third of a plank per course, wrapped — a running bond, not a grid.
+    var xoff = ((r%3)/3) * pl - pl;
+    for(var x0=xoff; x0<PX; x0+=pl){
+      // Each plank its own tone, so a floor doesn't read as one flat sheet.
+      var mix = 0.5 + Math.random()*0.5;
+      ctx.fillStyle = (Math.random()<0.5) ? grainA : grainB;
+      ctx.globalAlpha = 0.10 + mix*0.16;
+      ctx.fillRect(x0, y0, pl, pw);
+      ctx.globalAlpha = 1;
+      // Grain: long, shallow strokes along the plank, never across it.
+      var strokes = 5 + ((Math.random()*5)|0);
+      for(var g=0; g<strokes; g++){
+        ctx.strokeStyle = (Math.random()<0.5) ? grainA : grainB;
+        ctx.globalAlpha = 0.05 + Math.random()*0.10;
+        ctx.lineWidth = 0.6 + Math.random()*1.6;
+        var gy = y0 + 2 + Math.random()*(pw-4);
+        ctx.beginPath(); ctx.moveTo(x0+2, gy);
+        ctx.bezierCurveTo(x0+pl*0.33, gy+(Math.random()-0.5)*pw*0.22,
+                          x0+pl*0.66, gy+(Math.random()-0.5)*pw*0.22,
+                          x0+pl-2,    gy+(Math.random()-0.5)*pw*0.12);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // The bevel: a dark line down the end joint and along the long edge.
+      ctx.strokeStyle=jointHex; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0, y0+pw); ctx.stroke();
+    }
+    ctx.strokeStyle=jointHex; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(PX, y0); ctx.stroke();
+  }
+  var t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.colorSpace=THREE.SRGBColorSpace;
+  t.anisotropy=8;
+  _canvasCache[ck]=c;
+  return t;
+}
+// One wrap of a plank texture covers this many FEET of floor. The repeat is
+// (floor feet / this), so the planks stay the same real size on an 8x10 and
+// on a 12x24 — the check the spec calls "correct real-world scale".
+var PLANK_TILE_FT = 8;
 // Gravel texture — scattered crushed-stone pebbles, each an irregular (not
 // perfectly round) polygon with its own highlight and shadow crescent so it
 // reads as a small rock rather than a painted dot, plus a matching bump map
@@ -3949,6 +4017,65 @@ var INT_FINISH='none';          // 'none' | 'drywall' | 'painted'
    the two have to land on the same plane to the millimetre. */
 var INT_RETURN_NEAR = 0.116;
 var INT_RETURN_FAR  = 0.020;
+
+/* ─── FLOORING ──────────────────────────────────────────────────────────────
+   Finished floor over the subfloor or the slab: Standard (included), Sealed
+   Floor, Luxury Vinyl Plank, Premium LVP. All four work on either foundation.
+
+   NOT LIVE YET. The tiers price correctly server-side and render correctly
+   here, but the picker is hidden until the pricing is signed off. Flip
+   FLOORING_LIVE to true to release it — that is the whole switch.
+
+   To look at it before then, open the designer with ?flooring=1 on the URL.
+   That reveals the picker for THAT browser tab only; nothing about the build
+   or the price changes for anyone else.
+
+   While it is hidden, FLOOR is forced back to 'none' on every restore, so a
+   preview link shared by accident cannot carry a floor upgrade into a
+   customer's design or onto their quote. */
+var FLOORING_LIVE = false;
+function flooringVisible(){
+  if(FLOORING_LIVE) return true;
+  try{ return /[?&#]flooring=1(?![0-9])/.test(String(location.search)+String(location.hash)); }
+  catch(e){ return false; }
+}
+var FLOOR='none';               // 'none' | 'better' | 'best'
+/* Customer-facing only. What actually goes down — plank thickness, wear
+   layer, vapour barrier — is install spec and stays on the server side of the
+   fence with the costs; none of it belongs in page source.
+
+   NO SEALED / PAINTED TIER. Sealing a floor is already sold, one step earlier,
+   as the Foundation step's Stained & Sealed Coating. Offering it here as well
+   meant two prices for one job ($300 there, $290 here) and nothing stopping a
+   customer buying both — $590 to seal one slab, on two lines of the same
+   quote. This page is for the thing the Foundation step does not cover: plank
+   over whatever the shed stands on. */
+var FLOOR_TIERS = [
+  {k:'none',   tier:'',       name:'Standard Floor',
+   blurb:'Bare \u00be\u2033 tongue-and-groove subfloor, or the concrete as poured.'},
+  {k:'better', tier:'Better', name:'Luxury Vinyl Plank',
+   blurb:'Waterproof rigid-core planks with a real wood look, built for hot summers and freezing winters. Includes baseboard and door transition.'},
+  {k:'best',   tier:'Best',   name:'Premium Luxury Vinyl Plank',
+   blurb:'Thicker planks with a heavy-duty wear layer and a quieter, more solid feel underfoot. Best for offices, studios, and high-traffic spaces. Includes baseboard and door transition.'}
+];
+function floorOnSlab(){
+  return (typeof FOUNDATION!=='undefined' && (FOUNDATION==='pad' || FOUNDATION==='existing'));
+}
+/* The dollar amount for THIS shed, straight from the server. No rate table
+   lives in this file — the same rule intFinishPrice() and the foundation
+   buttons already follow, and the reason a competitor reading source can't
+   read what we charge per square foot. */
+function floorPrice(k){
+  var fp = quoteCache.optionPrices && quoteCache.optionPrices.flooring;
+  return (fp && fp[k]!=null) ? fp[k] : 0;
+}
+function floorAreaSqft(){
+  var fp = quoteCache.optionPrices && quoteCache.optionPrices.flooring;
+  if(fp && fp.areaSqft!=null) return fp.areaSqft;
+  // Before the first quote comes back, work it out the same way the server
+  // does rather than showing nothing.
+  return Math.round(encWft()*encLft());
+}
 /* DOLLHOUSE VIEW. The interior was only ever visible through WALLS_XRAY, which
    makes the siding 22% translucent — so you saw the drywall THROUGH a ghost of
    the exterior, which reads as neither. Taking the roof off instead and leaving
@@ -4119,9 +4246,75 @@ function setIntFinish(v,el){
      the render — the shed stays whole and the button opens it when you want to
      look. The hint below points at the button instead. */
   syncIntFinishUI();
+  syncFlooringUI();
   renderInteriorColors(); buildShed();
   var hint=document.getElementById('insideHint');
   if(hint) hint.style.display=(v==='none')?'none':'block';
+}
+/* ---- FLOORING ----
+   A drill-in page, like the stain colours and the porch styles, because each
+   tier carries a sentence of copy and four of those do not fit on the step. */
+function flooringPageHTML(){
+  var area=floorAreaSqft();
+  var h='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">'+
+    'Priced for this shed\u2019s '+area+' sq ft of floor. Plank goes down over a '+
+    'wood floor or a concrete pad, and costs the same on either.'+
+    /* Point at the step that DOES sell sealing rather than pretending it isn't
+       a thing — someone on a pad who wants a sealed floor should be sent one
+       step back, not left thinking we don't offer it. */
+    (floorOnSlab() ? ' Sealing or staining the concrete itself is on the Foundation step.' : '')+
+    '</div>';
+  h+='<div class="optstack">';
+  FLOOR_TIERS.forEach(function(t){
+    var on=(FLOOR===t.k);
+    var p=floorPrice(t.k);
+    var tag=(t.k==='none') ? 'Included' : (priceTag(p,'') || 'Upgrade');
+    h+='<div class="pitch-btn'+(on?' on':'')+'" onclick="setFloor(\''+t.k+'\')" '+
+       'style="display:block;text-align:left">'+
+       '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">'+
+       '<span style="font-weight:800">'+t.name+
+         (t.tier?' <span style="color:var(--blue);font-size:10px;font-weight:700">\u00b7 '+t.tier+'</span>':'')+
+       '</span>'+
+       '<span style="font-size:12px;font-weight:800;white-space:nowrap;color:'+(on?'#8fe3ff':'var(--mu)')+'">'+tag+'</span></div>'+
+       '<div style="font-size:11px;color:var(--mu);margin-top:3px;font-weight:600;line-height:1.3;white-space:normal">'+
+         t.blurb+'</div>';
+    /* Two notes that inform without blocking. Neither hides an option or
+       changes a price — a customer who wants plank in a garage can have it,
+       they just get told what it is rated for. */
+    if((t.k==='better'||t.k==='best') && typeof INT_FINISH!=='undefined' && INT_FINISH==='none')
+      h+='<div style="font-size:11px;color:var(--blue);margin-top:5px;font-weight:700">Pairs best with an interior wall finish.</div>';
+    if((t.k==='better'||t.k==='best') && typeof SHED_USE!=='undefined' && SHED_USE==='garage')
+      h+='<div style="font-size:11px;color:#e8b45a;margin-top:5px;font-weight:700">Not rated for vehicle traffic.</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  return h;
+}
+function openFlooringPage(){ openSubPage('Flooring', flooringPageHTML()); }
+function setFloor(k){
+  if(!FLOOR_TIERS.some(function(t){return t.k===k;})) k='none';
+  FLOOR=k;
+  buildShed();
+  syncFlooringUI();
+  if(typeof updateSum==='function') updateSum();
+  // Redraw in place so the tick and the notes move with the choice without
+  // throwing you back to the top of the list.
+  if(_spStack.length){ _spStack[_spStack.length-1].b=flooringPageHTML(); _spRender(true); }
+}
+/* Shows or hides the whole control, and keeps its label current. This is the
+   single gate: with FLOORING_LIVE off and no ?flooring=1, the block is never
+   displayed and FLOOR is pinned to 'none', so nothing can reach the quote. */
+function syncFlooringUI(){
+  var wrap=document.getElementById('flooringWrap');
+  var vis=flooringVisible();
+  if(!vis && FLOOR!=='none'){ FLOOR='none'; }
+  if(wrap) wrap.style.display = vis ? 'block' : 'none';
+  if(!vis) return;
+  var btn=document.getElementById('flooringBtn'); if(!btn) return;
+  var cur=FLOOR_TIERS.filter(function(t){return t.k===FLOOR;})[0] || FLOOR_TIERS[0];
+  var p=(FLOOR==='none') ? '' : priceTag(floorPrice(FLOOR),'');
+  btn.innerHTML = cur.name + (p?' <span style="opacity:.65;font-size:.85em">'+p+'</span>':'')
+                + ' <span style="color:var(--blue);font-size:10px;font-weight:700">CHANGE &#8594;</span>';
 }
 function setInteriorColor(hex,name){
   ipc=hex; ipn=name||'Custom';
@@ -7990,6 +8183,30 @@ function buildFloor(){
      halves of the model disagreed about what it was sitting on. */
   var onSlab  = (typeof FOUNDATION!=='undefined' && (FOUNDATION==='pad' || FOUNDATION==='existing'));
   var ourPour = (typeof FOUNDATION!=='undefined' && FOUNDATION==='pad');
+  /* FINISHED FLOORING, if any, goes over whatever the shed stands on and
+     replaces the surface you'd otherwise see. Both plank tiers look the same
+     on plywood as on concrete — that is the product — so they are handled
+     before the subfloor/slab split rather than inside it. */
+  var floorTier = (typeof FLOOR!=='undefined') ? FLOOR : 'none';
+  if(floorTier==='better' || floorTier==='best'){
+    var isBest=(floorTier==='best');
+    var pt = isBest
+      // Best: wider, longer planks in a warmer, richer tone.
+      ? makePlankFloor('best', 9, 60, '#9a6b41', '#7d5230', '#b98a5c', 'rgba(48,28,14,0.55)')
+      // Better: light oak, 7x48.
+      : makePlankFloor('better', 7, 48, '#c2a077', '#a8855c', '#d8bc98', 'rgba(70,48,26,0.5)');
+    // Feet of floor / feet per wrap — so a plank is the same size on every shed.
+    pt.repeat.set(Math.max(0.5, encWft()/PLANK_TILE_FT), Math.max(0.5, encLft()/PLANK_TILE_FT));
+    var floorMat = new THREE.MeshStandardMaterial({
+      map:pt,
+      // LVP has a low-sheen wear layer: not gloss, but not chalky either. The
+      // premium tier's thicker layer reads very slightly softer.
+      roughness:isBest?0.55:0.5, metalness:0.0});
+    var eB=enclosure();
+    var fbM=new THREE.Mesh(new THREE.BoxGeometry(eB.w-0.03, 0.03, eB.l-0.03), floorMat);
+    fbM.position.set(eB.cx, 0.015, eB.cz); fbM.receiveShadow=true; shedGroup.add(fbM);
+    return;
+  }
   var mat;
   if(onSlab){
     var fHex=0xc4c4bf;
@@ -8002,6 +8219,9 @@ function buildFloor(){
       if(scf) fHex=parseInt(scf.hex.slice(1),16);
     }
     var stained=(ourPour && typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none');
+    /* Sealing the slab is the Foundation step's Stained & Sealed Coating, and
+       it is already drawn from FOUNDATION_STAIN above — there is deliberately
+       no second sealed tier here to render. */
     mat=new THREE.MeshStandardMaterial({color:fHex, roughness:(stained?0.5:0.95), metalness:0.0});
   } else {
     var ft=makeOSBFloor(); ft.repeat.set(Math.max(1,Math.round(w/0.8)), Math.max(1,Math.round(l/0.8)));
@@ -9428,6 +9648,7 @@ function wizRender(){
   // the next natural repaint point, same as renderDormerUI already got.
   if(typeof renderFoundation==='function') renderFoundation();
   if(typeof syncIntFinishUI==='function') syncIntFinishUI();
+  if(typeof syncFlooringUI==='function') syncFlooringUI();
   if(typeof renderAddons==='function') renderAddons();
   if(typeof paintCupolaTag==='function') paintCupolaTag();
   if(typeof paintSidingTags==='function') paintSidingTags();
@@ -13050,7 +13271,7 @@ function getDesignConfig(){
     porchTier:PORCH_TIER,
     dormerL:DORMER_L, dormerR:DORMER_R,
     foundation:FOUNDATION, foundationFinish:FOUNDATION_FINISH, foundationStain:FOUNDATION_STAIN,
-    loft:LOFT, elec:ELEC, intFinish:INT_FINISH, addons:ADDONS,
+    loft:LOFT, elec:ELEC, intFinish:INT_FINISH, floor:FLOOR, addons:ADDONS,
     doors:doorsData, windows:windowsData, vents:ventsData, shelves:shelvesData,
     porchLights:porchLightsData
   };
@@ -13103,6 +13324,9 @@ function syncControlsFromState(){
     if(typeof ROOFTYPE!=='undefined')          mark('.roof-btn', ROOFTYPE);
     if(typeof ELEC!=='undefined')              mark('.elec-btn', ELEC);
     if(typeof INT_FINISH!=='undefined')        mark('.int-btn', INT_FINISH);
+    // Flooring isn't a row of buttons to tick — it's one control whose label
+    // IS the current tier, so it re-renders rather than being marked.
+    if(typeof syncFlooringUI==='function')     syncFlooringUI();
     if(typeof SOFFIT!=='undefined')            mark('.soffit-btn', SOFFIT);
     if(typeof PINE_DIR!=='undefined')          mark('.pinedir-btn', PINE_DIR);
     if(typeof PINE_WIDTH!=='undefined')        mark('.pinew-btn', PINE_WIDTH);
@@ -13196,6 +13420,16 @@ function applyDesignConfig(c){
     if(c.foundationStain)FOUNDATION_STAIN=c.foundationStain;
     if(c.loft)LOFT=c.loft; if(c.elec)ELEC=c.elec;
     if(c.intFinish)INT_FINISH=c.intFinish;
+    /* Flooring is not released yet, so a link that carries one only restores
+       it for a browser that asked to see the feature. Otherwise it reads as
+       Standard — a preview link forwarded to a customer must not put an
+       upgrade on their design or their quote. */
+    /* Validated against the tier list, not just copied. A preview link saved
+       while the sealed tier briefly existed carries floor:'good', which is no
+       longer a thing we sell — it reads as Standard rather than as a tier the
+       picker can't show and the server won't price. */
+    FLOOR = (c.floor && flooringVisible() && FLOOR_TIERS.some(function(t){return t.k===c.floor;}))
+          ? c.floor : 'none';
     // Missing on old permalinks (added after they were generated) reads as
     // "no add-ons selected" rather than throwing — same "missing = leave
     // default" treatment every other field here already gets.
@@ -13586,6 +13820,7 @@ function fetchQuote(){
     if(typeof renderDormerUI==='function') renderDormerUI();
     if(typeof renderFoundation==='function') renderFoundation();
     if(typeof syncIntFinishUI==='function') syncIntFinishUI();
+    if(typeof syncFlooringUI==='function') syncFlooringUI();
     if(typeof renderAddons==='function') renderAddons();
     if(typeof paintCupolaTag==='function') paintCupolaTag();
     if(typeof paintSidingTags==='function') paintSidingTags();
