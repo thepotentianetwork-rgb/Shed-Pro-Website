@@ -5370,16 +5370,50 @@ function buildShed(){
       var dXBa=0.0;                                // meets the main roof AT the ridge
       var dXB=sideSign*dXBa;
 
-      // Board spacing must match the WALL below, not be re-rounded to the
-      // dormer's own size — otherwise the boards don't line up where the siding
-      // runs up from the wall. Derive repeats-per-world-unit from the shed wall
-      // and apply that, so the UVs (which are absolute coords) line up.
+      /* Board spacing must match the WALL below, not be re-rounded to the
+         dormer's own size — otherwise the boards don't line up where the siding
+         runs up from the wall.
+
+         The PITCH was already right. The ANCHOR was not, and that is what made
+         the siding look wrong around a dormer. These faces use absolute world
+         coordinates as their UVs (see face(), uvMode 'zy'), so the batten phase
+         was pinned to world z=0 — the middle of the shed. The wall below pins
+         its phase to the wall's own CORNER: panelSeg measures uStart from
+         axisStart = f.ctr - u*(f.len/2). The two agree only when half the wall
+         length happens to land on a whole number of battens, which is why this
+         looked fine on some sheds and wrong on others. On a 16ft wall it is
+         exactly half a batten out — the worst it can be:
+
+             wall length   phase error
+               8 ft          0.25
+              12 ft          0.125
+              16 ft          0.50   <- half a batten
+              20 ft          0.125
+              32 ft          0.00   (looks perfect, hence "only sometimes")
+
+         So anchor to the same corner. The wall's texture coordinate at world z
+         works out to perUnit * (z - axisStart) * u, in both mirrored side-wall
+         directions; matching it is a repeat of u*perUnit and an offset that
+         slides the origin onto axisStart. */
+      var dWallF=wallFrame(sideSign>0 ? 'right' : 'left');
+      var dU=dWallF.uz;                                    // +1 or -1 along z
+      var dAxisStart=dWallF.ctr - dU*(dWallF.len/2);       // the wall's corner
       var dTex=makeSiding(sc, SIDING);
-      var dPerX=sidingPerUnit();   // boards per unit, along length
-      var dPerY=sidingPerUnit();   // per unit, vertically
+      var dPer=sidingPerUnit();    // boards per world unit — same pitch as the wall
+      /* Horizontal lap is the one style whose wall does NOT tile along the
+         length: wallSegMatGlobal stretches the texture once across the whole
+         wall (repX = segW/fullLen) so there is no repeat seam mid-wall. Match
+         whichever scheme the wall below is using, or the dormer tiles against a
+         stretch and no offset can reconcile them. */
+      var dUScale=(SIDING==='horizontal') ? (1/dWallF.len) : dPer;
+      var dPerX=dU*dUScale;        // run the texture the way the wall's does
+      var dPerY=dPer;              // per unit, vertically
+      var dOffX=(-dAxisStart*dU*dUScale)%1;
       dTex.repeat.set(dPerX, dPerY);
+      dTex.offset.x=dOffX;
       dTex.wrapS=dTex.wrapT=THREE.RepeatWrapping;
-      if(dTex.bumpMap){ dTex.bumpMap.repeat.set(dPerX,dPerY); dTex.bumpMap.wrapS=dTex.bumpMap.wrapT=THREE.RepeatWrapping; }
+      if(dTex.bumpMap){ dTex.bumpMap.repeat.set(dPerX,dPerY); dTex.bumpMap.offset.x=dOffX;
+                        dTex.bumpMap.wrapS=dTex.bumpMap.wrapT=THREE.RepeatWrapping; }
       var dSideMat=applyXray(sidingMat(sc, dTex, SIDING==='board-batten'?0.58:0.28));
       dSideMat.side=THREE.DoubleSide;
 
