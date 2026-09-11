@@ -8764,16 +8764,31 @@ function buildInterior(){
       var uvI=g.attributes.uv, psI=g.attributes.position;
       for(var vI=0; vI<uvI.count; vI++){ uvI.setXY(vI, (psI.getX(vI)+l/2)/l, psI.getY(vI)/h); }
       uvI.needsUpdate=true;
-      var mTrap=new THREE.Mesh(g, osbMat(Math.max(1,l/0.5), Math.max(1,h/0.5)));
+      /* THIS WALL NEVER GOT FINISHED.
+         The material here was osbMat outright and the studs below were drawn
+         unconditionally, so on a lean-to the two SIDE walls stayed bare
+         sheathing with the framing showing no matter which interior finish was
+         bought — while the ends and the ceiling came out drywalled. One wall
+         painted and the one opposite it in OSB.
+         Everything below is the convention the other walls already use, in
+         seg() and studsVisible: drywall REPLACES the sheathing face rather
+         than covering it, it hangs a stud-depth further into the room, and the
+         studs stop being drawn once it is up. */
+      var trapFinished = (typeof INT_FINISH!=='undefined' && INT_FINISH!=='none');
+      var mTrap=new THREE.Mesh(g, trapFinished
+        ? interiorWallMat()
+        : osbMat(Math.max(1,l/0.5), Math.max(1,h/0.5)));
       mTrap.material.side=THREE.DoubleSide;
-      mTrap.position.set(xIn,0,0);
+      // Same 0.055 step in that seg() applies, mirrored per side: "further into
+      // the room" is +x on the left wall and -x on the right.
+      mTrap.position.set(xIn + (trapFinished ? ((wall==='left') ? 0.055 : -0.055) : 0), 0, 0);
       mTrap.rotation.y = Math.PI/2;
       shedGroup.add(mTrap);
 
       // Studs, each trimmed to the sloped top at its own Z position.
       var xS = (wall==='left') ? (-w/2 + studIn) : (w/2 - studIn);
       var zS = -l/2 + 0.1;
-      while(zS <= l/2 - 0.1){
+      while(!trapFinished && zS <= l/2 - 0.1){
         // roof/wall top height at this Z: linear from back (low) to front (high)
         var topY = backTopY + ((zS + l/2)/l)*(h - backTopY);
         var sH = topY - 0.05;
