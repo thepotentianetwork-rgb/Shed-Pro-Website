@@ -1140,6 +1140,17 @@ function porchCeilY(){
   if(!(PORCH_H>0)) return wallY;
   return Math.min(wallY, PORCH_H*0.2);   // never higher than the wall it hangs off
 }
+/* Which wall the porch opens onto, or null when there isn't one. The door
+   placement already encoded this mapping inline and the porch lights had no
+   idea it existed, which is how they ended up hanging at wall height over a
+   porch ceiling two feet lower. One answer, used by both. Gable-only, because
+   that is the only style the porch geometry is built for. */
+function porchWall(){
+  if(typeof PORCH_LOC==='undefined' || PORCH_LOC==='none') return null;
+  if(!(SIDE_PORCH>0)) return null;
+  if(typeof STYLE!=='undefined' && STYLE!=='gable') return null;
+  return (PORCH_LOC==='front') ? 'front' : 'right';
+}
 var PORCH_DECK='pt';                 // 'none' | 'pt' | 'composite'
 /* PORCH FINISH TIER — drives price. 'standard' is the flat End/Side Porch
    fee; anything else is one of the front-porch finish tier keys the server
@@ -8392,7 +8403,16 @@ function buildPorchLights(){
   if(porchLightsData.length===0) return;
   porchLightsData.forEach(function(pld, idx){
     var f=wallFrame(pld.wall);
-    var cy=f.height*0.74;
+    /* Mount height follows the ceiling this light actually hangs under.
+       It was always 0.74 of the WALL, so lowering a porch to 8ft under 10ft
+       walls left the fixture up at 7.4ft — still pinned to the wall, nearly
+       touching the porch ceiling it was supposed to sit below.
+       On the porch wall the reference is the porch ceiling; anywhere else it
+       is the wall, exactly as before. Same 0.74, so nothing moves on a porch
+       that matches its walls or on a light mounted somewhere else. */
+    var ref=(typeof porchWall==='function' && porchWall()===pld.wall &&
+             typeof porchCeilY==='function') ? porchCeilY() : f.height;
+    var cy=ref*0.74;
     var grp=new THREE.Group();
     var fixture=buildPorchLightFixture(pld.style);
     fixture.position.set(0, cy, 0.02);
@@ -11368,8 +11388,8 @@ function porchRefresh(){
 }
 // The door belongs on the wall the porch opens onto.
 function porchMoveDoor(){
-  if(PORCH_LOC==='none'||SIDE_PORCH<=0) return;
-  var target=(PORCH_LOC==='front')?'front':'right';
+  var target=porchWall();
+  if(!target) return;
   if(typeof doorsData==='undefined') return;
   doorsData.forEach(function(dd){
     if(dd.wall===target) return;
