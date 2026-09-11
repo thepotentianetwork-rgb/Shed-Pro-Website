@@ -2381,16 +2381,28 @@ var SHED_USES = [
   {k:'golfsim',  name:'Golf Simulator',  sub:'10 ft walls for a full swing',
    w:12, l:16, h:10, style:'gable', elec:'core', door:'resfull', finish:'painted',
    foundation:'pad',
-   /* ONE high transom, and deliberately not a window at eye level. A simulator
-      is a projection screen: side light washes the image and a window facing
-      the hitting bay puts glare exactly where the ball flight is read. A 5x10
-      transom up at 90 inches gives daylight off the ceiling without putting
-      any of it on the screen. */
-   windows:[ {wall:'back', pos:0.5, w:60, h:10, cy:90, type:'White Transom 5x10'} ],
+   /* ONE high transom, on a SIDE wall at the door end — and nothing at all on
+      the back.
+      The back wall is where the screen goes. A window there is behind the
+      screen: it lets in no usable light, and it leaks light onto the back of
+      the very surface being projected onto. The first version of this preset
+      put it exactly there, which was wrong.
+      Sitting it on the left wall at pos 0.25 puts it behind the golfer rather
+      than down the projection path, and 90 inches up keeps the daylight off
+      the screen and out of eye line while a driver swings under it.
+      pos BELOW 0.5 is the front half on a side wall — checked, not assumed:
+      the front wall sits at z +1.6 and the back at -1.6, and posToAxis puts
+      0.25 at z +0.49. Raising this number walks the window back toward the
+      screen, which is the one direction it must not go. */
+   windows:[ {wall:'left', pos:0.25, w:60, h:10, cy:90, type:'White Transom 5x10'} ],
    /* No loft, and this one is not a cost decision. The 10ft walls exist so a
       driver clears the ceiling; hanging a loft in here would undo the single
       reason this preset is not just a shed. */
-   loft:'none', roofType:'shingle', scheme:'charwhite'},
+   /* Was charwhite, which is gone now the list is four. Black on Black is the
+      nearest thing in what remains and arguably the better fit anyway: a
+      simulator is a dark room by function, and the white full-lite door gives
+      the contrast the charcoal scheme was providing. */
+   loft:'none', roofType:'shingle', scheme:'blackblack'},
 
   /* No preset at all. This one only records the choice and leaves the shed on
      its defaults — applying a "custom" preset would be a contradiction, and
@@ -10450,6 +10462,11 @@ var WALL_COLORS=[
    reads correctly against the metal palette.
 --------------------------------------------------------------------------- */
 var COLOR_SCHEMES = [
+  /* Four, not eight. Eight was a palette to work through; four is a set of
+     choices, and these are the four that actually get asked for. Adding one
+     back is a row in this table — the picker, the reframing and the "is a
+     scheme still current" check all read from it. */
+
   /* The modern-farmhouse default, and the one people arrive already wanting:
      white on white with a black roof for the line at the eaves. */
   {k:'whitewhite', name:'White on White',   sub:'Modern farmhouse',
@@ -10461,28 +10478,10 @@ var COLOR_SCHEMES = [
   {k:'grayblack',  name:'Gray + Black',     sub:'Sharper, contemporary',
    s:0x6E7377, sName:'Gray',       t:0x1A1A1A, tName:'Black',     r:0x28282A, rName:'Black Asphalt', win:'Black'},
 
-  /* Charcoal body with white trim is what most of the shed-as-studio and
-     backyard-office builds look like right now. High contrast, reads
-     expensive, hides dust and grass spatter along the bottom course. */
-  {k:'charwhite',  name:'Charcoal + White', sub:'Studio, high contrast',
-   s:0x3C3F43, sName:'Charcoal',   t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
-
   /* Monochrome. Bold, and the one that most needs seeing in 3D before
      committing — which is exactly what this tool is for. */
   {k:'blackblack', name:'Black on Black',   sub:'Bold, monochrome',
-   s:0x1A1A1A, sName:'Black',      t:0x1A1A1A, tName:'Black',     r:0x28282A, rName:'Black Asphalt', win:'Black'},
-
-  {k:'navywhite',  name:'Navy + White',     sub:'Deep, without black',
-   s:0x2C3E52, sName:'Navy',       t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
-
-  {k:'sagewhite',  name:'Sage + White',     sub:'Warm, garden-friendly',
-   s:0x7C8A6E, sName:'Sage',       t:0xF2F0EC, tName:'White',     r:0x28282A, rName:'Black Asphalt', win:'White'},
-
-  /* Light body, dark trim — the inverse of Charcoal + White and a softer way
-     to the same contrast. Warm grey roof rather than black so the roof is not
-     the darkest thing on the building twice over. */
-  {k:'ltgraychar', name:'Light Gray + Charcoal', sub:'Softer contrast',
-   s:0xC8CBCE, sName:'Light Gray', t:0x3C3F43, tName:'Charcoal',  r:0x44413C, rName:'Gray Asphalt', win:'Black'}
+   s:0x1A1A1A, sName:'Black',      t:0x1A1A1A, tName:'Black',     r:0x28282A, rName:'Black Asphalt', win:'Black'}
 ];
 
 /* Re-frames the windows already on the shed to match the trim. Only the vinyl
