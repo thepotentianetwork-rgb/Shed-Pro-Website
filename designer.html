@@ -12522,6 +12522,14 @@ function openQ(){
       '<input id="qZip" class="inp" type="text" placeholder="ZIP" style="flex:1" inputmode="numeric"></div>'+
     '<div class="qsec-lbl">Anything Else?</div>'+
     '<div class="grp"><textarea id="qNotes" class="inp" rows="3" placeholder="Site access, timing, questions... (optional)"></textarea></div>'+
+    /* Honeypot. Positioned off-screen rather than display:none, because the
+       form-filling bots worth catching skip hidden fields but not ones that
+       are merely out of view. A person never sees it, never tabs to it and
+       never has it autofilled; anything that arrives with it filled in is
+       automated, and the Worker drops that request while answering 200. */
+    '<input id="qWebsite" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" '+
+      'style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">'+
+
     '<div id="qErr" class="qerr-box"></div>'+
     '<div id="qSend" class="cta" onclick="submitQuote()" style="margin-top:16px">Send my request →</div>'+
     '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
@@ -12570,6 +12578,7 @@ function submitQuote(){
   // fallback saveDesignAndGetLink reaches for if the save itself fails.
   saveDesignAndGetLink(contact).then(function(shortLink){
     var payload={
+      website: (document.getElementById('qWebsite')||{}).value || '',
       contact: contact,
       config: getDesignConfig(),
       permalink: shortLink,
@@ -12933,6 +12942,10 @@ function openConsult(trigger){
       '</select></div>'+
     '<div class="qsec-lbl">Anything We Should Know?</div>'+
     '<div class="grp"><textarea id="cQ" class="inp" rows="3" placeholder="What are you storing? Any questions? (optional)"></textarea></div>'+
+    /* Same honeypot as the quote form — see the note there. */
+    '<input id="cWebsite" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" '+
+      'style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">'+
+
     '<div id="cErr" class="qerr-box"></div>'+
     '<div id="cSend" class="cta" onclick="submitConsult()" style="margin-top:16px">Request a call &rarr;</div>'+
     '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
@@ -12985,6 +12998,7 @@ function submitConsult(){
     return fetch(CONSULT_ENDPOINT, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
+        website: (document.getElementById('cWebsite')||{}).value || '',
         contact: contact,
         bestTime: g('cTime'),
         question: g('cQ'),
