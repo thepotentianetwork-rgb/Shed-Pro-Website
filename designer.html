@@ -7977,12 +7977,26 @@ function buildFoundation(){
       // the pad uses) so it doesn't z-fight with the grass plane at the same height.
       var gravelTex=makeGravel();
       var GRAVEL_TILE=0.4;               // world units per texture tile (~2ft patch of stone)
-      var gRepX=Math.max(1, Math.round((w+0.24)/GRAVEL_TILE));
-      var gRepZ=Math.max(1, Math.round((l+0.24)/GRAVEL_TILE));
+      /* HOW FAR THE PAD RUNS PAST THE SHED. One constant, because the bed, its
+         texture repeat and the timber frame all have to agree — they were three
+         separate "+0.24"s.
+         0.24 put the stone about 6in past the wall face, which is a kerb rather
+         than a pad: from any normal distance it read as a pale line hugging the
+         shed, with the roof dripping straight onto grass. 0.50 takes it to
+         about 13in, which is what the reference pads are built to and what
+         makes it read as something the shed is standing ON. */
+      var GPAD=0.50;
+      var gRepX=Math.max(1, Math.round((w+GPAD)/GRAVEL_TILE));
+      var gRepZ=Math.max(1, Math.round((l+GPAD)/GRAVEL_TILE));
       gravelTex.repeat.set(gRepX, gRepZ);
       if(gravelTex.bumpMap) gravelTex.bumpMap.repeat.set(gRepX, gRepZ);
+      /* bumpScale was 0.006. Nothing else in the scene is within an order of
+         magnitude of that — the siding runs 0.095 to 0.4 and the roof 0.05 —
+         so the stone had no relief at all and rendered as a flat grey sheet
+         with a pattern printed on it. That is the "looks flat". 0.05 is the
+         roof's value, the nearest thing to a rough surface we already have. */
       var gravelMat=new THREE.MeshStandardMaterial({map:gravelTex, bumpMap:gravelTex.bumpMap,
-        bumpScale:0.006, roughness:0.98, metalness:0.0});
+        bumpScale:0.05, roughness:0.98, metalness:0.0});
       /* v438 — SIT IT ON THE GRASS, not in it. The bed was 1.5in thick with its
          top only 0.36in above grade, so 76% of it was underground and the
          frame showed just 1in of a 5.5in board. A built pad is excavated and
@@ -7990,7 +8004,7 @@ function buildFoundation(){
          proud of it. Bed is 4in of stone now, with its top 3in above grass, so
          the whole depth reads. */
       var gravelH=4*0.2/12, gravelTop=-lift+3*0.2/12;
-      var bed=new THREE.Mesh(new THREE.BoxGeometry(w+0.24, gravelH, l+0.24), gravelMat);
+      var bed=new THREE.Mesh(new THREE.BoxGeometry(w+GPAD, gravelH, l+GPAD), gravelMat);
       bed.position.set(0, gravelTop-gravelH/2, 0); bed.receiveShadow=true; shedGroup.add(bed);
 
       /* v437 — PRESSURE-TREATED TIMBER FRAME.
@@ -8005,7 +8019,7 @@ function buildFoundation(){
          of the stone so it reads as retaining it. */
       var FR_T=1.5*0.2/12, FR_H=5.5*0.2/12;
       var frMat=new THREE.MeshStandardMaterial({color:0xb09a76, roughness:0.92, metalness:0.0});
-      var fw=w+0.24, fl=l+0.24;
+      var fw=w+GPAD, fl=l+GPAD;
       var frTop=gravelTop+1.0*0.2/12;            // 1in proud of the stone
       var frCY=frTop-FR_H/2;
       // long pair, full length, running the Z sides
