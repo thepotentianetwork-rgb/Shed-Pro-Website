@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Design Your Shed | ShedPro</title>
+<!-- The designer had no icon at all, so a tab showed the browser's blank page
+     glyph. SVG first for anything modern; the site's existing raster logo is
+     the fallback for browsers that don't take an SVG icon. -->
+<link rel="icon" type="image/svg+xml" href="logo/favicon.svg">
+<link rel="alternate icon" href="ShedPro-Logo.webp">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -33,7 +38,19 @@ header{background:rgba(12,12,12,.96);border-bottom:1px solid var(--br);padding:0
 .promo-set a:hover{text-decoration:underline}
 @keyframes promoScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.promo-track{animation:none}}
-.logo{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.logo em{color:var(--blue);font-style:normal}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;display:flex;align-items:center}.logo em{color:var(--blue);font-style:normal}
+/* THE MARK, INLINE. Deliberately not the supplied lockup SVG in an <img>: that
+   file sets its wordmark as TEXT naming Barlow Condensed, and an <img>-loaded
+   SVG is its own document that cannot reach the font this page already loads —
+   the letters would reshape. The header keeps its own HTML wordmark, which is
+   in the right face by construction, and takes only the drawn mark, which is
+   pure paths and so has no font to lose.
+   Strokes are a touch heavier than logo/mark.svg's: at 26px the 3px original
+   thins out against the header. The 60-unit box is cropped to the drawn
+   content, since the source art sits high in its own square. */
+.logo-mark{width:26px;height:26px;flex-shrink:0;margin-right:9px;
+  /* the art occupies y 13.5..53.6 of a 60 box — pull the empty top back in */
+  margin-top:-1px}
 /* Slogan sits against the wordmark. Lighter and smaller than SHEDPRO so it
    reads as a tagline rather than part of the name, and the separator is a
    pipe so it does not collide with the "/" the page label already uses. */
@@ -194,6 +211,9 @@ canvas{display:block;width:100%;height:100%}
      at full size — shrink the title and tighten the buttons rather than let
      the title truncate to "SHEDPRO LL…". */
   .logo{font-size:15px}
+  /* The header already loses the subtitle and tightens the buttons at this
+     width; the mark comes down with the title rather than crowding them. */
+  .logo-mark{width:21px;height:21px;margin-right:7px}
   .hb{gap:4px}
   .btn{padding:6px 9px;font-size:11.5px;gap:3px}
   .lock-btn{width:24px;height:24px;font-size:11px}
@@ -377,7 +397,7 @@ textarea.inp{resize:vertical}
 </head>
 <body>
 <header>
-  <div class="logo">SHED<em>PRO</em> <span class="logo-slogan">Let&rsquo;s Build Together</span> <span class="logo-sub">/ Shed Designer</span> <span id="buildTag" style="color:#F8921E;font-size:10px;font-weight:700;margin-left:6px;cursor:pointer;-webkit-user-select:none;user-select:none"><span class="bt-word">build&nbsp;</span>v489</span></div>
+  <div class="logo"><svg class="logo-mark" viewBox="0 0 60 60" aria-hidden="true" focusable="false" fill="none"><g stroke="#2BB5E8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 27 L26 15 L44 27"/><path d="M11 27 V43 H41 V27"/></g><g stroke="#F8921E" stroke-width="2.4" stroke-linecap="round"><path d="M8 50 H44"/><path d="M8 47.5 V52.5"/><path d="M44 47.5 V52.5"/><path d="M51 15 V43"/><path d="M48.5 15 H53.5"/><path d="M48.5 43 H53.5"/></g></svg>SHED<em>PRO</em> <span class="logo-slogan">Let&rsquo;s Build Together</span> <span class="logo-sub">/ Shed Designer</span> <span id="buildTag" style="color:#F8921E;font-size:10px;font-weight:700;margin-left:6px;cursor:pointer;-webkit-user-select:none;user-select:none"><span class="bt-word">build&nbsp;</span>v489</span></div>
   <div class="hb">
     <!-- STAFF PRICING TOGGLE. A padlock in the header rather than a URL parameter, so
  the designer keeps one address and the sales flow is a tap. Deliberately quiet
