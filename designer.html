@@ -838,7 +838,15 @@ textarea.inp{resize:vertical}
             <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Or enter any paint code as a hex value</span>
           </div>
         </div>
-        <div class="grp" style="margin-top:14px">
+        <!-- `hidden`, not an inline display:none. syncBuildInsUI toggles .hidden,
+             and an inline display:none would survive that and keep the note off
+             the page for ever — the same trap the lean-to pitch row fell into,
+             just the other way round. -->
+        <div class="wstep-sub" id="finishedNoBuildNote" hidden style="margin-top:14px;color:#ffb86b">
+          Lofts and shelving are built into the framing, so they go in before the
+          walls are closed up &mdash; they aren&rsquo;t offered once the inside is finished.
+        </div>
+        <div class="grp" style="margin-top:14px" id="loftGrp">
           <span class="lbl">Loft</span>
           <select id="loftSel" onchange="setLoft(this.value)" style="width:100%;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin:4px 0 0">
             <option value="none">None</option>
@@ -868,7 +876,7 @@ textarea.inp{resize:vertical}
             </optgroup>
           </select>
         </div>
-        <div class="grp" style="margin-top:14px">
+        <div class="grp" style="margin-top:14px" id="shelfGrp">
           <span class="lbl">Shelves</span>
           <div id="shelfInfo" style="font-size:11px;color:var(--mu);margin-bottom:6px">Shelves mount to a wall inside. Drag to reposition along the wall.</div>
           <div onclick="addShelf()" style="text-align:center;cursor:pointer;font-size:12px;font-weight:700;padding:9px 0;border-radius:7px;background:#2BB5E8;color:#06222e">+ Add Shelf</div>
@@ -1956,12 +1964,33 @@ function init(){
     ndc.x=((clientX-r.left)/r.width)*2-1;
     ndc.y=-((clientY-r.top)/r.height)*2+1;
   }
+  /* IS THIS WALL ONE YOU CAN SEE?
+     Outside the building you are looking at outward faces; inside it, inward
+     ones. Used by BOTH the wall pick and the item pick below — they were
+     separate, which is how the wall fix left doors and windows on the far side
+     still selectable. */
+  function wallFacesCamera(wall){
+    var N={front:[0,0,1], back:[0,0,-1], left:[-1,0,0], right:[1,0,0]};
+    var n=N[wall]; if(!n) return true;              // not a wall: don't filter it
+    var w=encWft()*0.2, l=encLft()*0.2;
+    var C={front:[0,0,l/2], back:[0,0,-l/2], left:[-w/2,0,0], right:[w/2,0,0]};
+    var c=C[wall], cp=camera.position;
+    var insideBox=(Math.abs(cp.x)<w/2)&&(Math.abs(cp.z)<l/2)&&(cp.y>0)&&(cp.y<H*0.2);
+    var dot=n[0]*(cp.x-c[0]) + n[1]*(cp.y-c[1]) + n[2]*(cp.z-c[2]);
+    return insideBox ? (dot<0) : (dot>0);
+  }
   // Raycast against window AND door groups; returns {kind,index} or null.
   function pickOpening(){
     raycaster.setFromCamera(ndc, camera);
     var best=null;
     function test(list, kind){
       list.forEach(function(wm){
+        /* Skip anything on a wall turned away from you. Nothing is tested
+           against the walls themselves, so a door on the FAR side is hit by a
+           ray that passed clean through the building and, with no nearer hit,
+           won — tapping the front of the shed selected the back door. */
+        var wl=wm.group && wm.group.userData && wm.group.userData.wall;
+        if(wl && !wallFacesCamera(wl)) return;
         var objs=[];
         wm.group.traverse(function(o){ if(o.isMesh) objs.push(o); });
         var inter=raycaster.intersectObjects(objs, false);
@@ -2007,21 +2036,10 @@ function init(){
     raycaster.setFromCamera(ndc, camera);
     var inter=raycaster.intersectObjects(wallPickMeshes, false);
     if(!inter.length) return null;
-    var w=encWft()*0.2, l=encLft()*0.2;
-    var cp=camera.position;
-    // Is the eye in the room? Generous margins: the test only has to pick which
-    // FACE of a wall is the visible one, and a camera sitting in a wall is not
-    // a case the orbit rig produces.
-    var insideBox = (Math.abs(cp.x) < w/2) && (Math.abs(cp.z) < l/2)
-                 && (cp.y > 0) && (cp.y < H*0.2);
-    var want = insideBox ? -1 : 1;
-    var N={front:[0,0,1], back:[0,0,-1], left:[-1,0,0], right:[1,0,0]};
     for(var i=0;i<inter.length;i++){
       var wl=inter[i].object.userData.wallPick;
-      if(!wl || !N[wl]) continue;                 // roof pickers ride this list too
-      var c=inter[i].object.position, n=N[wl];
-      var dot=n[0]*(cp.x-c.x) + n[1]*(cp.y-c.y) + n[2]*(cp.z-c.z);
-      if(dot*want > 0) return wl;
+      if(!wl) continue;                           // roof pickers ride this list too
+      if(wallFacesCamera(wl)) return wl;          // nearest one you can actually see
     }
     return null;
   }
@@ -2291,6 +2309,7 @@ function init(){
   // Interior tier is keyed to W x D, so the label has to follow the size.
   if(typeof syncIntFinishUI==='function') syncIntFinishUI();
   if(typeof syncFlooringUI==='function') syncFlooringUI();
+  if(typeof syncBuildInsUI==='function') syncBuildInsUI();
   document.querySelectorAll('[data-icon^="style-"]').forEach(function(el){
     el.innerHTML=shedStyleIcon(el.getAttribute('data-icon').replace('style-',''));
   });
@@ -4306,6 +4325,9 @@ function setIntFinish(v,el){
      look. The hint below points at the button instead. */
   syncIntFinishUI();
   syncFlooringUI();
+  // Drops a loft or shelves that are no longer buildable BEFORE the rebuild, so
+  // the model and the quote never show one on a finished shed.
+  syncBuildInsUI();
   renderInteriorColors(); buildShed();
   var hint=document.getElementById('insideHint');
   if(hint) hint.style.display=(v==='none')?'none':'block';
@@ -4374,6 +4396,37 @@ function syncFlooringUI(){
   var p=(FLOOR==='none') ? '' : priceTag(floorPrice(FLOOR),'');
   btn.innerHTML = cur.name + (p?' <span style="opacity:.65;font-size:.85em">'+p+'</span>':'')
                 + ' <span style="color:var(--blue);font-size:10px;font-weight:700">CHANGE &#8594;</span>';
+}
+/* LOFTS AND SHELVING GO IN BEFORE THE WALLS CLOSE.
+   Both are framed to the studs, so once drywall is up they are not something
+   we build — you would be screwing a loft into 1/2in of gypsum. Buying a finish
+   therefore takes both off the table, and takes any already chosen OFF THE
+   DESIGN as well: leaving them selected but hidden is how a customer ends up
+   quoted for a loft nobody is going to build.
+   One test, used by the UI, the 3D and the quote alike. */
+function buildInsAllowed(){
+  return !(typeof INT_FINISH!=='undefined' && INT_FINISH!=='none');
+}
+function syncBuildInsUI(){
+  var allowed=buildInsAllowed();
+  var lg=document.getElementById('loftGrp'), sg=document.getElementById('shelfGrp'),
+      nt=document.getElementById('finishedNoBuildNote');
+  if(lg) lg.hidden=!allowed;
+  if(sg) sg.hidden=!allowed;
+  if(nt) nt.hidden=allowed;
+  if(!allowed){
+    var changed=false;
+    if(typeof LOFT!=='undefined' && LOFT!=='none'){ LOFT='none'; changed=true;
+      var ls=document.getElementById('loftSel'); if(ls) ls.value='none'; }
+    if(typeof shelvesData!=='undefined' && shelvesData.length){ shelvesData=[]; changed=true; }
+    if(changed){
+      selectedKind=''; selectedShelf=-1;
+      var sc2=document.getElementById('shelfSelControls'); if(sc2) sc2.style.display='none';
+      if(typeof updateSum==='function') updateSum();
+    }
+    return changed;
+  }
+  return false;
 }
 function setInteriorColor(hex,name){
   ipc=hex; ipn=name||'Custom';
@@ -8974,6 +9027,10 @@ function buildPorchLights(){
              typeof porchCeilY==='function') ? porchCeilY() : f.height;
     var cy=ref*0.74;
     var grp=new THREE.Group();
+    // Carries its wall like every other placed item, so pickOpening() can tell
+    // whether you are looking at it. Without this the filter there skips the
+    // check and a light on the far side stays tappable.
+    grp.userData={isPorchLight:true, index:idx, wall:pld.wall};
     var fixture=buildPorchLightFixture(pld.style);
     fixture.position.set(0, cy, 0.02);
     grp.add(fixture);
@@ -9108,6 +9165,14 @@ function buildWallPickers(){
     }
   });
 }
+/* How far INSIDE the wall's centre plane the room's actual surface is.
+   Sheathing sits 0.055 in with a 0.012 panel, so its face is 0.061; drywall
+   hangs a further stud-depth in, which is what INT_RETURN_NEAR already is —
+   the same constant the finished door and window returns are built from, so
+   a shelf and a reveal cannot disagree about where the wall is. */
+function interiorFaceOffset(){
+  return (typeof INT_FINISH!=='undefined' && INT_FINISH!=='none') ? INT_RETURN_NEAR : 0.061;
+}
 function buildShelves(){
   shelfMeshes=[];
   if(shelvesData.length===0) return;
@@ -9122,14 +9187,25 @@ function buildShelves(){
     var shW=lenFt*0.2;                            // world units
     var shD=(sd.depth||16)*0.2/12;               // 16" or 24" deep board
     var f=wallFrame(sd.wall);
+    /* SIT IT ON THE WALL, NOT NEAR IT.
+       The group sits on the wall's CENTRE plane and the board was placed at a
+       flat -0.03 from there — 1.8in — which is neither the wall's face nor
+       anything else. The board measured its full 16in or 24in, but 1.8in of
+       that was buried in the wall on a bare-stud shed, and 5.2in of it once
+       drywall moved the face further into the room: a "16 inch" shelf standing
+       10.8in proud. The back edge now lands exactly on whatever face the room
+       actually has, so the whole stated depth projects into the room and there
+       is no gap behind it either. */
+    var faceOff=interiorFaceOffset();
+    var shZ=-(faceOff + shD/2);
     var grp=new THREE.Group();
     grp.userData={isShelf:true, index:idx, wall:sd.wall};
-    grp.add(mk(new THREE.BoxGeometry(shW, shT, shD), woodMat, 0, cy, -shD/2-0.03));
-    grp.add(mk(new THREE.BoxGeometry(0.02, 0.1, shD), woodMat, -shW/2+0.05, cy-0.06, -shD/2-0.03));
-    grp.add(mk(new THREE.BoxGeometry(0.02, 0.1, shD), woodMat,  shW/2-0.05, cy-0.06, -shD/2-0.03));
+    grp.add(mk(new THREE.BoxGeometry(shW, shT, shD), woodMat, 0, cy, shZ));
+    grp.add(mk(new THREE.BoxGeometry(0.02, 0.1, shD), woodMat, -shW/2+0.05, cy-0.06, shZ));
+    grp.add(mk(new THREE.BoxGeometry(0.02, 0.1, shD), woodMat,  shW/2-0.05, cy-0.06, shZ));
     if(EDIT_MODE && selectedKind==='shelf' && selectedShelf===idx){
       grp.add(mk(new THREE.BoxGeometry(shW+0.1, 0.08, shD+0.06),
-        new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.5, side:THREE.DoubleSide}), 0, cy, -shD/2-0.03));
+        new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.5, side:THREE.DoubleSide}), 0, cy, shZ));
     }
     applyWallTransform(grp, sd.wall, sd.pos, lenFt*12);
     shedGroup.add(grp);
@@ -9853,6 +9929,7 @@ function wizRender(){
   if(typeof renderFoundation==='function') renderFoundation();
   if(typeof syncIntFinishUI==='function') syncIntFinishUI();
   if(typeof syncFlooringUI==='function') syncFlooringUI();
+  if(typeof syncBuildInsUI==='function') syncBuildInsUI();
   if(typeof renderAddons==='function') renderAddons();
   if(typeof paintCupolaTag==='function') paintCupolaTag();
   if(typeof paintSidingTags==='function') paintSidingTags();
@@ -13537,6 +13614,7 @@ function syncControlsFromState(){
     // Flooring isn't a row of buttons to tick — it's one control whose label
     // IS the current tier, so it re-renders rather than being marked.
     if(typeof syncFlooringUI==='function')     syncFlooringUI();
+    if(typeof syncBuildInsUI==='function')     syncBuildInsUI();
     if(typeof SOFFIT!=='undefined')            mark('.soffit-btn', SOFFIT);
     if(typeof PINE_DIR!=='undefined')          mark('.pinedir-btn', PINE_DIR);
     if(typeof PINE_WIDTH!=='undefined')        mark('.pinew-btn', PINE_WIDTH);
@@ -14031,6 +14109,8 @@ function fetchQuote(){
     if(typeof renderFoundation==='function') renderFoundation();
     if(typeof syncIntFinishUI==='function') syncIntFinishUI();
     if(typeof syncFlooringUI==='function') syncFlooringUI();
+    if(typeof syncBuildInsUI==='function') syncBuildInsUI();
+  if(typeof syncBuildInsUI==='function') syncBuildInsUI();
     if(typeof renderAddons==='function') renderAddons();
     if(typeof paintCupolaTag==='function') paintCupolaTag();
     if(typeof paintSidingTags==='function') paintSidingTags();
