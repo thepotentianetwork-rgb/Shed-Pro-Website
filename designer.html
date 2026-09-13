@@ -3152,6 +3152,10 @@ function makeSiding(color, style){
   // at tile edges (512/8 = 64). We place grooves at i*64 for i=1..8, which makes
   // the groove at x=512 coincide with x=0 of the next tile — perfectly uniform.
   var gw=512/6;   // 6 panels per tile — narrower than 4, matches the reference reveal width
+  /* How bright the paint already is, 0..1. Dark paint has no headroom for an
+     additive highlight — it just turns white. */
+  var _lum=(0.2126*r + 0.7152*g + 0.0722*b)/255;
+  var edgeLift=Math.max(0.25, Math.min(1, _lum*1.6));
   function softGrooveV(x){
     var grad=ctx.createLinearGradient(x-3,0,x+3,0);
     grad.addColorStop(0,   shade(0));
@@ -3160,7 +3164,11 @@ function makeSiding(color, style){
     grad.addColorStop(0.6, shade(-0.09));
     grad.addColorStop(1,   shade(0));
     ctx.fillStyle=grad; ctx.fillRect(x-3,0,6,512);
-    ctx.fillStyle=shade(0.04); ctx.fillRect(x+3,0,1,512);
+    /* The catch-light on the groove's edge. shade() is ADDITIVE, so +0.04 is
+       +10 of 255 whatever the paint — invisible on a light wall and a bright
+       line on a near-black one. Scaled by how much headroom the colour has, so
+       it stays a highlight on pale siding and a hint on dark. */
+    ctx.fillStyle=shade(0.04*edgeLift); ctx.fillRect(x+3,0,1,512);
   }
   function softGrooveH(y){
     var grad=ctx.createLinearGradient(0,y-3,0,y+3);
@@ -3170,7 +3178,7 @@ function makeSiding(color, style){
     grad.addColorStop(0.6, shade(-0.09));
     grad.addColorStop(1,   shade(0));
     ctx.fillStyle=grad; ctx.fillRect(0,y-3,512,6);
-    ctx.fillStyle=shade(0.04); ctx.fillRect(0,y+3,512,1);
+    ctx.fillStyle=shade(0.04*edgeLift); ctx.fillRect(0,y+3,512,1);
   }
   if(style==='horizontal'){
     // Flat board faces with a shadow ONLY at the bottom lap (not rounded across the
@@ -3275,8 +3283,24 @@ function makeSiding(color, style){
       bx.fillStyle='#bcbcbc';bx.fillRect(bxp-7,0,14,512);  // raised batten (high)
     }
   } else {
+    /* T1-11 GROOVE, AS A SOFT V.
+       This was a hard 4px step from 0x80 to 0x5a. A step in a bump map is a
+       near-vertical surface normal, and a near-vertical normal on a glossy
+       material is a mirror: every groove threw a razor-thin specular highlight
+       that was the SAME brightness whatever the wall was painted, because
+       specular is added on top of albedo rather than multiplied by it. On a
+       white wall you could not see it; on the near-black golf-sim shed it was
+       a white pinstripe 19x brighter than the boards either side.
+       A real groove is a shallow V about 3/8in across, so this is a gradient —
+       the same soft shape the colour texture next to it already uses. */
     for(var bx2=0;bx2<512;bx2+=gw2){
-      bx.fillStyle='#5a5a5a';bx.fillRect(bx2-2,0,4,512); // vertical groove (low, soft)
+      var bgr=bx.createLinearGradient(bx2-4,0,bx2+4,0);
+      bgr.addColorStop(0,   '#808080');
+      bgr.addColorStop(0.35,'#6e6e6e');
+      bgr.addColorStop(0.5, '#666666');
+      bgr.addColorStop(0.65,'#6e6e6e');
+      bgr.addColorStop(1,   '#808080');
+      bx.fillStyle=bgr; bx.fillRect(bx2-4,0,8,512);
     }
   }
   var bt=new THREE.CanvasTexture(bc);
@@ -4043,6 +4067,33 @@ function sidingMat(color, tex, rough){
   // sheen, and the map carries the colour so the material must NOT tint it.
   if(typeof SIDING!=='undefined' && SIDING==='pine'){
     bump=0.20; r=0.72; envI=0.85; color=0xFFFFFF;
+  } else {
+    /* DARK PAINT NEEDS LESS GLOSS, NOT THE SAME GLOSS.
+       A specular highlight is ADDED on top of the surface colour rather than
+       multiplied by it, so its brightness barely depends on the paint. On white
+       siding the groove highlights vanish into the wall; on the near-black
+       golf-sim shed the same highlights measured 14x the brightness of the
+       boards either side, which is the white pinstriping you can see on the
+       black shed.
+       The sheen itself is wanted — dark paint with none reads as felt, which is
+       why it was dialled up in the first place. So this does not remove it: it
+       spreads it. Rougher scatters the highlight over the panel instead of
+       concentrating it at the groove, a shallower bump stops the groove walls
+       acting as mirrors, and less reflected sky lowers the ceiling on all of
+       it. Full effect below ~8% luminance, none above ~35%, straight line
+       between — so pale colours render exactly as they did. */
+    var _r8=(color>>16)&255, _g8=(color>>8)&255, _b8=color&255;
+    var _L=(0.2126*_r8 + 0.7152*_g8 + 0.0722*_b8)/255;
+    var _dark=Math.max(0, Math.min(1, (0.35-_L)/0.27));
+    if(_dark>0){
+      r    = r    + 0.20*_dark;
+      /* Proportional, not a fixed subtraction. Horizontal lap already runs a
+         low bump (0.095); taking a flat 0.075 off it left 0.02, which is no
+         lap edge at all on a black lap-sided shed. Halving keeps the relief
+         readable whatever the style started from. */
+      bump = bump * (1 - 0.50*_dark);
+      envI = envI - 0.55*_dark;
+    }
   }
   return new THREE.MeshStandardMaterial({
     color:color, map:tex||null,
