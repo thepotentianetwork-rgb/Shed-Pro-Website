@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60" width="520" height="120" fill="none">
+  <g stroke="#2BB5E8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 27 L26 15 L44 27"/>
+    <path d="M11 27 V43 H41 V27"/>
+  </g>
+  <g stroke="#F8921E" stroke-width="2.2" stroke-linecap="round">
+    <path d="M8 50 H44"/><path d="M8 47.5 V52.5"/><path d="M44 47.5 V52.5"/>
+    <path d="M51 15 V43"/><path d="M48.5 15 H53.5"/><path d="M48.5 43 H53.5"/>
+  </g>
+  <text x="68" y="34" font-family="'Barlow Condensed',Barlow,'Arial Narrow',sans-serif"
+        font-size="26" font-weight="900" letter-spacing="0.5" fill="#14181C">SHED<tspan fill="#2BB5E8">PRO</tspan></text>
+  <text x="69" y="48" font-family="'Barlow Condensed',Barlow,'Arial Narrow',sans-serif"
+        font-size="13" font-weight="700" letter-spacing="4.6" fill="#F8921E">STUDIO</text>
+</svg>
