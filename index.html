@@ -98,8 +98,8 @@
        the document structure, and the alt text is what a screen reader and
        Google read here. -->
   <h2 style="margin:0;line-height:0">
-    <img src="logo/lockup-dark-bg.svg" alt="ShedPro Studio" width="520" height="120"
-         style="width:100%;max-width:290px;height:auto;display:block">
+    <img src="logo/lockup-dark-bg.svg" alt="ShedPro Studio" width="464" height="132"
+         style="width:100%;max-width:250px;height:auto;display:block;margin:0 auto">
   </h2>
   <p style="color:var(--muted);font-size:14px;max-width:360px;line-height:1.65;">Design using our in-house 3D studio.<br>Receive a free quote shortly after.</p>
   <!-- ShedPro Studio card: the logo, two real shots out of the tool, and a
@@ -115,23 +115,26 @@
        but without this the height attribute wins and the shots render 348x481
        — every shed stretched tall and thin. */
     .sps-shots img{width:100%;height:auto;display:block}
-    .sps-shots img + img{border-top:1px solid rgba(255,255,255,0.10)}
-    /* Sits on the artwork, so it needs its own contrast rather than borrowing
-       the photo's — the exterior shot is near-black along that edge. */
-    .sps-new{position:absolute;top:10px;left:10px;z-index:2;
+    /* On the card's top EDGE, not on the artwork. The shot is the whole tool
+       now, header and all, so a badge laid over it landed on the app's own
+       logo. Straddling the border is the same treatment as the "Popular" tag
+       on the electrical tiers, and it needs a wrapper because the card itself
+       clips to its rounded corners. */
+    .sps-wrap{position:relative;width:100%;max-width:360px}
+    .sps-new{position:absolute;top:-10px;left:50%;transform:translateX(-50%);z-index:2;
       background:var(--blue);color:#06212D;font-family:'Barlow',sans-serif;
       font-weight:800;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;
-      padding:5px 10px;border-radius:50px;line-height:1;
-      box-shadow:0 2px 10px rgba(0,0,0,0.45)}
+      padding:5px 12px;border-radius:50px;line-height:1;white-space:nowrap;
+      box-shadow:0 2px 10px rgba(0,0,0,0.55)}
 
   </style>
-  <div class="sps-card">
-    <div class="sps-shots">
-      <span class="sps-new">New</span>
-      <img src="studio-exterior.webp" width="1000" height="481" loading="lazy" decoding="async"
-           alt="A black shed with a single-slope roof at dusk, designed in ShedPro Studio">
-      <img src="studio-interior.webp" width="1000" height="481" loading="lazy" decoding="async"
-           alt="The finished interior of the same shed, seen from inside in ShedPro Studio">
+  <div class="sps-wrap">
+    <span class="sps-new">New</span>
+    <div class="sps-card">
+      <div class="sps-shots">
+        <img src="studio-exterior.webp" width="1080" height="1080" loading="lazy" decoding="async"
+             alt="ShedPro Studio with a black single-slope shed on screen, being designed in 3D">
+      </div>
     </div>
   </div>
   <a href="designer.html" class="btn btn-blue" style="width:100%;max-width:300px;padding:14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">🛠️ Open ShedPro Studio &rarr;</a>
