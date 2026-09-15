@@ -14003,6 +14003,15 @@ function submitQuote(){
       heardAbout: heardAbout||null,
       heardAboutOther: heardAboutOther||null,
       quotedPrice: (quoteCache.total!=null)?Math.round(quoteCache.total):null,
+      /* The margin target staff dialled in, so the order is stored at the
+         price they actually quoted. Without this the redline panel showed one
+         number and the saved order kept another: the Worker re-prices every
+         submission from the config, and with no margin sent it re-priced at
+         the default, silently discarding the lever.
+         The Worker honours it only against a staff token (sent below) and
+         clamps it to the 30-70% band — this is a request, not a price. */
+      overrides: (shedAdminToken && costOverrides.marginTarget!=null)
+                   ? { marginTarget: costOverrides.marginTarget } : undefined,
       // Internal only — the endpoint stores this but never returns it to the page.
       // Only populated when staff had the redline panel open and unlocked while submitting.
       redline: quoteCache.redline||null,
@@ -14010,8 +14019,13 @@ function submitQuote(){
       page:{ url:location.href, ref:document.referrer||'', ua:navigator.userAgent }
     };
 
+    // The token rides along only when staff are actually driving; an ordinary
+    // customer submit carries no Authorization header and no overrides, and
+    // the Worker ignores overrides from anyone it cannot identify as staff.
+    var subHeaders = {'Content-Type':'application/json'};
+    if(shedAdminToken && payload.overrides) subHeaders['Authorization'] = 'Bearer ' + shedAdminToken;
     return fetch(QUOTE_ENDPOINT,{
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:subHeaders,
       body:JSON.stringify(payload)
     });
   }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
@@ -14205,10 +14219,11 @@ function lockRedline(){
 function buildRedlineShell(){
   var el=document.getElementById('redlineBody');
   if(!el) return;
-  function knob(id, label, val, step){
+  function knob(id, label, val, step, min, max){
+    var lim = (min!=null?' min="'+min+'"':'') + (max!=null?' max="'+max+'"':'');
     return '<label style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
       '<span style="color:rgba(255,255,255,.6)">'+label+'</span>'+
-      '<input id="'+id+'" type="number" step="'+step+'" value="'+val+'" inputmode="decimal" '+
+      '<input id="'+id+'" type="number" step="'+step+'" value="'+val+'"'+lim+' inputmode="decimal" '+
       'style="width:74px;background:#0d1520;border:1px solid var(--br);border-radius:5px;color:#fff;'+
       'padding:3px 6px;font-size:12px;text-align:right;font-variant-numeric:tabular-nums"></label>';
   }
@@ -14219,9 +14234,14 @@ function buildRedlineShell(){
     '<div id="redlineNums"></div>'+
     '<div style="border-top:1px solid rgba(255,255,255,.15);margin:8px 0 7px"></div>'+
     '<div style="display:flex;flex-direction:column;gap:6px">'+
-      knob('ovMargin','Margin target %', seed.marginTarget||0, '0.5')+
+      knob('ovMargin','Margin target %', seed.marginTarget||0, '0.5', 30, 70)+
       knob('ovMiles','Miles one-way', seed.milesOneWay||0, '5')+
       knob('ovDiesel','Diesel $/gal', seed.dieselPrice||0, '0.05')+
+      '<div style="font-size:10.5px;color:rgba(255,255,255,.42);line-height:1.5;margin-top:1px">'+
+        'Margin 30\u201370%. Lower for a local job, higher for a long haul. It moves the '+
+        'shed\u2019s base price only \u2014 the customer sees one Shed line, never this number. '+
+        'Set it before sending the request and the order saves at that price.'+
+      '</div>'+
     '</div>';
   function bind(id,key){
     var inp=document.getElementById(id);
