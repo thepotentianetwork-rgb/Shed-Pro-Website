@@ -93,9 +93,15 @@
 <!-- ─── DESIGNER PROMO ─── -->
 <section id="shed-designer" style="background:var(--dark2);padding:64px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
 <div style="max-width:480px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:20px;">
-  <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(43,181,232,0.1);border:1px solid rgba(43,181,232,0.25);border-radius:50px;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--blue);text-transform:uppercase;">Free — No Obligation</div>
-  <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(26px,4vw,36px);font-weight:900;text-transform:uppercase;line-height:1.05;">Try <span style="color:var(--blue);">ShedPro Studio</span></h2>
-  <p style="color:var(--muted);font-size:14px;max-width:360px;">Design using our in-house 3D studio.</p>
+  <!-- The lockup carries the name, so the heading is the logo rather than a
+       typeset copy of it. Still an <h2>: the image replaces the lettering, not
+       the document structure, and the alt text is what a screen reader and
+       Google read here. -->
+  <h2 style="margin:0;line-height:0">
+    <img src="logo/lockup-dark-bg.svg" alt="ShedPro Studio" width="520" height="120"
+         style="width:100%;max-width:290px;height:auto;display:block">
+  </h2>
+  <p style="color:var(--muted);font-size:14px;max-width:360px;line-height:1.65;">Design using our in-house 3D studio.<br>Receive a free quote shortly after.</p>
   <!-- ShedPro Studio card: the logo, two real shots out of the tool, and a
        NEW badge. No feature list — the button underneath is the ask, and a
        card that argues its case before anyone has clicked is just noise. -->
@@ -117,10 +123,7 @@
       font-weight:800;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;
       padding:5px 10px;border-radius:50px;line-height:1;
       box-shadow:0 2px 10px rgba(0,0,0,0.45)}
-    .sps-foot{display:flex;align-items:center;justify-content:center;gap:10px;
-      padding:16px 16px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,0.22)}
-    .sps-foot img{height:30px;width:auto;display:block}
-    @media(max-width:380px){ .sps-foot img{height:26px} }
+
   </style>
   <div class="sps-card">
     <div class="sps-shots">
@@ -129,9 +132,6 @@
            alt="A black shed with a single-slope roof at dusk, designed in ShedPro Studio">
       <img src="studio-interior.webp" width="1000" height="481" loading="lazy" decoding="async"
            alt="The finished interior of the same shed, seen from inside in ShedPro Studio">
-    </div>
-    <div class="sps-foot">
-      <img src="logo/lockup-dark-bg.svg" width="520" height="120" alt="ShedPro Studio">
     </div>
   </div>
   <a href="designer.html" class="btn btn-blue" style="width:100%;max-width:300px;padding:14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">🛠️ Open ShedPro Studio &rarr;</a>
