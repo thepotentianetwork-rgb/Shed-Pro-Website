@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Design Your Shed | ShedPro</title>
+<title>ShedPro Studio — Design Your Shed</title>
 <!-- The designer had no icon at all, so a tab showed the browser's blank page
      glyph. SVG first for anything modern; the site's existing raster logo is
      the fallback for browsers that don't take an SVG icon. -->
@@ -1554,6 +1554,28 @@ var SHOW_INTERIOR=false; // auto-on when a loft/shelf upgrade needs the inside v
 var DOOR_POS=0.5;    // (legacy, unused once doorsData is in)
 var EDIT_MODE=false; // when true, tap selects openings for editing/dragging
 var LEAN_BACK_H=0;   // world-unit height of lean-to back wall top; single source of truth
+/* ── WHAT THE LEAN-TO ROOF IS AT A GIVEN DEPTH ──────────────────────────────
+   The roof falls from the front wall down to the back, so anything set INBOARD
+   of the front wall plane sits under a roof that is LOWER than the wall top —
+   by the slope times however far in it sits. Three separate things were built
+   to plain wall height and speared straight through the roof: the interior
+   wall face (which hangs ~6.6in into the room once it is finished), the double
+   top plate, and the rafter ties at the tall end.
+   It scaled with the drop, which is why it only became obvious at 2ft: about
+   half an inch of poke-through per foot of drop on a 14ft shed.
+   One function so those three cannot drift apart again. */
+function leantoRoofYAt(z){
+  var h=H*0.2, l=encLft()*0.2;
+  var back=(typeof LEAN_BACK_H!=='undefined' && LEAN_BACK_H>0) ? LEAN_BACK_H : h;
+  if(!(l>0)) return h;
+  return back + (h-back)*((z + l/2)/l);
+}
+/* The height a thing at depth z may reach before it touches the roof.
+   Infinity on every other style, so callers need no style test of their own. */
+function leantoCapYAt(z, clearance){
+  if(typeof STYLE==='undefined' || STYLE!=='leanto') return Infinity;
+  return leantoRoofYAt(z) - (clearance==null ? 0.012 : clearance);
+}
 var BARN_END_FACE_Z=0; // world Z of the barn gambrel end-wall OUTER face; single source of truth
                        // (set by buildBarnRoof, read by addShedLights to seat gable lights)
 // ---- GLOBAL TEXTURE SCALES (world units per texture tile) ----
@@ -4781,6 +4803,10 @@ function buildShed(){
   [[eT.x0,eT.z1],[eT.x1,eT.z1],[eT.x0,eT.z0],[eT.x1,eT.z0]].forEach(function(c){
     var hh=((c[1]<0 && STYLE==='leanto' && LEAN_BACK_H>0) ? LEAN_BACK_H : h);
     if(STYLE==='gable'||STYLE==='hip') hh=Math.min(hh, trimTopPre);
+    // Same correction the gable, barn and hip each already carry: the roof is
+    // lower above the block than above the wall centreline it was measured at.
+    var _cc=leantoCapYAt(c[1]);
+    if(isFinite(_cc)) hh=Math.min(hh, _cc);
     var cb=new THREE.Mesh(new THREE.BoxGeometry(cbS, hh, cbS), cbMat);
     cb.position.set(c[0], hh/2, c[1]);
     cb.castShadow=true; cb.receiveShadow=true;
@@ -8258,6 +8284,19 @@ function buildWallWithOpenings(wall){
       ? diagMat(wall==='front' ? 0xff00ff : wall==='back' ? 0xff8800 : 0x2277ff)
       : wallSegMatGlobal(segLen, segH, uStart, L_, vy-segH/2, h, (f.ax==='z'));
     var m=new THREE.Mesh(new THREE.BoxGeometry(sx, segH, sz), mat);
+    /* The panel has thickness and is centred on the wall plane, so half of it
+       sits inboard — under a lower roof on a lean-to. Only bites at the
+       steepest drops, but it is the same fault as the interior face. */
+    var _wc=leantoCapYAt(pz - 0.025);
+    if(isFinite(_wc)){
+      var _wb=vy-segH/2, _wt=vy+segH/2;
+      if(_wt>_wc){
+        _wt=_wc;
+        if(_wt-_wb<=0.001) return;
+        segH=_wt-_wb; vy=(_wt+_wb)/2;
+        m.geometry.dispose(); m.geometry=new THREE.BoxGeometry(sx, segH, sz);
+      }
+    }
     m.position.set(px, vy, pz); m.castShadow=true; m.receiveShadow=true;
     shedGroup.add(m);
   }
@@ -9522,6 +9561,21 @@ function buildInterior(){
       if(finished){
         if(f.ax==='x') pz -= f.nz*0.055; else px -= f.nx*0.055;
       }
+      /* Cap at the roof above THIS panel's own depth, not the wall top. The
+         finished face hangs furthest into the room and so sat under the
+         lowest roof — it was the worst offender of the three. Shrunk from the
+         top, keeping the bottom on the floor. */
+      var _cap=leantoCapYAt(pz);
+      if(isFinite(_cap)){
+        var _bot=vy-segH/2, _top=vy+segH/2;
+        if(_top>_cap){
+          _top=_cap;
+          if(_top-_bot<=0.001) return;
+          segH=_top-_bot; vy=(_top+_bot)/2;
+          m.geometry.dispose();
+          m.geometry=new THREE.BoxGeometry(sx,segH,sz);
+        }
+      }
       m.position.set(px, vy, pz);
       shedGroup.add(m);
     }
@@ -9602,6 +9656,10 @@ function buildInterior(){
         var ppx,ppz,psx,psz;
         if(f.ax==='x'){ ppx=pax; ppz=f.fixed - f.nz*(studIn+0.008); psx=plLen; psz=PL_W; }
         else          { ppx=f.fixed - f.nx*(studIn+0.008); ppz=pax; psx=PL_W;  psz=plLen; }
+        // The plate sits a stud's depth inside the wall face, so on a lean-to
+        // it is under a lower roof than the wall top it was measured from.
+        var _pc=leantoCapYAt(ppz);
+        if(isFinite(_pc) && cy+thick/2 > _pc) cy=_pc-thick/2;
         var pm=new THREE.Mesh(new THREE.BoxGeometry(psx, thick, psz), studMat);
         pm.position.set(ppx, cy, ppz);
         pm.castShadow=true; shedGroup.add(pm);
@@ -9661,9 +9719,14 @@ function buildInterior(){
       lrf.castShadow=true; shedGroup.add(lrf);
       /* Ties at BOTH ends: a lean-to rafter lands on a plate at the tall wall
          and again at the low one, so it gets two, not one. */
-      [[ l/2-0.05, h],[-l/2+0.05, lBack]].forEach(function(e){
+      // Each tie lands where the RAFTER is, not where the wall top is: set in
+      // from the wall by 0.05, the roof has already dropped below h.
+      [[ l/2-0.05, leantoRoofYAt(l/2-0.05)],[-l/2+0.05, leantoRoofYAt(-l/2+0.05)]].forEach(function(e){
         var lu=new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.055, 0.010), tieMatL);
-        lu.position.set(lx, e[1]-0.022, e[0]);
+        // e[1] is now the roof line itself, and the tie is 0.055 tall, so
+        // centring it there left half of it above the deck.
+        var _tc=leantoCapYAt(e[0]);
+        lu.position.set(lx, (isFinite(_tc)?_tc:e[1])-0.0275, e[0]);
         shedGroup.add(lu);
         var lf2=new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.010, 0.048), tieMatL);
         lf2.position.set(lx, e[1]-0.048, e[0]-(e[0]>0?0.024:-0.024));
