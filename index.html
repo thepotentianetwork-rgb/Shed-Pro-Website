@@ -46,7 +46,7 @@
   <div class="hero-slide" style="background-image:url('shed-gambrel-white-logan.webp');"></div>
   <div class="hero-slide" style="background-image:url('shed-farmhouse-preston-idaho.webp');"></div>
   <div class="hero-slide" style="background-image:url('shed-navy-gambrel-logan.webp');"></div>
-</div><div class="hero-overlay"></div><div class="hero-vignette"></div><div class="hero-content"><div class="hero-eyebrow">Utah's #1 Custom Shed Builder</div><h1>Custom Sheds<br><em>Built On-Site,</em><br>Designed by You</h1><p class="hero-sub">We come to you. ShedPro LLC builds custom sheds directly in your backyard across Utah, Idaho & surrounding states — and we can typically start your build within one week.</p><div class="hero-btns"><button class="btn btn-blue btn-lg" onclick="document.getElementById('shed-designer').scrollIntoView({behavior:'smooth'})">Try Our Free 3D Designer &rarr;</button></div></div></section><section style="padding:64px 20px;background:var(--dark2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+</div><div class="hero-overlay"></div><div class="hero-vignette"></div><div class="hero-content"><div class="hero-eyebrow">Utah's #1 Custom Shed Builder</div><h1>Custom Sheds<br><em>Built On-Site,</em><br>Designed by You</h1><p class="hero-sub">We come to you. ShedPro LLC builds custom sheds directly in your backyard across Utah, Idaho & surrounding states — and we can typically start your build within one week.</p><div class="hero-btns"><button class="btn btn-blue btn-lg" onclick="document.getElementById('shed-designer').scrollIntoView({behavior:'smooth'})">Try ShedPro Studio &rarr;</button></div></div></section><section style="padding:64px 20px;background:var(--dark2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
 <div style="max-width:1000px;margin:0 auto;">
   <div style="text-align:center;margin-bottom:36px;">
     <div class="section-label" style="justify-content:center;display:flex;">Proven Track Record</div>
@@ -94,17 +94,77 @@
 <section id="shed-designer" style="background:var(--dark2);padding:64px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
 <div style="max-width:480px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:20px;">
   <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(43,181,232,0.1);border:1px solid rgba(43,181,232,0.25);border-radius:50px;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--blue);text-transform:uppercase;">Free — No Obligation</div>
-  <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(26px,4vw,36px);font-weight:900;text-transform:uppercase;line-height:1.05;">Try Our Free <span style="color:var(--blue);">3D Designer</span></h2>
-  <p style="color:var(--muted);font-size:14px;max-width:360px;">Customize your shed's size, style, and colors online — then get a quote instantly.</p>
-  <div style="border-radius:16px;overflow:hidden;width:100%;max-width:300px;position:relative;background:#000;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-    <video id="designer-vid" autoplay muted loop playsinline webkit-playsinline style="width:100%;display:block;aspect-ratio:9/16;object-fit:cover;">
-      <source src="designer-video.mov" type="video/mp4"><source src="designer-video.mp4" type="video/mp4">
-    </video>
-    <div style="position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:linear-gradient(to top,rgba(0,0,0,0.85),transparent);">
-      <p style="font-size:12px;color:rgba(255,255,255,0.8);margin:0;text-align:center;">Design your shed in 3D</p>
+  <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(26px,4vw,36px);font-weight:900;text-transform:uppercase;line-height:1.05;">Try <span style="color:var(--blue);">ShedPro Studio</span></h2>
+  <p style="color:var(--muted);font-size:14px;max-width:360px;">Our own 3D design tool. Build your shed &mdash; size, style, siding, doors, colors &mdash; and send it straight to us for a quote.</p>
+  <!-- ShedPro Studio card. Deliberately built from markup, not an image:
+       nothing to 404, nothing to load, sharp at any density, and it reads the
+       same on every device. Swap in artwork later by dropping an <img> into
+       .sps-card-art without touching the rest. -->
+  <style>
+    .sps-card{width:100%;max-width:340px;background:linear-gradient(160deg,var(--dark3),#121A1F);
+      border:1px solid rgba(43,181,232,0.22);border-radius:16px;overflow:hidden;
+      box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:left}
+    .sps-card-head{display:flex;align-items:center;gap:9px;padding:14px 16px;
+      border-bottom:1px solid var(--border);background:rgba(43,181,232,0.06)}
+    .sps-card-mark{width:30px;height:30px;border-radius:8px;background:rgba(43,181,232,0.14);
+      border:1px solid rgba(43,181,232,0.32);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+    .sps-card-name{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:17px;
+      text-transform:uppercase;letter-spacing:0.02em;line-height:1}
+    .sps-card-sub{font-size:10.5px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase;margin-top:3px}
+    .sps-card-art{padding:4px 0}
+    .sps-row{display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,0.05)}
+    .sps-row:last-child{border-bottom:none}
+    .sps-row svg{flex:0 0 auto;margin-top:1px}
+    .sps-row-t{font-size:13.5px;font-weight:700;line-height:1.25}
+    .sps-row-d{font-size:12px;color:var(--muted);line-height:1.45;margin-top:2px}
+    .sps-card-foot{padding:12px 16px;background:rgba(0,0,0,0.25);border-top:1px solid var(--border);
+      font-size:11.5px;color:var(--muted);line-height:1.5}
+    .sps-card-foot strong{color:var(--white)}
+    @media(max-width:380px){ .sps-row{padding:10px 13px} .sps-card-head{padding:12px 13px} }
+  </style>
+  <div class="sps-card">
+    <div class="sps-card-head">
+      <div class="sps-card-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round">
+          <path d="M12 2L3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 12v10"/>
+        </svg>
+      </div>
+      <!-- Not the product name again: the section heading two lines above
+           already says ShedPro Studio, and repeating it here just spent the
+           card's strongest line saying nothing new. -->
+      <div>
+        <div class="sps-card-name">What you can build</div>
+        <div class="sps-card-sub">Every option, in 3D</div>
+      </div>
+    </div>
+    <div class="sps-card-art">
+      <div class="sps-row">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>
+        <div><div class="sps-row-t">Size &amp; style</div>
+          <div class="sps-row-d">A-frame, barn, lean-to, hip &mdash; any size we build.</div></div>
+      </div>
+      <div class="sps-row">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>
+        <div><div class="sps-row-t">Siding, trim &amp; roof colors</div>
+          <div class="sps-row-d">LP SmartSide, and any Sherwin-Williams color.</div></div>
+      </div>
+      <div class="sps-row">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>
+        <div><div class="sps-row-t">Doors, windows, lofts &amp; shelving</div>
+          <div class="sps-row-d">Place them where you want them and see it in 3D.</div></div>
+      </div>
+      <div class="sps-row">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>
+        <div><div class="sps-row-t">Foundation, electrical &amp; interior finish</div>
+          <div class="sps-row-d">Concrete or gravel, pre-wiring, drywall &amp; paint.</div></div>
+      </div>
+    </div>
+    <div class="sps-card-foot">
+      Runs in your browser &mdash; <strong>no download, no login</strong>. Send us your build and
+      we&rsquo;ll price it and confirm it with you.
     </div>
   </div>
-  <a href="designer.html" class="btn btn-blue" style="width:100%;max-width:300px;padding:14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">🛠️ Start Designing Now &rarr;</a>
+  <a href="designer.html" class="btn btn-blue" style="width:100%;max-width:300px;padding:14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">🛠️ Open ShedPro Studio &rarr;</a>
 </div>
 </section><section style="background:var(--dark2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
 
@@ -301,15 +361,7 @@
 
 <script>
 (function(){
-  var v = document.getElementById('designer-vid');
-  if(v){
-    v.muted = true;
-    var tryPlay = function(){
-      v.play().catch(function(){});
-    };
-    document.addEventListener('DOMContentLoaded', tryPlay);
-    document.addEventListener('touchstart', tryPlay, {once:true});
-  }
+  // The designer promo is a static card now — nothing here to animate.
 })();
 </script>
 
@@ -327,7 +379,7 @@
 </script>
 </body><script>
 (function(){
-  var msgs = ["3-Year Workmanship, 50-Year Siding & 30-Year Shingle Warranty","Book a Free In-Home Visit \u2014 Get a Free Upgrade","Utah's #1 Custom Shed Builder \u2014 Built On-Site, Done Right","Try Our Free 3D Designer \u2014 Get an Instant Quote"];
+  var msgs = ["3-Year Workmanship, 50-Year Siding & 30-Year Shingle Warranty","Book a Free In-Home Visit \u2014 Get a Free Upgrade","Utah's #1 Custom Shed Builder \u2014 Built On-Site, Done Right","Try ShedPro Studio \u2014 Get an Instant Quote"];
   var el = document.getElementById('topbarMsg');
   if(!el) return;
   var i = 0;
