@@ -984,7 +984,16 @@ textarea.inp{resize:vertical}
         <!-- Double-tap unlocks pricing when locked, and opens the redline once it is
      already unlocked — the redline is meaningless with the prices hidden. -->
 <span class="sum-lbl" id="priceLbl" style="cursor:pointer" ondblclick="if(PRICE_LOCKED){unlockPricing();}else{toggleRedline();}" title="">Your Price</span>
-        <span id="priceVal" style="font-size:22px;font-weight:800;color:#2BB5E8;letter-spacing:-.5px">—</span>
+        <span style="display:flex;align-items:baseline;gap:5px">
+          <span id="priceVal" style="font-size:22px;font-weight:800;color:#2BB5E8;letter-spacing:-.5px">—</span>
+          <!-- This figure is pre-tax and has to read that way. The engine's
+               customerPrice carries no tax at all; tax is added once, on the
+               emailed estimate, where it gets its own line under a subtotal.
+               An untagged number here invites staff to quote it as the final
+               figure over the phone. Hidden whenever the value is not a price
+               ("Request a quote"), where "+ tax" would be nonsense. -->
+          <span id="priceTax" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.45)" hidden>+ tax</span>
+        </span>
       </div>
       <div id="redlinePanel" style="display:none;margin:0 0 12px;padding:11px 12px;border-radius:9px;background:rgba(220,70,70,.07);border:1px solid rgba(220,70,70,.35)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -14191,7 +14200,12 @@ function paintPrice(){
   // guessed number. While a request is merely in flight (loading, not yet
   // failed) money0() keeps showing whatever total is still cached, so a
   // slider drag never blanks the price.
-  pv.textContent = (quoteCache.failed && quoteCache.total==null) ? 'Request a quote' : money0(quoteCache.total);
+  var showing = !(quoteCache.failed && quoteCache.total==null);
+  pv.textContent = showing ? money0(quoteCache.total) : 'Request a quote';
+  var tx=document.getElementById('priceTax');
+  // Only alongside an actual dollar figure — not next to "On request" while
+  // the padlock is on, and not next to "Request a quote" after a failed fetch.
+  if(tx) tx.hidden = !(showing && !PRICE_LOCKED && quoteCache.total!=null);
 }
 
 /* ── REDLINE (staff cost/margin breakdown) ──────────────────────────────
