@@ -5331,8 +5331,24 @@ function buildShed(){
     (typeof windowsData!=='undefined'?windowsData:[]).forEach(function(wd){
       var topIn=(wd.cy||0)+wd.h/2;
       if(topIn <= H*12+0.01) return;               // not in the triangle
-      gWinHoles.push({wall:wd.wall, cx:(wd.pos-0.5)*ew, hw:(wd.w*gIN)/2,
+      gWinHoles.push({wall:wd.wall, cx:posToAxis(wd.wall, wd.pos, wd.w), hw:(wd.w*gIN)/2,
                       y0:Math.max(0,((wd.cy||0)-wd.h/2-H*12))*gIN, y1:(topIn-H*12)*gIN});
+    });
+    /* AND ROUND THE VENTS. A gable vent is the commonest thing up here and the
+       battens ran straight over it — the wall below knew about windows and
+       doors, the triangle above knew about windows only.
+       cx comes from posToAxis, the same function that places the vent itself,
+       so the gap lands on the louvre rather than near it. The window line above
+       used (pos-0.5)*ew, which ignores the end margin posToAxis applies, so its
+       gap drifted from the glass by up to that margin — it now uses the same
+       source of truth. */
+    (typeof ventsData!=='undefined'?ventsData:[]).forEach(function(vd){
+      if(vd.wall!=='front' && vd.wall!=='back') return;
+      var vCy=ventCyIn(vd);                        // not vd.cy — may not be set yet
+      var vTopIn=vCy+4, vBotIn=vCy-4;              // the vent is 8in tall
+      if(vTopIn <= H*12+0.01) return;              // sits on the wall, not the triangle
+      gWinHoles.push({wall:vd.wall, cx:posToAxis(vd.wall, vd.pos, 16), hw:(16*gIN)/2,
+                      y0:Math.max(0,(vBotIn-H*12))*gIN, y1:(vTopIn-H*12)*gIN});
     });
     [['front', el/2 + (fpD>0 ? fpD : WALL_FACE), 1],
      ['back', -(el/2 + WALL_FACE), -1]].forEach(function(gg){
@@ -8255,6 +8271,23 @@ function buildWallWithOpenings(wall){
     var dwi=dd.w*0.2/12, dhi=Math.min(dd.h*0.2/12, h-0.12);
     holes.push({c:posToAxis(wall,dd.pos,dd.w), half:dwi/2, top:dhi, bot:0, isDoor:true});
   });
+  /* VENTS BREAK THE BATTENS BUT DO NOT CUT THE WALL.
+     A vent is a louvre sitting ON the siding, so the panel behind it stays
+     whole — but a 1x3 batten cannot run straight through one, which is what it
+     was doing: battens are geometry standing 3/4in proud and the vent only
+     stands 0.02 out, so the strip crossed over the louvre and the vent looked
+     half-buried in siding.
+     Kept in its own list rather than pushed into `holes`, because `holes` is
+     what cuts the siding open — adding vents there would put a real hole in
+     the wall and you would see daylight round the louvre. */
+  var ventBreaks=[];
+  (typeof ventsData!=='undefined'?ventsData:[]).forEach(function(vd){
+    if(vd.wall!==wall) return;
+    var vWs=16*0.2/12, vHs=8*0.2/12;
+    var vcy=ventCyIn(vd)*0.2/12;               // not vd.cy — it may not be set yet
+    ventBreaks.push({c:posToAxis(wall,vd.pos,16), half:vWs/2,
+                     top:vcy+vHs/2, bot:vcy-vHs/2});
+  });
   // local axis helper: place a wall panel of (segLen along axis, segH) centered at
   // axis coordinate ac and vertical center vy.
   function panelSeg(segLen, segH, ac, vy, uStart){
@@ -8355,9 +8388,12 @@ function buildWallWithOpenings(wall){
     }
   }
 
+  // Battens break around both, so vent gaps need the same local coordinate.
+  ventBreaks.forEach(function(hl){ hl.local=(hl.c-axisStart)*u; });
+
   if(holes.length===0){
     panelSeg(L_, h, 0, h/2, 0);                 // solid wall
-    addBattens([]);
+    addBattens(ventBreaks);
     return;
   }
   // sort holes left→right in LOCAL coordinates (distance from axisStart along u)
@@ -8373,8 +8409,8 @@ function buildWallWithOpenings(wall){
     if(b2<=0.001 || a>=L_-0.001) return false;   // entirely off this wall
     return true;
   });
-  if(holes.length===0){ panelSeg(L_, h, 0, h/2, 0); addBattens([]); return; }
-  addBattens(holes);
+  if(holes.length===0){ panelSeg(L_, h, 0, h/2, 0); addBattens(ventBreaks); return; }
+  addBattens(holes.concat(ventBreaks));
 
   /* SIDING IN BANDS, NOT ONE SWEEP.
      This walked left to right once, and for each opening cut a strip above it
@@ -9025,6 +9061,27 @@ function buildWindows(){
 // VENTS — 8"x16" louvered gable vents. Movable along the wall; default centered
 // high on the gable. Built in a local group (facing +z) and transformed onto wall.
 var ventMeshes=[];
+/* WHERE A VENT SITS, in inches up the wall.
+   Pulled out of buildVents because the walls are built BEFORE it runs, so the
+   batten builders that need to leave a gap for a vent cannot read vd.cy — on a
+   fresh shed it is still null at that point, and anything keyed off null
+   quietly skipped the vent and ran the battens straight over it.
+   Read-only: buildVents still owns the write, this just answers the question
+   with the same arithmetic so the two cannot drift apart. */
+function ventCyIn(vd){
+  var f=wallFrame(vd.wall);
+  var wallIn=f.height/(0.2/12);
+  var cy=(vd.cy==null) ? wallIn-12 : vd.cy;
+  var half=4;                                   // the vent is 8in tall
+  var minCy=half+2, maxCy=wallIn-half-1;
+  if((vd.wall==='front'||vd.wall==='back') && STYLE!=='leanto'){
+    var gRiseIn=(STYLE==='barn') ? barnProfile().barnH/(0.2/12) : (PITCH*W)/2;
+    maxCy=wallIn+gRiseIn-half-2;                // it may ride up into the gable
+  }
+  if(maxCy<minCy) maxCy=minCy;
+  return Math.max(minCy, Math.min(maxCy, cy));
+}
+
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
@@ -9032,19 +9089,10 @@ function buildVents(){
   var frameMat=new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
   var slatMat=new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.7, metalness:0.1});
   ventsData.forEach(function(vd, idx){
-    var f=wallFrame(vd.wall);
-    // Vents ride near the wall top. Measure "the top" from THIS wall's real height
-    // — the lean-to's back wall is shorter than H, so (H*12)-12 sat above its roof.
-    var wallIn=f.height/(0.2/12);
-    if(vd.cy==null) vd.cy=wallIn-12;
-    var minCy=vH/2/(0.2/12)+2, maxCy=wallIn-vH/2/(0.2/12)-1;
-    // Vents may sit up in the GABLE on the front/back (gable-end) walls.
-    if((vd.wall==='front'||vd.wall==='back') && STYLE!=='leanto'){
-      var gRiseIn=(STYLE==='barn') ? barnProfile().barnH/(0.2/12) : (PITCH*W)/2;
-      maxCy=wallIn+gRiseIn-vH/2/(0.2/12)-2;
-    }
-    if(maxCy<minCy) maxCy=minCy;
-    if(vd.cy<minCy) vd.cy=minCy; if(vd.cy>maxCy) vd.cy=maxCy;
+    // Vents ride near the wall top. Measure "the top" from THIS wall's real
+    // height — the lean-to's back wall is shorter than H, so (H*12)-12 sat
+    // above its roof. ventCyIn() holds that arithmetic; see the note on it.
+    vd.cy=ventCyIn(vd);
     var cy=vd.cy*0.2/12;
     var grp=new THREE.Group();
     grp.userData={isVent:true, index:idx, wall:vd.wall};
