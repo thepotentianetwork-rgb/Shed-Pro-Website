@@ -12537,8 +12537,24 @@ function refreshInterior(){
 function addVent(){
   var wall=(typeof ADD_WALL!=='undefined'?ADD_WALL:'front');
   var r=ventCyRange(wall);
-  // start a bit into the gable on gable-end walls; otherwise near the wall top
-  var cyIn=(wall==='front'||wall==='back' && STYLE!=='leanto') ? Math.min(r.max, H*12+4) : (H*12-12);
+  /* CENTRED IN THE GABLE on a gable-end wall — dead centre of the triangle,
+     which is where a gable vent goes and where you would have dragged it
+     anyway. It used to land 4in above the plate, at the very bottom of the
+     triangle, so every one needed moving by hand.
+     The old line also read
+         wall==='front' || wall==='back' && STYLE!=='leanto'
+     and && binds tighter than ||, so a LEAN-TO's front wall took the gable
+     branch even though a lean-to has no gable. Parenthesised now.
+     Side walls, and every wall of a lean-to, keep the old spot near the top. */
+  var isGableEnd=((wall==='front'||wall==='back') && STYLE!=='leanto');
+  var cyIn;
+  if(isGableEnd){
+    var gRiseIn=(STYLE==='barn') ? barnProfile().barnH/(0.2/12) : (PITCH*W)/2;
+    cyIn=H*12 + gRiseIn/2;
+  } else {
+    cyIn=H*12-12;
+  }
+  cyIn=Math.max(r.min, Math.min(r.max, cyIn));   // a shallow pitch may not have room
   ventsData.push({wall:wall, pos:0.5, cy:cyIn});
   selectedKind='vent'; selectedVent=ventsData.length-1;
   selectedWindow=-1; selectedDoor=-1; selectedShelf=-1;
