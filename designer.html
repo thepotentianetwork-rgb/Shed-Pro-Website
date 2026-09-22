@@ -87,6 +87,10 @@ canvas{display:block;width:100%;height:100%}
 .hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);border-radius:30px;padding:7px 18px;font-size:11px;color:var(--mu);white-space:nowrap}
 .dup-btn{position:absolute;top:14px;right:14px;display:none;background:rgba(43,181,232,.92);color:#06222e;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);font-family:inherit}
 .dup-btn:hover{background:#2BB5E8}
+/* DAY/NIGHT toggle. Bottom-right: top-right is the Duplicate button's, the
+   bottom centre is the drag hint and the bottom left is the consult nudge. */
+.day-btn{position:absolute;bottom:14px;right:14px;display:none;background:rgba(20,22,26,.92);color:#e8eef3;border:1px solid rgba(255,255,255,.18);border-radius:30px;padding:7px 15px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);font-family:inherit;z-index:82}
+.day-btn:hover{background:rgba(43,181,232,.92);color:#06222e;border-color:#2BB5E8}
 .wall-pick{position:absolute;left:50%;transform:translateX(-50%);bottom:64px;display:none;align-items:center;gap:6px;background:rgba(20,22,26,.95);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 8px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:80;max-width:94%;flex-wrap:wrap;justify-content:center}
 .wall-pick-t{color:#8fe3ff;font-size:11px;font-weight:700;padding:0 4px;white-space:nowrap}
 .wall-pick button{background:rgba(43,181,232,.92);color:#06222e;border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -506,6 +510,9 @@ textarea.inp{resize:vertical}
          has been reading them and getting null. This sits beside the measure
          readout, which IS real, and shows only while something is selected. -->
     <button id="dupBtn" class="dup-btn" onclick="duplicateSelected()">&#10697; Duplicate</button>
+    <!-- Only shows once a package is chosen: with no lighting there is nothing
+         to show off at dusk, and the scene is daylight anyway. -->
+    <button id="dayBtn" class="day-btn" onclick="toggleDaylight()">&#9728; Daylight</button>
     <!-- Tapping a wall from any step asks what you want to put on it. Over the
          canvas rather than in the side panel because the answer is about the
          wall you just touched, and because the panel's item editor containers
@@ -13738,6 +13745,10 @@ function populateShelfLengths(){
 }
 
 function setElectrical(pkg,el){
+  /* Dropping the package clears the override. Left set, "Night" on a shed
+     with no lighting is a dark shed and nothing to see — and the button that
+     would undo it is hidden, because it only shows with a package. */
+  if(pkg==='none') DAYLIGHT=null;
   ELEC=pkg;
   document.querySelectorAll('.elec-btn').forEach(function(b){b.classList.remove('on');});
   el.classList.add('on');
@@ -14044,6 +14055,35 @@ function hideMeasureGuide(){
 
 // Toggle day/night and add package-specific lights. Called by setElectrical and
 // at the end of buildShed (so lights re-attach after a rebuild).
+/* DAY OR NIGHT, and who decides.
+ *
+ * Picking any electrical package switched the scene to dusk so the lights
+ * show — which is the right DEFAULT and was the only setting. A customer who
+ * wanted lighting could not see their own shed in daylight again without
+ * removing the package they had just chosen, so the siding and trim colours
+ * they had spent time on went dark the moment they added a light.
+ *
+ * The package still decides what you see first. This decides what you see
+ * after that. null means "follow the package", which is what a fresh design
+ * and a restored one both start at. */
+var DAYLIGHT = null;
+function nightView(){ return (DAYLIGHT==null) ? (ELEC!=='none') : !DAYLIGHT; }
+function toggleDaylight(){
+  /* Currently night -> the customer wants day, and vice versa. Reading the
+     CURRENT state rather than inverting DAYLIGHT matters while it is still
+     null: inverting null would need a special case and would get the first
+     tap backwards on a shed with no package. */
+  DAYLIGHT = nightView();
+  applyLighting();
+}
+function syncDaylightBtn(){
+  var b=document.getElementById('dayBtn');
+  if(!b) return;
+  b.style.display = (ELEC!=='none') ? 'block' : 'none';
+  // Says what the tap will DO, not what you are looking at.
+  b.innerHTML = nightView() ? '&#9728; Daylight' : '&#9790; Night';
+}
+
 function applyLighting(){
   // Clear any previously added dynamic shed lights.
   shedLights.forEach(function(L){ if(L.parent) L.parent.remove(L); });
@@ -14051,9 +14091,8 @@ function applyLighting(){
 
   // Every package includes interior lighting now (Basic's single 6" light
   // included), so any package other than None switches the scene to dusk to
-  // show it off — not just Core/Essential.
-  var hasNightWorthyLighting = (ELEC!=='none');
-  var night = hasNightWorthyLighting;
+  // show it off — not just Core/Essential. The customer can switch back.
+  var night = nightView();
 
   if(night){
     // NIGHT/DUSK — deep evening sky so the exterior lights clearly stand out.
@@ -14101,6 +14140,11 @@ function applyLighting(){
     rimLight.intensity=DAY_RIG.rim;  rimLight.color.setHex(0x2BB5E8);
     rigPos(rimLight, DAY_RIG.rimPos);
   }
+  /* Here rather than in each caller. ELEC is changed from the package picker,
+     from a preset build and from restoring a saved design, and a toggle whose
+     label is only refreshed by the paths someone remembered is the bug this
+     file keeps producing. */
+  syncDaylightBtn();
   if(skyDome) skyDome.material.needsUpdate=true;
   // Always attach the package's fixtures (interior lights exist in daylight too).
   if(ELEC!=='none') addShedLights();
