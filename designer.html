@@ -1388,7 +1388,12 @@ function addPorchLight(styleKey){
     return;
   }
   var wall=(typeof ADD_WALL!=='undefined' && ADD_WALL) ? ADD_WALL : 'front';
-  porchLightsData.push({wall:wall, pos:0.5, style:styleKey});
+  /* Not priced today, so this one costs nothing but a puzzled customer — same
+     bug all the same, and it would start costing the day lights are billed. */
+  var plPos=freeSlot(porchLightsData.filter(function(pl){ return pl.wall===wall; })
+                                    .map(function(pl){ return pl.pos; }), 0.5, 0.15, 0.08, 0.92);
+  if(plPos==null){ showToast('No room for another light on that wall.'); return; }
+  porchLightsData.push({wall:wall, pos:plPos, style:styleKey});
   selectedKind='plight'; selectedPorchLight=porchLightsData.length-1;
   selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedShelf=-1;
   if(!EDIT_MODE) toggleEditMode(); else { buildShed(); renderPlacedPorchLights(); }
@@ -13643,7 +13648,13 @@ function addVent(){
   var cyIn=(typeof ventGableCyIn==='function') ? ventGableCyIn({wall:wall, cy:null}) : null;
   if(cyIn==null) cyIn=H*12-12;                   // no gable to sit on
   cyIn=Math.max(r.min, Math.min(r.max, cyIn));   // a shallow pitch may not have room
-  ventsData.push({wall:wall, pos:0.5, cy:cyIn});
+  /* Same stacking bug as the shelves, and vents are priced per unit off
+     ventsData.length — two at pos 0.5 on one gable is one vent you can see and
+     two on the bill. */
+  var vpos=freeSlot(ventsData.filter(function(v){ return v.wall===wall; })
+                             .map(function(v){ return v.pos; }), 0.5, 0.18, 0.08, 0.92);
+  if(vpos==null){ showToast('No room for another vent on the '+wall+' wall.'); return; }
+  ventsData.push({wall:wall, pos:vpos, cy:cyIn});
   selectedKind='vent'; selectedVent=ventsData.length-1;
   selectedWindow=-1; selectedDoor=-1; selectedShelf=-1;
   if(!EDIT_MODE) toggleEditMode(); else { buildShed(); syncEditorPanel(); }
@@ -13686,9 +13697,70 @@ function syncVentHeightUI(){
   }
 }
 
+/* WHERE A NEW ITEM GOES WHEN THE DEFAULT SPOT IS ALREADY TAKEN.
+ *
+ * A customer's quote listed four shelves. Their shed showed two. Both were
+ * right: addShelf pushed {wall:'back', pos:0.5, cy:48} EVERY time, with no
+ * stagger and no check, so tapping it four times made four records at one
+ * coordinate. Three boards were hidden inside the first. The 3D drew what it
+ * was given and so did the invoice — at $15 a foot, on a 12ft wall, that is
+ * $360 of shelving nobody could see and nobody meant to buy.
+ *
+ * Windows never had this: addWindow asks findWindowSlot for an open spot,
+ * re-spaces the wall if it has to, and refuses with a toast if there is no
+ * room. Shelves, vents and porch lights were all written the short way.
+ *
+ * Walks outward from `want` in `gap` steps and returns the first value clear
+ * of everything in `taken` and inside [lo,hi]; null when there is nowhere
+ * left, which the callers treat as "say so" rather than "stack it anyway".
+ * Upward first, because that is how shelves go on a wall. */
+function freeSlot(taken, want, gap, lo, hi){
+  function ok(v){
+    if(v < lo-1e-9 || v > hi+1e-9) return false;
+    for(var i=0;i<taken.length;i++){ if(Math.abs(taken[i]-v) < gap-1e-9) return false; }
+    return true;
+  }
+  if(ok(want)) return want;
+  var reach=Math.max(hi-want, want-lo);
+  for(var step=gap; step<=reach+gap; step+=gap){
+    if(ok(want+step)) return want+step;
+    if(ok(want-step)) return want-step;
+  }
+  return null;
+}
+
+/* The other half of freeSlot: it stops new duplicates being made, this drops
+   the ones already saved. Keeps the FIRST of each set, so the item keeps the
+   position the customer put it in. */
+function dropStacked(list, keys){
+  var seen={}, out=[];
+  (list||[]).forEach(function(o){
+    if(!o || typeof o!=='object') return;
+    var k=keys.map(function(f){ return String(o[f]); }).join('\u0001');
+    if(seen[k]) return;
+    seen[k]=true; out.push(o);
+  });
+  return out;
+}
+
 // ---- SHELVES (interior, movable along a wall) ----
+var SHELF_GAP_IN = 14;      // a 16in board plus room to reach into it
 function addShelf(){
-  shelvesData.push({wall:'back', pos:0.5, cy:48, depth:16, len:W});   // full back-wall length default
+  var wall='back', wallLen=W;
+  /* Only shelves that would actually collide count: same wall, and their
+     lengths overlap. A 4ft shelf at one end does not block the other end. */
+  var newHalf=wallLen/2;                                  // the default is full-length
+  var taken=shelvesData.filter(function(sd){
+    if(sd.wall!==wall) return false;
+    var ln=Math.min(sd.len||wallLen, wallLen);
+    return (Math.abs(((sd.pos==null?0.5:sd.pos)-0.5)*wallLen) < (ln/2 + newHalf));
+  }).map(function(sd){ return sd.cy==null ? 48 : sd.cy; });
+  var cy=freeSlot(taken, 48, SHELF_GAP_IN, 12, Math.max(26, H*12-12));
+  if(cy==null){
+    showToast('No room for another shelf on the back wall — move or shorten one first.');
+    return;
+  }
+  shelvesData.push({wall:wall, pos:0.5, cy:cy, depth:16, len:wallLen});   // full back-wall length default
   selectedKind='shelf'; selectedShelf=shelvesData.length-1;
   selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedPorchLight=-1;
   refreshInterior();
@@ -15085,9 +15157,22 @@ function applyDesignConfig(c){
     if(c.addons && typeof c.addons==='object')ADDONS=c.addons;
     if(Array.isArray(c.doors))doorsData=c.doors;
     if(Array.isArray(c.windows))windowsData=c.windows;
-    if(Array.isArray(c.vents))ventsData=c.vents;
-    if(Array.isArray(c.shelves))shelvesData=c.shelves;
-    if(Array.isArray(c.porchLights))porchLightsData=c.porchLights;
+    /* DESIGNS SAVED BEFORE addShelf/addVent STAGGERED ANYTHING.
+       They can hold several records at one identical coordinate — a real
+       customer's saved design has three shelves at {back, 0.5, 48, 16, 10}
+       and two vents at {front, 0.5, 111.375}. You could only ever see one of
+       each; the pricer counted every one, and quoted $330 of shelving and
+       venting that is not on the shed.
+       Saved designs cannot be edited: handleSaveDesign only ever INSERTs
+       under a fresh code, so the stored row keeps its duplicates forever.
+       Dropping them HERE fixes the shed and the price for every old design
+       the moment anyone opens it, without touching a stored row.
+       Exact matches only. Two shelves an inch apart are a choice, however odd;
+       two at the identical coordinate are one shelf and a billing error, and
+       there is no build in which the second one could ever be seen. */
+    if(Array.isArray(c.vents))ventsData=dropStacked(c.vents, ['wall','pos','cy']);
+    if(Array.isArray(c.shelves))shelvesData=dropStacked(c.shelves, ['wall','pos','cy','depth','len']);
+    if(Array.isArray(c.porchLights))porchLightsData=dropStacked(c.porchLights, ['wall','pos','style']);
     if(typeof syncBulbVisibility==='function') syncBulbVisibility();
     // Restores porchLightsData above first — syncPorchLightVisibility() would
     // otherwise wipe it right back out on a permalink saved before Essential
