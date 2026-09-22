@@ -12437,25 +12437,25 @@ function porchPageHTML(){
   h+=ibtn(PORCH_LOC==='side',"setPorchLoc('side')",'porch-side','Side');
   h+='</div>';
   if(PORCH_LOC!=='none'){
-    if(PORCH_LOC==='front'){
-      h+='<span class="lbl">Porch Finish</span><div style="display:flex;flex-direction:column;gap:7px;margin:6px 0 14px">';
-      /* Built from quoteCache's own frontTiers map — its keys ARE the tier
-         list, computed server-side, so there's no separate rate table to
-         read here. 'standard' used to be prepended by hand because it lived
-         in its own flat table; it is a row like the others now, so
-         hardcoding it here would list Standard twice. */
-      var tiers=Object.keys((quoteCache.optionPrices && quoteCache.optionPrices.porch && quoteCache.optionPrices.porch.frontTiers)||{})
-        .map(function(k){ return [k, k==='standard'?'Standard':k]; });
-      tiers.forEach(function(pair){
-        var key=pair[0], label=pair[1];
-        // Every tier prices at every depth now, so no clamping to 6ft.
-        var pl=porchPriceLine('front', SIDE_PORCH, key);
-        var priceTxt = pl ? (pl.unpriced?'price TBD':('+'+money(pl.price))) : '';
-        h+=btn(PORCH_TIER===key,'setPorchTier(\''+key+'\')',label+(priceTxt?' <span style="opacity:.65;font-size:11px">'+priceTxt+'</span>':''));
-      });
-      h+='</div>';
-    } else {
-      h+='<div style="font-size:11px;color:var(--mu);margin-bottom:10px">Side porch runs the full length of the wall. No finish tiers \u2014 depth only.</div>';
+    /* No "Porch Finish" picker. It offered five tiers from $8.33 to $35 per
+       sqft and not one line of the 3D read PORCH_TIER, so a customer paying
+       $1,900 more for "Posts, Beams & Composite Floor" on a 72 sqft porch
+       watched the identical shed not change. The Decking control below was
+       the opposite problem: it does change the 3D, and was free. The charge
+       moved onto the decking, where it is attached to something visible.
+
+       PORCH_TIER itself is NOT retired — applyDesignConfig still restores it
+       and the engine still prices it, so a design saved against an upgraded
+       tier re-quotes at the price it was quoted at. A restored tier is shown
+       as a read-only line rather than silently priced, because a number a
+       customer cannot see on the page is what created this mess. */
+    if(PORCH_LOC==='front' && PORCH_TIER && PORCH_TIER!=='standard'){
+      h+='<div style="font-size:11px;color:#ffd7a0;margin-bottom:10px">'+
+         'Saved porch finish: <b>'+PORCH_TIER+'</b> \u2014 priced as originally quoted. '+
+         'New designs use the standard finish with the decking priced separately.</div>';
+    }
+    if(PORCH_LOC==='side'){
+      h+='<div style="font-size:11px;color:var(--mu);margin-bottom:10px">Side porch runs the full length of the wall.</div>';
     }
     /* Same depth ladder on both sides. Side was hardcoded to [4] and front's
        standard tier to [4,6] — those lists were mirroring which cells happen to
@@ -12525,10 +12525,21 @@ function porchPageHTML(){
     h+='<span class="lbl" style="margin-top:12px;display:block">Decking</span>';
     /* .optstack, not .optrow — see the CSS. These three carry descriptions, not
        one-word values, and the side-scroll strip cut them off. */
+    /* Prices come off quoteCache.optionPrices.porch.deck, computed server-side
+       for THIS porch's square footage — no rate lives on the client. A free
+       deck says "Included" rather than "+$0", and a missing map says nothing
+       at all rather than guessing a zero. */
+    var _dk = (quoteCache.optionPrices && quoteCache.optionPrices.porch && quoteCache.optionPrices.porch.deck) || null;
+    function deckPriceTxt(id){
+      if(!_dk || _dk[id]==null) return '';
+      var p=_dk[id];
+      var txt = (p>0) ? ('+'+money(p)) : 'Included';
+      return ' <span style="opacity:.65;font-size:11px">'+txt+'</span>';
+    }
     h+='<div class="optstack" style="margin:6px 0 8px">';
-    h+=btn(PORCH_DECK==='none','setPorchDeck(\'none\')','No Deck &middot; posts on grade');
-    h+=btn(PORCH_DECK==='pt','setPorchDeck(\'pt\')','Treated Pine &middot; Included');
-    h+=btn(PORCH_DECK==='composite','setPorchDeck(\'composite\')','Composite Decking');
+    h+=btn(PORCH_DECK==='none','setPorchDeck(\'none\')','No Deck &middot; posts on grade'+deckPriceTxt('none'));
+    h+=btn(PORCH_DECK==='pt','setPorchDeck(\'pt\')','Treated Pine'+deckPriceTxt('pt'));
+    h+=btn(PORCH_DECK==='composite','setPorchDeck(\'composite\')','Composite Decking'+deckPriceTxt('composite'));
     h+='</div>';
     if(PORCH_DECK==='composite'){
       h+='<span class="lbl">Composite Color</span>';
@@ -12589,6 +12600,11 @@ function setPorchLoc(v){
   porchMoveDoor();
   porchRefresh();
 }
+/* No longer called from the porch page — the finish picker is gone (see
+   porchPageHTML). Kept because a saved design can still carry a tier and
+   staff re-quoting one may need to set it back; the engine still prices it.
+   porchPriceLine's frontTiers branch is dead for the same reason: every
+   caller now passes PORCH_TIER. */
 function setPorchTier(t){
   PORCH_TIER=t;
   // No depth clamp. Standard is a per-sqft rate like every other tier now, so
