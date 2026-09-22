@@ -1416,6 +1416,20 @@ function buildPorchDeck(x0,x1,z0,z1,topY){
 } // A-frame porch: "none" | "side" (along length) | "front" (off width)
 var SIDE_PORCH=0;     // porch depth in feet (0 = none). Gable only.
 var WINDOW="none";   // legacy flag: "none" or "preset" — kept for the dropdown
+/* HOW FAR THE FAIRYTALE DOOR'S ARCH TRIM REACHES PAST ITS LEAF.
+
+   The door builder draws a standoff arc and a band around the leaf; the wall
+   builder has to keep the battens off them. Those are two different functions
+   and the numbers lived only in the first, so board & batten ran its 3/4in
+   strips straight across the arch: the battens are cut to the WALL opening,
+   which is the leaf, and the trim stands 4.7in proud of that on each side.
+
+   The wall CUT stays at the leaf — a hole the size of the trim would be a hole
+   you could see through. Only the batten clearance grows. */
+var FT_TRIM_GAP = 0.058;   // standoff from the leaf, ~3.5in
+var FT_TRIM_W   = 0.020;   // the band itself, ~1.2in
+function ftTrimReach(){ return FT_TRIM_GAP + FT_TRIM_W; }
+
 // Data-driven openings. Windows AND doors can live on ANY wall.
 //   wall: 'front'(+z) | 'back'(-z) | 'left'(-x) | 'right'(+x)
 //   pos:  0..1 along the wall's length (left→right as you face the wall from outside)
@@ -7635,6 +7649,16 @@ function buildDoor(){
      spring sits one radius below the top. The wall opening stays rectangular
      (the banded wall cutter only does rectangles), so the corners left over
      above the arch are filled by the siding infill in addOverlays. */
+  /* The arched leaf's outline is inset from the opening it sits in, and the
+     siding infill has to cut a hole to exactly that outline. Those two insets
+     were written as separate literals — 0.012 for the leaf, 0.004 for the hole
+     — so the hole was 0.008 bigger than the leaf all the way round and you
+     could see daylight through the shed down both sides of the door and over
+     the arch. One number now, and the hole laps the leaf slightly rather than
+     meeting it exactly, because two edges at the identical coordinate is how
+     you get a flickering hairline instead of a seal. */
+  var FT_LEAF_INSET = 0.012;
+  var FT_FILL_LAP   = 0.002;
   function fairytaleShape(lw, dhh, inset){
     var a=lw/2 - (inset||0);
     var spring=Math.max(0.05, dhh - a - (inset||0));   // semicircle of radius a
@@ -7650,7 +7674,7 @@ function buildDoor(){
     if(isFairytale){
       // A real extruded arched profile. It was a rectangular slab with a curved
       // strap drawn on the face — the square top corners gave it away.
-      var geo=new THREE.ExtrudeGeometry(fairytaleShape(lw, dh, 0.012),
+      var geo=new THREE.ExtrudeGeometry(fairytaleShape(lw, dh, FT_LEAF_INSET),
         {depth:0.05, bevelEnabled:false});
       var lf=new THREE.Mesh(geo, leafMat);
       lf.position.set(x, 0, -0.025);
@@ -7825,10 +7849,13 @@ function buildDoor(){
          leaf: the leaf is deliberately narrower than the cut hole, so a
          rectangle sized to lw left a strip of nothing down each side — the
          vertical gap beside the arch. This spans the full dw. */
+      var _fl=0.004;                                   // lap the cut on every side
       var fillO=new THREE.Shape();
-      fillO.moveTo(-dw/2, -0.004); fillO.lineTo(-dw/2, dh+0.004);
-      fillO.lineTo( dw/2, dh+0.004); fillO.lineTo( dw/2, -0.004); fillO.closePath();
-      fillO.holes.push(fairytaleShape(lw, dh, 0.004));   // hug the leaf
+      fillO.moveTo(-dw/2-_fl, -_fl); fillO.lineTo(-dw/2-_fl, dh+_fl);
+      fillO.lineTo( dw/2+_fl, dh+_fl); fillO.lineTo( dw/2+_fl, -_fl); fillO.closePath();
+      // Hug the leaf for real: its own inset, plus a lap so the two edges
+      // overlap instead of meeting on the same line.
+      fillO.holes.push(fairytaleShape(lw, dh, FT_LEAF_INSET + FT_FILL_LAP));
       /* Match the WALL'S board layout, not just its scale. The wall rounds to a
          whole number of boards across the run so none is cut at a corner, then
          offsets by how far along the wall it is. A plain 1/tile repeat with no
@@ -7888,7 +7915,7 @@ function buildDoor(){
          z -0.025 with depth 0.05, so their front face is at +0.025 — anything
          placed behind that is buried and never renders. Both arcs used to do
          exactly that, which is why the trim "wasn't there". */
-      var trGap=0.058, trW=0.020;                        // 3.5in standoff, 1.2in band
+      var trGap=FT_TRIM_GAP, trW=FT_TRIM_W;              // 3.5in standoff, 1.2in band
       var rIn=lw/2+trGap, rOut=rIn+trW;
       var trO=archRing(rOut, dh+trGap+trW);
       trO.holes.push(archRing(rIn, dh+trGap));
@@ -7931,8 +7958,8 @@ function buildDoor(){
          inside the leaf and invisible. A proud frame reads the same way. */
       var FIN=0.2/12;                                    // one inch
       var stileW=4.5*FIN;
-      var pnO=fairytaleShape(lw, dh, 0.012);
-      pnO.holes.push(fairytaleShape(lw, dh, 0.012+stileW));
+      var pnO=fairytaleShape(lw, dh, FT_LEAF_INSET);
+      pnO.holes.push(fairytaleShape(lw, dh, FT_LEAF_INSET+stileW));
       var pnM=new THREE.Mesh(
         new THREE.ExtrudeGeometry(pnO,{depth:0.005,bevelEnabled:false}),
         new THREE.MeshStandardMaterial({color:ftPanel, roughness:0.62}));
@@ -8287,7 +8314,18 @@ function buildWallWithOpenings(wall){
   doorsData.forEach(function(dd){
     if(dd.wall!==wall) return;
     var dwi=dd.w*0.2/12, dhi=Math.min(dd.h*0.2/12, h-0.12);
-    holes.push({c:posToAxis(wall,dd.pos,dd.w), half:dwi/2, top:dhi, bot:0, isDoor:true});
+    var ho={c:posToAxis(wall,dd.pos,dd.w), half:dwi/2, top:dhi, bot:0, isDoor:true};
+    /* The fairytale door wears an arch trim that stands well outside its own
+       opening. Battens have to clear the trim, not the hole, or they run over
+       it — but the hole itself must stay the size of the leaf, so this is a
+       separate, wider figure the batten pass reads and the wall cutter
+       ignores. */
+    if(dd.style==='fairytale'){
+      var reach=ftTrimReach();
+      ho.battenHalf = dwi/2 + reach;
+      ho.battenTop  = dhi + reach;
+    }
+    holes.push(ho);
   });
   /* VENTS BREAK THE BATTENS BUT DO NOT CUT THE WALL.
      A vent is a louvre sitting ON the siding, so the panel behind it stays
@@ -8301,10 +8339,12 @@ function buildWallWithOpenings(wall){
   var ventBreaks=[];
   (typeof ventsData!=='undefined'?ventsData:[]).forEach(function(vd){
     if(vd.wall!==wall) return;
-    var vWs=16*0.2/12, vHs=8*0.2/12;
+    // The CASING is what the batten has to clear, not the louvre inside it.
+    // Cut to the louvre, the strips ran across the trim boards — and being
+    // 3/4in proud against an 0.018 board, they crossed in FRONT of them.
     var vcy=ventCyIn(vd)*0.2/12;               // not vd.cy — it may not be set yet
-    ventBreaks.push({c:posToAxis(wall,vd.pos,16), half:vWs/2,
-                     top:vcy+vHs/2, bot:vcy-vHs/2});
+    ventBreaks.push({c:posToAxis(wall,vd.pos,16), half:ventHalfW(),
+                     top:vcy+ventHalfH(), bot:vcy-ventHalfH()});
   });
   // local axis helper: place a wall panel of (segLen along axis, segH) centered at
   // axis coordinate ac and vertical center vy.
@@ -8382,12 +8422,17 @@ function buildWallWithOpenings(wall){
       // Vertical runs of this batten that are NOT crossed by an opening.
       var segs=[[0, h]];
       (openings||[]).forEach(function(hl){
-        var a0=hl.local-hl.half-bwid/2, a1=hl.local+hl.half+bwid/2;
+        // battenHalf/battenTop, where an opening sets them, is how much wall
+        // the batten has to keep off — trim included. Everything else clears
+        // its own hole, which is what half/top already are.
+        var cHalf=(hl.battenHalf!=null)?hl.battenHalf:hl.half;
+        var cTop =(hl.battenTop !=null)?hl.battenTop :hl.top;
+        var a0=hl.local-cHalf-bwid/2, a1=hl.local+cHalf+bwid/2;
         if(bl<a0 || bl>a1) return;               // this batten misses the opening
         var next=[];
         segs.forEach(function(sg){
           if(hl.bot>sg[0]+0.01) next.push([sg[0], Math.min(sg[1], hl.bot)]);
-          if(hl.top<sg[1]-0.01) next.push([Math.max(sg[0], hl.top), sg[1]]);
+          if(cTop<sg[1]-0.01) next.push([Math.max(sg[0], cTop), sg[1]]);
         });
         segs=next;
       });
@@ -9165,10 +9210,58 @@ var ventMeshes=[];
    quietly skipped the vent and ran the battens straight over it.
    Read-only: buildVents still owns the write, this just answers the question
    with the same arithmetic so the two cannot drift apart. */
+/* A VENT'S REAL FOOTPRINT ON THE WALL, trim included, in world units.
+
+   The louvre is 16x8; the casing around it is the same 3.3in board every
+   window and door gets. Three places need these numbers — the builder that
+   draws it, the batten pass that has to keep clear of it, and the gable-centre
+   sum below — and when only the builder knew them the battens were cut to the
+   bare louvre and ran across the casing, standing proud of it into the
+   bargain. */
+var VENT_W = 16*0.2/12, VENT_H = 8*0.2/12;
+var VENT_CASE = 0.055;                       // matches cB on windows, cB on doors
+function ventHalfW(){ return VENT_W/2 + VENT_CASE; }
+function ventHalfH(){ return VENT_H/2 + VENT_CASE; }
+
+/* WHERE A GABLE PUTS A VENT.
+
+   "Near the top of the wall" put it a foot BELOW the wall plate — in the wall,
+   under the gable rather than on it. A gable vent belongs in the middle of the
+   triangle, so that is where a new one goes: half way up the rise.
+
+   The triangle narrows as it climbs, so the height is only taken if the vent
+   and its casing still fit the width there. If it does not fit, it drops until
+   it does rather than poking out through the rake. Returns null when this wall
+   has no gable to sit on. */
+function ventGableCyIn(vd){
+  if(!vd) return null;
+  if(vd.wall!=='front' && vd.wall!=='back') return null;
+  if(typeof STYLE==='undefined' || STYLE==='leanto') return null;
+  var f=wallFrame(vd.wall);
+  var wallIn=f.height/(0.2/12);
+  /* The REAL rise, read off the roof that gets built. (PITCH*W)/2 measures the
+     run to the wall centreline, but the roof runs to the wall FACE, so it came
+     up short by WALL_FACE*PITCH — three quarters of an inch at 6/12, which is
+     exactly how far below true centre the vent sat. */
+  var gRiseIn;
+  if(STYLE==='barn'){ gRiseIn=barnProfile().barnH/(0.2/12); }
+  else if(typeof gableRoof==='function'){ gRiseIn=(gableRoof().ridgeY - H*0.2)/(0.2/12); }
+  else { gRiseIn=(PITCH*W)/2; }
+  if(!(gRiseIn>0)) return null;
+  var halfBaseIn=(f.len/2)/(0.2/12);
+  var needIn=ventHalfW()/(0.2/12);
+  var topPadIn=ventHalfH()/(0.2/12) + 2;      // keep the casing off the rake
+  for(var t=gRiseIn/2; t>0; t-=0.25){
+    var halfHereIn=halfBaseIn*(1 - (t+topPadIn)/gRiseIn);
+    if(halfHereIn>=needIn) return wallIn + t;
+  }
+  return null;                                 // no room on this gable
+}
 function ventCyIn(vd){
   var f=wallFrame(vd.wall);
   var wallIn=f.height/(0.2/12);
-  var cy=(vd.cy==null) ? wallIn-12 : vd.cy;
+  var _g=(vd.cy==null) ? ventGableCyIn(vd) : null;
+  var cy=(vd.cy==null) ? ((_g!=null) ? _g : wallIn-12) : vd.cy;
   var half=4;                                   // the vent is 8in tall
   var minCy=half+2, maxCy=wallIn-half-1;
   if((vd.wall==='front'||vd.wall==='back') && STYLE!=='leanto'){
@@ -9182,7 +9275,7 @@ function ventCyIn(vd){
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
-  var vW=16*0.2/12, vH=8*0.2/12;      // 16" wide x 8" tall
+  var vW=VENT_W, vH=VENT_H;           // 16" wide x 8" tall
   var frameMat=new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
   var slatMat=new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.7, metalness:0.1});
   ventsData.forEach(function(vd, idx){
@@ -9193,16 +9286,32 @@ function buildVents(){
     var cy=vd.cy*0.2/12;
     var grp=new THREE.Group();
     grp.userData={isVent:true, index:idx, wall:vd.wall};
-    var outZ=0.02;
-    // white frame
-    grp.add(mk(new THREE.BoxGeometry(vW+0.04, vH+0.04, 0.02), frameMat, 0, cy, outZ));
-    // dark louvre body
-    grp.add(mk(new THREE.BoxGeometry(vW, vH, 0.016), slatMat, 0, cy, outZ+0.004));
+    /* ON the wall, not in it. outZ was 0.02 against a wall face at 0.025, so
+       the louvre and its frame started 0.005 INSIDE the siding and the boards
+       closed over the edge of them. Everything now starts at the face. */
+    var WALL_Z=0.025;
+    var outZ=WALL_Z;
+    /* CASING, not a 1.2in lip. A vent wears the same 3.3in board a window
+       wears — that is what "the same trim as the rest of the shed" means, and
+       the old frame was a hair of trim colour around a louvre, which read as
+       siding butting straight into it. Four boards, same width, same depth and
+       the same trim material as the window casing. */
+    var vcD=0.018;
+    function vboard(bw,bh,dx,dy){
+      grp.add(mk(new THREE.BoxGeometry(bw,bh,vcD), frameMat, dx, cy+dy, WALL_Z+vcD/2));
+    }
+    vboard(vW+VENT_CASE*2, VENT_CASE, 0,  vH/2+VENT_CASE/2);   // head
+    vboard(vW+VENT_CASE*2, VENT_CASE, 0, -vH/2-VENT_CASE/2);   // sill
+    vboard(VENT_CASE, vH, -vW/2-VENT_CASE/2, 0);               // left leg
+    vboard(VENT_CASE, vH,  vW/2+VENT_CASE/2, 0);               // right leg
+    // dark louvre body, recessed a touch inside the casing so the boards read
+    // as standing proud of it the way a real casing does.
+    grp.add(mk(new THREE.BoxGeometry(vW, vH, 0.016), slatMat, 0, cy, WALL_Z+0.016/2));
     // horizontal slats (lighter lines)
     var slats=4;
     for(var s=0;s<slats;s++){
       var sy=cy - vH/2 + (s+0.5)*(vH/slats);
-      grp.add(mk(new THREE.BoxGeometry(vW-0.02, vH/slats*0.5, 0.02), frameMat, 0, sy, outZ+0.006));
+      grp.add(mk(new THREE.BoxGeometry(vW-0.02, vH/slats*0.5, 0.012), frameMat, 0, sy, WALL_Z+0.010));
     }
     if(EDIT_MODE && selectedKind==='vent' && selectedVent===idx){
       grp.add(mk(new THREE.BoxGeometry(vW+0.12, vH+0.12, 0.006),
