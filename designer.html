@@ -939,6 +939,12 @@ textarea.inp{resize:vertical}
           <span class="lbl">Shelves</span>
           <div id="shelfInfo" style="font-size:11px;color:var(--mu);margin-bottom:6px">Shelves mount to a wall inside. Drag to reposition along the wall.</div>
           <div onclick="addShelf()" style="text-align:center;cursor:pointer;font-size:12px;font-weight:700;padding:9px 0;border-radius:7px;background:#2BB5E8;color:#06222e">+ Add Shelf</div>
+          <!-- WHAT YOU HAVE ALREADY. Windows and doors have had a placed list
+               since they were built; shelves never did, which is how a real
+               customer came to have four of them with two on the shed and
+               four on the invoice. A count you can see is worth more than any
+               amount of cleverness about where the next one goes. -->
+          <div class="placed-list" id="placedShelves" style="margin-top:8px"></div>
           <div id="shelfSelControls" style="display:none;margin-top:8px">
             <span class="lbl" style="font-size:11px">Which wall</span>
             <div style="display:flex;gap:5px;margin:4px 0 8px">
@@ -11515,6 +11521,56 @@ function renderPlacedWindows(){
     ? '<div class="wstep-sub" style="margin-bottom:6px">Tap a window to change its type &mdash; or tap it in the 3D view to select, drag, or swap it.</div>'+html
     : '<div class="wstep-sub">Nothing added yet \u2014 tap an option above.</div>';
 }
+/* THE SHELF LIST. Windows and doors have had one of these since they were
+   built; shelves never did. That is the whole reason a customer ended up with
+   four shelves, two of them inside the others, and nothing on the page that
+   would have told them. Every row says where the shelf is, how high, how long
+   and how deep, so "I have four shelves" is something you read rather than
+   something you have to count in a 3D view. */
+function shelfRowLabel(sd, wallLen){
+  var ft=Math.min(sd.len||wallLen, wallLen);
+  var h=Math.round((sd.cy==null?48:sd.cy)/12*10)/10;
+  var w=String(sd.wall||'back');
+  return w.charAt(0).toUpperCase()+w.slice(1)+' wall &middot; '+ft+'ft &middot; '+(sd.depth||16)+'" deep &middot; '+h+'ft up';
+}
+function renderPlacedShelves(){
+  var host=document.getElementById('placedShelves'); if(!host) return;
+  var html='';
+  shelvesData.forEach(function(sd,i){
+    var wallLen=(sd.wall==='front'||sd.wall==='back')?W:L;
+    var sel=(selectedKind==='shelf' && selectedShelf===i);
+    html+='<div class="placed-row" onclick="editShelfIdx('+i+')" style="cursor:pointer'+
+      (sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
+      '<span>'+shelfRowLabel(sd, wallLen)+
+      ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
+      '<span class="placed-x" onclick="event.stopPropagation();removeShelfIdx('+i+')">&times;</span></div>';
+  });
+  /* The count, said out loud. Shelving is priced by the foot, so four of them
+     is real money and the customer should not have to infer it. */
+  host.innerHTML = html
+    ? '<div class="wstep-sub" style="margin-bottom:6px"><b>'+shelvesData.length+
+      (shelvesData.length===1?' shelf':' shelves')+'</b> &mdash; tap one to select it, or drag it in the 3D view.</div>'+html
+    : '<div class="wstep-sub">No shelves yet.</div>';
+}
+function editShelfIdx(i){
+  if(!shelvesData[i]) return;
+  selectedKind='shelf'; selectedShelf=i;
+  selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedPorchLight=-1;
+  if(!EDIT_MODE) toggleEditMode(); else buildShed();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(typeof populateShelfLengths==='function') populateShelfLengths();
+  renderPlacedShelves();
+}
+function removeShelfIdx(i){
+  if(!shelvesData[i]) return;
+  shelvesData.splice(i,1);
+  if(selectedShelf===i){ selectedShelf=-1; selectedKind=''; }
+  else if(selectedShelf>i){ selectedShelf--; }
+  refreshInterior(); buildShed();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  renderPlacedShelves();
+}
+
 // Tap a placed-window row -> select it and open the type page; picking a type
 // then SWAPS it in place (addWindowByKey already handles the selected case).
 function editWindowIdx(i){
@@ -13743,7 +13799,21 @@ function dropStacked(list, keys){
   return out;
 }
 
-// ---- SHELVES (interior, movable along a wall) ----
+/* ---- SHELVES (interior, movable along a wall) ----
+ *
+ * SHELVES ARE MEANT TO GO ABOVE ONE ANOTHER. That is what shelving is, and
+ * the first pass at this bug got it backwards: it treated a second shelf on
+ * the same wall as a mistake and refused once the wall filled up.
+ *
+ * The thing that was actually wrong is narrower. Every new shelf landed on
+ * the SAME coordinate, so the second one was inside the first — invisible,
+ * and billed. So each new shelf steps up a tier, and when there is no clear
+ * tier left it goes on TOP of the highest one rather than being refused,
+ * because a customer who wants a fifth shelf should get a fifth shelf.
+ *
+ * What stops a repeat is not the spacing. It is the list under the Add
+ * button: four shelves piled up unnoticed because nothing on the page ever
+ * said how many there were. */
 var SHELF_GAP_IN = 14;      // a 16in board plus room to reach into it
 function addShelf(){
   var wall='back', wallLen=W;
@@ -13755,9 +13825,21 @@ function addShelf(){
     var ln=Math.min(sd.len||wallLen, wallLen);
     return (Math.abs(((sd.pos==null?0.5:sd.pos)-0.5)*wallLen) < (ln/2 + newHalf));
   }).map(function(sd){ return sd.cy==null ? 48 : sd.cy; });
-  var cy=freeSlot(taken, 48, SHELF_GAP_IN, 12, Math.max(26, H*12-12));
+  /* Comfortable spacing first, then tighter, rather than giving up. A 12in-to
+     -84in wall holds six tiers at 14in; a seventh has to sit closer, and
+     "closer" is a real shelf while "refused" is not.
+
+     The floor is 4in, not zero. Below that it is not a tier, and — the part
+     that matters — the first attempt at this clamped the fallback to the
+     ceiling instead, so every shelf past the sixth landed on 84in, on top of
+     each other, invisible and billed. That is the original bug, re-created by
+     the code meant to fix it. Nothing here may ever return a height another
+     shelf already has. */
+  var ceil=Math.max(26, H*12-12), cy=null;
+  var gaps=[SHELF_GAP_IN, 10, 7, 5, 4];
+  for(var gi=0; gi<gaps.length && cy==null; gi++) cy=freeSlot(taken, 48, gaps[gi], 12, ceil);
   if(cy==null){
-    showToast('No room for another shelf on the back wall — move or shorten one first.');
+    showToast('The back wall is full of shelves — put the next one on another wall.');
     return;
   }
   shelvesData.push({wall:wall, pos:0.5, cy:cy, depth:16, len:wallLen});   // full back-wall length default
@@ -14079,6 +14161,12 @@ function syncEditorPanel(){
   if(typeof syncVentHeightUI==='function') syncVentHeightUI();
   var hctr=document.getElementById('shelfSelControls');
   if(hctr) hctr.style.display=(selectedKind==='shelf'&&selectedShelf>=0)?'block':'none';
+  /* Here rather than at each call site. Shelves are added, removed, dragged,
+     re-walled, re-lengthed and re-depthed from six different functions, and
+     every one of them already calls this. A list that only refreshes on the
+     paths someone remembered is how you end up with a list that lies, which
+     is worse than no list at all. */
+  if(typeof renderPlacedShelves==='function') renderPlacedShelves();
   if(selectedKind==='shelf'&&selectedShelf>=0&&shelvesData[selectedShelf]){
     var sd=shelvesData[selectedShelf]; var dep=sd.depth||16;
     document.querySelectorAll('.shelfd-btn').forEach(function(b){
@@ -15093,7 +15181,7 @@ function syncControlsFromState(){
       'renderWallColors','renderRoofColors','renderInteriorColors','renderFoundation',
       'renderAddons','renderDormerUI','renderFloorJoist','renderBulbs',
       'renderPorchLightCatalog','renderPlacedPorchLights','renderPlacedDoors',
-      'renderPlacedWindows','renderUseGrid'
+      'renderPlacedWindows','renderPlacedShelves','renderUseGrid'
     ].forEach(function(name){
       try{ if(typeof window[name]==='function') window[name](); }
       catch(e){ console.warn('control sync: '+name+' failed', e); }

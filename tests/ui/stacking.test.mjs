@@ -59,17 +59,46 @@ test('four taps of Add Shelf make four shelves you can see', () => {
     'every shelf record occupies its own space');
 });
 
-test('a shelf is refused rather than hidden when the wall is full', () => {
-  /* The important half. Staggering that silently gives up and stacks is the
-     same bug with extra steps: what must never happen is a priced record with
-     nothing visible behind it. */
+test('shelves are ALLOWED above one another — that is what shelving is', () => {
+  /* The first fix got this backwards. It treated a second shelf on the same
+     wall as a mistake and refused once the wall filled up, which is wrong:
+     tiers are the whole point of shelving, and a customer who wants a fifth
+     shelf should get a fifth shelf.
+
+     The rule is narrower than "do not stack". It is: EVERY SHELF MUST BE ONE
+     YOU CAN SEE. Same wall, same height, same size is one shelf and a billing
+     error. Same wall, a tier apart, is a shelving unit. */
   const c = fresh();
-  let added = 0;
-  for (let i = 0; i < 40; i++) { const n = c.shelvesData.length; c.addShelf(); if (c.shelvesData.length > n) added++; }
-  assert.ok(added < 40, 'it stops adding at some point rather than stacking forever');
-  const key = (s) => `${s.wall}|${s.cy}`;
+  const asked = 14;
+  for (let i = 0; i < asked; i++) c.addShelf();
+
+  /* An 8ft wall genuinely runs out of room eventually. What it must never do
+     is take the tap and hide the shelf: the spacing tightens from 14in down
+     to 4in first, and only then does it say the wall is full.
+
+     The first fix DID stack instead — its fallback clamped to the ceiling, so
+     every shelf past the sixth landed on 84in on top of the others. The
+     original bug, re-created by the code meant to fix it. Hence a property
+     here rather than a count: however many go on, every one is its own. */
+  assert.ok(c.shelvesData.length >= 6,
+    `a wall holds a useful number of tiers (${c.shelvesData.length} of ${asked})`);
+  const key = (s) => `${s.wall}|${s.cy}|${s.pos}|${s.len}|${s.depth}`;
   assert.equal(new Set(c.shelvesData.map(key)).size, c.shelvesData.length,
-    'no two shelves share a wall and a height');
+    'no two of them occupy the same place');
+
+  c.shedGroup.clear(); c.buildShed(); c.shedGroup.updateMatrixWorld(true);
+  const parts = partsOf(c, 'isShelf');
+  assert.equal(distinctBoxes(parts), c.shelvesData.length * 3,
+    'and every one is drawn somewhere of its own');
+});
+
+test('shelves stack UPWARD from the first one', () => {
+  /* Downward first would bury the second shelf at ankle height, which is not
+     where anyone puts the next shelf. */
+  const c = fresh();
+  c.addShelf(); c.addShelf();
+  assert.ok(c.shelvesData[1].cy > c.shelvesData[0].cy,
+    `second shelf at ${c.shelvesData[1].cy}in is above the first at ${c.shelvesData[0].cy}in`);
 });
 
 test('vents do not stack, because vents are billed per unit', () => {
