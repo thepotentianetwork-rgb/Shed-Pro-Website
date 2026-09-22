@@ -2152,16 +2152,11 @@ function init(){
     }
   }
 
-  // pointer DOWN
-  function onDown(clientX, clientY){
-    autoR=false;
-    pressStart={x:clientX, y:clientY};
-    pressMoved=false;
-    draggingWindow=false;
-    if(EDIT_MODE){
-      setNDC(clientX, clientY);
-      var hit=pickOpening();
-      if(hit){
+  /* SELECT A TAPPED ITEM. Lifted out of onDown so the edit-mode-off tap below
+     can reuse it: both paths have to adopt the item's wall, open its options
+     grid and show its measure guide, and a second copy of that is how one of
+     them quietly stops doing one of the three. */
+  function selectHit(hit){
         selectedKind=hit.kind;
         selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
         if(hit.kind==='window') selectedWindow=hit.index;
@@ -2174,22 +2169,17 @@ function init(){
            could select a door on the LEFT, then add or swap, and the new one
            landed on whatever wall was active from before — usually the front.
            Every placed item already records its own wall, so the selection is
-           the authority: adopt it. One place covers doors, windows, vents,
-           shelves and porch lights, because they all come through this hit. */
+           the authority: adopt it. */
         var _selW = (hit.kind==='window') ? (windowsData[hit.index]||{}).wall
                   : (hit.kind==='door')   ? (doorsData[hit.index]||{}).wall
                   : (hit.kind==='vent')   ? (ventsData[hit.index]||{}).wall
                   : (hit.kind==='shelf')  ? (shelvesData[hit.index]||{}).wall
                   : (hit.kind==='plight') ? (porchLightsData[hit.index]||{}).wall
                   : null;
-        /* Set the vars directly rather than calling setAddWall: that helper ends
-           with its own buildShed(), and this handler rebuilds two lines below —
-           routing through it would rebuild the whole shed twice on every tap. */
         if(_selW && _selW!==ADD_WALL){
           ADD_WALL=_selW; WIZ_ADDWALL_DOOR=_selW;
           if(typeof syncWallUI==='function') syncWallUI();
         }
-        draggingWindow=true;
         buildShed();
         syncEditorPanel();
         // Open the options grid for the selected item so it can be swapped.
@@ -2197,6 +2187,22 @@ function init(){
         else if(hit.kind==='door' && typeof openOptionsForSelectedDoor==='function') openOptionsForSelectedDoor();
         var selObj = hit.kind==='window'?windowsData[hit.index]:hit.kind==='door'?doorsData[hit.index]:null;
         if(selObj) showMeasureGuide(selObj);
+  }
+
+  // pointer DOWN
+  function onDown(clientX, clientY){
+    autoR=false;
+    pressStart={x:clientX, y:clientY};
+    pressMoved=false;
+    draggingWindow=false;
+    if(EDIT_MODE){
+      setNDC(clientX, clientY);
+      var hit=pickOpening();
+      if(hit){
+        selectHit(hit);
+        /* Only the press-to-grab path arms a drag. The jump path below must
+           not: the pointer is already up by then. */
+        draggingWindow=true;
         return;
       }
     }
@@ -2222,6 +2228,31 @@ function init(){
   function onUp(){
     drag=false;
     if(draggingWindow){ draggingWindow=false; hideMeasureGuide(); }
+    /* TAP AN ITEM WITH EDIT MODE OFF -> GO TO ITS STEP.
+       Picking used to be gated entirely on EDIT_MODE, which only the Doors,
+       Windows, Interior and Electrical steps turn on. So on the style step, or
+       straight after opening a saved design, tapping the front door of the
+       shed in front of you did nothing at all - the one thing anyone tries
+       first. Now the ray still goes out, and a hit takes you to the step that
+       owns that item with it already selected.
+       Stationary taps only, so this cannot fire at the end of a camera drag.
+       Ordered before the EDIT_MODE branch and returning, because that branch's
+       job is picking a WALL, which is not what was tapped. */
+    else if(!EDIT_MODE && pressStart && !pressMoved){
+      setNDC(pressStart.x, pressStart.y);
+      var jump=pickOpening();
+      if(jump){
+        var dest=ITEM_STEP[jump.kind];
+        /* Select first, then move. wizRender turns edit mode on for the
+           destination step, and toggleEditMode only clears the selection when
+           it goes OFF - so the selection survives the trip and the editor
+           panel opens already pointed at what was tapped. */
+        selectHit(jump);
+        if(dest && typeof wizGoTo==='function') wizGoTo(dest);
+      }
+      pressStart=null;
+      return;
+    }
     else if(EDIT_MODE && pressStart && !pressMoved){
       // stationary tap that didn't grab an item → select the tapped wall
       setNDC(pressStart.x, pressStart.y);
@@ -10052,6 +10083,31 @@ function wizNext(){
   wizStep++; wizRender();
 }
 function wizPrev(){ if(wizStep>0){ wizStep--; wizRender(); } }
+
+/* Jump to a step BY TITLE, for the same reason wizIs() asks by title: steps get
+   reordered and a hardcoded index does not survive it. Returns false rather
+   than landing somewhere arbitrary if the title is not in the table. */
+function wizGoTo(title){
+  for(var i=0;i<WIZ_STEPS.length;i++){
+    if(WIZ_STEPS[i].title===title){
+      if(wizStep!==i){ wizStep=i; wizRender(); }
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Which step owns each kind of placed item. Tapping one in the 3D view jumps
+   here - see the tap handler, which raycasts even with edit mode off so that
+   opening a saved design and tapping its front door takes you to the doors
+   step instead of doing nothing. */
+var ITEM_STEP = {
+  door:   'Doors',
+  window: 'Windows & Vents',
+  vent:   'Windows & Vents',
+  shelf:  'Interior',
+  plight: 'Electrical'
+};
 
 // Edit mode is used for dragging placed windows/doors. Turn on when on those steps.
 function ensureEditMode(on){
