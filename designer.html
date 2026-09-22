@@ -1776,7 +1776,36 @@ function autoFrame(force){
 
    Starting points from a review, checked against real WebGL captures - they
    are not gospel, and the exposure was compared at 0.85 / 1.00 / 1.15. */
-var DAY_RIG = { amb:0.10, hemi:0.50, sun:2.00, fill:0.20, rim:0.00, exposure:1.00 };
+/* THE DAYLIGHT RIG — one table, read by init() and by applyLighting()'s DAY
+   branch, which resets the whole rig on every rebuild. Two copies of a number
+   nobody can see the effect of is how they drift, and the second copy wins.
+
+   THE SUN'S AZIMUTH IS THE POINT OF sunPos. It was at (7,5.5,11) — 32.5 degrees
+   round from the front. The DEFAULT CAMERA sits at theta=0.6, which is 34.4
+   degrees, so the camera was looking down the sun's own line: both visible
+   walls got the same light, the shed read as a flat cut-out, and no amount of
+   rig tuning could produce shape from that view. Measured wall contrast at the
+   default camera was 5.2, against 26.0 from a turned angle.
+
+   Mirrored to -32.5 degrees, (-7,5.5,11), the front — the wall the doors are
+   on — stays lit and the long side falls into shade. Default-view contrast
+   goes to 19.8 and the shed casts a real shadow onto the grass.
+
+   Angles further round measure BETTER and look WORSE: at 80 degrees the walls
+   read 10.4 apart and the turned view improves too, but the door wall is the
+   one in shade, which is the wrong half of the building to hide in a picture
+   whose job is selling doors. The turned view gives up wall contrast for this
+   (26.0 to 12.3) and gains the ground shadow; on the pictures it is a wash,
+   and the default view is the one every customer sees.
+
+   exposure 0.90, not 1.00: measured better at every angle tried. */
+var DAY_RIG = {
+  amb:0.10, hemi:0.50, sun:2.00, fill:0.20, rim:0.00, exposure:0.90,
+  sunPos:[-7,5.5,11],     // ~-32.5 deg azimuth, ~23 deg elevation
+  fillPos:[7,2.5,-11],    // opposite the sun, lower, so the shade side isn't black
+  rimPos:[-3,6,-9]
+};
+function rigPos(light, p){ if(light && light.position) light.position.set(p[0],p[1],p[2]); }
 
 function init(){
   var canvas=document.getElementById('c');
@@ -1857,13 +1886,16 @@ function init(){
 
   // KEY (warm sun) — main directional, casts soft shadows.
   sunLight=new THREE.DirectionalLight(0xfff4e2,DAY_RIG.sun);
-  // SUN ELEVATION — at y=1.0 the sun sat 4.4 degrees above the horizon, almost
-  // horizontal, so it grazed the roof and barely lit it (N.L 0.31 on a 6/12
-  // slope, 0 on the far slope). y=5.5 puts it at ~23 degrees: N.L 0.57 lit /
-  // 0.13 shaded. Raise or lower this ONE value to change how bright the roof
-  // reads — but keep it in sync with the DAY branch of applyLighting(), which
-  // resets the rig every rebuild.
-  sunLight.position.set(7,5.5,11);
+  /* SUN POSITION — from DAY_RIG, not a literal. At y=1.0 the sun sat 4.4
+     degrees above the horizon, almost horizontal, so it grazed the roof and
+     barely lit it (N.L 0.31 on a 6/12 slope, 0 on the far slope). y=5.5 puts
+     it at ~23 degrees: N.L 0.57 lit / 0.13 shaded.
+
+     This used to be a literal here AND a second literal in applyLighting's DAY
+     branch, with a comment on each asking the reader to keep them in sync. The
+     intensities were pulled into DAY_RIG and the positions were left behind,
+     which is the same bug with one of its two halves fixed. */
+  rigPos(sunLight, DAY_RIG.sunPos);
   sunLight.castShadow=true;
   sunLight.shadow.mapSize.set(2048,2048);
   sunLight.shadow.camera.left=-10;sunLight.shadow.camera.right=10;
@@ -1876,12 +1908,12 @@ function init(){
 
   // FILL (cool, opposite side) — brighter so the shadow side stays well-lit.
   fillLight=new THREE.DirectionalLight(0xfff0dc,DAY_RIG.fill);
-  fillLight.position.set(-7,2.5,-11);   // lifted with the sun so the far slope isn't flat
+  rigPos(fillLight, DAY_RIG.fillPos);   // lifted with the sun so the far slope isn't flat
   scene.add(fillLight);
 
   // RIM (cyan back-light) — subtle edge glow that ties into the brand accent.
   rimLight=new THREE.DirectionalLight(0x2BB5E8,DAY_RIG.rim);
-  rimLight.position.set(-3,6,-9);
+  rigPos(rimLight, DAY_RIG.rimPos);
   scene.add(rimLight);
 
   // Ground — grass lawn the shed sits flush on.
@@ -14062,13 +14094,12 @@ function applyLighting(){
     // hardest, so it lands mostly on the roof, which is what we want here.
     hemiLight.intensity=DAY_RIG.hemi; hemiLight.color.setHex(0xbcd0e0); hemiLight.groundColor.setHex(0x3a5030);
     sunLight.intensity=DAY_RIG.sun; sunLight.color.setHex(0xfff4e2);
-    /* Back up to 23 degrees. Everything else in this branch was already the
-       daylight rig; only the sun's elevation was still the low sunset one, so
-       daylight came in raking across the walls with sunset-length shadows.
-       Keep in sync with the init rig above. */
-    sunLight.position.set(7,5.5,11);
+    /* Same table as init(), so there is nothing left to keep in sync. */
+    rigPos(sunLight, DAY_RIG.sunPos);
     fillLight.intensity=DAY_RIG.fill; fillLight.color.setHex(0xfff0dc);
+    rigPos(fillLight, DAY_RIG.fillPos);
     rimLight.intensity=DAY_RIG.rim;  rimLight.color.setHex(0x2BB5E8);
+    rigPos(rimLight, DAY_RIG.rimPos);
   }
   if(skyDome) skyDome.material.needsUpdate=true;
   // Always attach the package's fixtures (interior lights exist in daylight too).
