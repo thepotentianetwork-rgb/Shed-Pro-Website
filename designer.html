@@ -7801,6 +7801,12 @@ function buildDoor(){
     bx(dw+0.02, 0.016, JD+0.014, thMat, 0, 0.008, 0.004);
   }
 
+  /* How wide the leaf's own stile is, and therefore how wide the glass opening
+     comes out. buildLeaf cuts the opening with it and addOverlays divides that
+     opening with muntins, so the two have to agree: computed separately, the
+     bars landed a third of the TRIM frame apart over glass a third of a
+     different width, and sat visibly off the lites. */
+  function leafStile(lw){ return isCedar ? CED_TB : Math.min(0.08, lw*0.16); }
   // glass region (fraction of leaf height) per style, or null for a solid leaf
   function glassRegion(){
     // Placeholder geometry: a real sliding door is ONE fixed + ONE sliding
@@ -7814,6 +7820,20 @@ function buildDoor(){
       // as the stiles and the mid rail instead of a 6" slab.
       var cy1=dh-CED_TB, cy0=cy1-10*IN;
       return {y0:cy0/dh, y1:cy1/dh};
+    }
+    if(DOOR==='craftsman'){
+      /* THE CRAFTSMAN LITES ARE A REAL OPENING, not a film on a solid slab.
+         The door had its three lites drawn over it and no glassRegion, so the
+         leaf behind them stayed a slab: the panes were there, lit, divided -
+         and you could not see into the shed through any of them, which is the
+         one thing glass is for.
+         Sized in inches like the cedar door's transom, not as a fraction of
+         the height, so the band stays 11in whether the leaf is 76in or 84in
+         rather than growing into half the door. The top rail is deep enough
+         that the perimeter trim's own rail lands above the glass instead of
+         across it. */
+      var kY1=dh-3.4*IN, kY0=kY1-11*IN;
+      return {y0:kY0/dh, y1:kY1/dh};
     }
     return null;                            // shed doors + 6-panel + fairytale = solid
   }
@@ -7875,7 +7895,7 @@ function buildDoor(){
       sgp.position.set(x, dh/2, zOff); sgp.renderOrder=3; DG.add(sgp);
       return;
     }
-    var y0=g.y0*dh, y1=g.y1*dh, stile=isCedar?CED_TB:Math.min(0.08, lw*0.16);
+    var y0=g.y0*dh, y1=g.y1*dh, stile=leafStile(lw);
     if(y0>0.01)     bx(lw, y0, 0.05, leafMat, x, y0/2, 0);            // solid below
     if(y1<dh-0.01)  bx(lw, dh-y1, 0.05, leafMat, x, (y1+dh)/2, 0);    // solid above
     bx(stile, y1-y0, 0.05, leafMat, x-(lw/2-stile/2), (y0+y1)/2, 0);  // left stile
@@ -7945,16 +7965,20 @@ function buildDoor(){
       var fc=frameEdge();
       var spanC=fc.y1-fc.y0;
 
-      // 1 - the lites. Their height is set by the rail under them so the glass
-      // band and the shelf below it always add up to the same quarter.
+      /* 1 - the lites. The band comes from g, the SAME opening glassRegion cut
+         in the leaf, so the muntins are guaranteed to land over glass rather
+         than over solid door an inch away from it. The fallback is only for a
+         leaf built without a glazing spec at all. */
       var railH=EB*0.85;
-      var liteTop=fc.y1;
-      var liteBot=fc.y1-spanC*0.24;
-      glassPane(inW, liteTop-liteBot, x, (liteTop+liteBot)/2);
-      var nLite=3;
+      var liteTop=g ? g.y1*dh : fc.y1;
+      var liteBot=g ? g.y0*dh : fc.y1-spanC*0.24;
+      // Divided across the GLASS, not across the trim frame: the opening is
+      // narrower than the frame's clear width, so dividing the frame put the
+      // bars off the lites by half an inch each.
+      var nLite=3, gW=lw-leafStile(lw)*2;
       for(var cl=1;cl<nLite;cl++){
         bx(EB*0.46, liteTop-liteBot, TD, muntinMat,
-           x-inW/2+inW*(cl/nLite), (liteTop+liteBot)/2, zf);
+           x-gW/2+gW*(cl/nLite), (liteTop+liteBot)/2, zf);
       }
       // the rail that carries the shelf
       var railY=liteBot-railH/2;
