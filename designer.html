@@ -465,61 +465,13 @@ textarea.inp{resize:vertical}
          it shows the shape of the remaining work at a glance rather than
          asking anyone to divide. Title and caption only. -->
     <div class="wstep-head">
-      <div class="wstep-title" id="wStepTitle">What's it for?</div>
-      <div class="wstep-sub" id="wStepSub">We'll set a starting point for you.</div>
+      <div class="wstep-title" id="wStepTitle">Choose your style</div>
+      <div class="wstep-sub" id="wStepSub">Every build starts here.</div>
     </div>
 
     <div class="wsteps">
-      <!-- STEP 1 · WHAT IT IS FOR. Asked before size or style because it is the
-           question the customer already has an answer to. Nobody arrives
-           knowing they want a 10x16; they arrive knowing they want a workshop.
-           Each tile presets a sensible starting build, which the following
-           steps then refine — so this replaces a guess with a starting point
-           rather than adding a step. It is also the single most useful thing
-           on the lead: knowing someone wants a golf simulator tells the sales
-           conversation more than any dimension does. -->
-      <div class="wstep on" data-step="0">
-        <div class="grp">
-          <!-- The "What will you use it for?" label that sat here asked the
-               step title's own question a second time, 40px below it. And the
-               note under the grid opened by repeating the caption ("Sets a
-               starting point" / "We'll set a starting point for you."), so it
-               is trimmed to the only part that was new. -->
-          <div class="tgrid" id="useGrid"></div>
-          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:8px;display:block">
-            You can change everything after this.</span>
-        </div>
-      </div>
-
-      <!-- STEP 1 · SIZE — back in front of style. Picking a porch tile on the
-           style step opens the porch page, whose depth ladder is capped by
-           the footprint; with size first, that cap is always answering a
-           real width/length instead of the 8x12 default. -->
-      <div class="wstep on" data-step="1">
-        <div class="grp">
-          <span class="lbl">Dimensions</span>
-          <div class="sw">
-            <div class="sh"><span class="sn">Width</span><span class="sv" id="wv">8 ft</span></div>
-            <input type="range" min="6" max="20" value="8" step="2" oninput="setW(this.value)">
-          </div>
-          <div class="sw">
-            <div class="sh"><span class="sn">Length</span><span class="sv" id="lv">12 ft</span></div>
-            <input type="range" min="6" max="32" value="12" step="2" oninput="setL(this.value)">
-          </div>
-          <div class="sw">
-            <div class="sh"><span class="sn">Wall Height</span><span class="sv" id="hv">8 ft</span></div>
-            <input type="range" min="6" max="12" value="8" step="1" oninput="setH(this.value)">
-          </div>
-        </div>
-        <div class="sqbox">
-          <div class="sqbox-l">Square Footage</div>
-          <div class="sqbox-n" id="sqft">96 sq ft</div>
-          <div class="sqbox-s">&#9888; Permit may be required over 200 sq ft</div>
-        </div>
-      </div>
-
       <!-- STEP 2 · STYLE -->
-      <div class="wstep" data-step="2">
+      <div class="wstep on" data-step="0">
         <div class="tgrid" id="styleGrid">
           <div class="tile on" data-style="gable" onclick="pickStyle('gable',this)">
             <div class="tile-img" data-icon="style-gable"></div>
@@ -588,12 +540,39 @@ textarea.inp{resize:vertical}
         </div>
       </div>
 
+      <!-- STEP 1 · SIZE — back in front of style. Picking a porch tile on the
+           style step opens the porch page, whose depth ladder is capped by
+           the footprint; with size first, that cap is always answering a
+           real width/length instead of the 8x12 default. -->
+      <div class="wstep" data-step="1">
+        <div class="grp">
+          <span class="lbl">Dimensions</span>
+          <div class="sw">
+            <div class="sh"><span class="sn">Width</span><span class="sv" id="wv">8 ft</span></div>
+            <input type="range" min="6" max="20" value="8" step="2" oninput="setW(this.value)">
+          </div>
+          <div class="sw">
+            <div class="sh"><span class="sn">Length</span><span class="sv" id="lv">12 ft</span></div>
+            <input type="range" min="6" max="32" value="12" step="2" oninput="setL(this.value)">
+          </div>
+          <div class="sw">
+            <div class="sh"><span class="sn">Wall Height</span><span class="sv" id="hv">8 ft</span></div>
+            <input type="range" min="6" max="12" value="8" step="1" oninput="setH(this.value)">
+          </div>
+        </div>
+        <div class="sqbox">
+          <div class="sqbox-l">Square Footage</div>
+          <div class="sqbox-n" id="sqft">96 sq ft</div>
+          <div class="sqbox-s">&#9888; Permit may be required over 200 sq ft</div>
+        </div>
+      </div>
+
       <!-- STEP 2 · FOUNDATION — own step again. Folding it in with size and
            style put six tiles, three sliders and the foundation list on one
            phone screen, which is a long scroll for three unrelated decisions.
            Size still leads, so the porch cap is still answering a real
            footprint; only foundation moved back out. -->
-      <div class="wstep" data-step="3">
+      <div class="wstep" data-step="2">
         <div class="grp">
           <span class="lbl">Foundation</span>
           <div class="wstep-sub" style="margin:0 0 8px">What your shed sits on. We can pour a pad or set it level on blocks.</div>
@@ -607,7 +586,75 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 4 · ROOF (type, color, pitch, overhang, soffit, cupola) -->
-      <div class="wstep" data-step="5">
+      <div class="wstep" data-step="3">
+        <div class="grp">
+          <span class="lbl">Siding Style &middot; LP SmartSide</span>
+          <div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px">
+            <div class="pitch-btn sid-btn on" data-sid="vertical" onclick="setSiding('vertical',this)">Vertical<span class="sid-price"></span></div>
+            <div class="pitch-btn sid-btn" data-sid="horizontal" onclick="setSiding('horizontal',this)">Horizontal Lap<span class="sid-price"></span></div>
+            <div class="pitch-btn sid-btn" data-sid="board-batten" onclick="setSiding('board-batten',this)">Board &amp; Batten<span class="sid-price"></span></div>
+            <!-- 1x6 Pine T&G is retired from the menu (Sep 2026). HIDDEN, not
+                 deleted, and none of the pine rendering, stain, width or
+                 direction code is touched: designs already saved with pine are
+                 still out there on ?d= links, and staff still reopen them to
+                 re-quote. syncControlsFromState restores siding with
+                 mark('.sid-btn', SIDING), which matches on this element — drop
+                 it and a reopened pine build loads with no style selected while
+                 the 3D view still shows pine walls. Hidden, it keeps loading
+                 and pricing exactly as before; it just can't be newly chosen.
+                 To bring it back, delete the style attribute below. -->
+            <div class="pitch-btn sid-btn" data-sid="pine" style="display:none" onclick="setSiding('pine',this)">1x6 Pine T&amp;G<span class="sid-price"></span></div>
+          </div>
+          <!-- Direction only matters for the T&G boards — the LP panels have a
+               fixed orientation baked into the product. -->
+          <div id="pineDirWrap" style="display:none;margin-top:10px">
+            <span class="lbl">Board Direction</span>
+            <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+              <div class="pitch-btn pinedir-btn on" onclick="setPineDir('vertical',this)">Vertical</div>
+              <div class="pitch-btn pinedir-btn" onclick="setPineDir('horizontal',this)">Horizontal</div>
+            </div>
+            <span class="lbl" style="margin-top:10px;display:block">Board Width</span>
+            <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+              <div class="pitch-btn pinew-btn" onclick="setPineWidth(4,this)">1x4 &middot; 3&frac12;&quot;</div>
+              <div class="pitch-btn pinew-btn on" onclick="setPineWidth(6,this)">1x6 &middot; 5&frac12;&quot;</div>
+              <div class="pitch-btn pinew-btn" onclick="setPineWidth(8,this)">1x8 &middot; 7&frac14;&quot;</div>
+            </div>
+            <span class="lbl" style="margin-top:10px;display:block">Stain</span>
+            <div id="pineStainList"></div>
+          </div>
+        </div>
+        <div class="grp" style="margin-top:14px">
+          <!-- Schemes first, swatches under them. Someone who knows they want
+               navy will scroll past this; someone who does not wants to be
+               shown what good looks like rather than handed 64 combinations
+               and left to it. -->
+          <span class="lbl">Color Schemes</span>
+          <div id="schemeStrip" class="scheme-strip"></div>
+        </div>
+        <div class="grp" style="margin-top:14px">
+          <span class="lbl">Siding Color</span>
+          <div id="cg-s"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input id="hexInput" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexSiding(this.value)" onchange="applyHexSiding(this.value)"
+              style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
+            <div id="hexSwatch" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#6E7377"></div>
+          </div>
+          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Enter any custom color as a hex code</span>
+        </div>
+        <div class="grp" style="margin-top:14px">
+          <span class="lbl">Trim Color</span>
+          <div id="cg-t"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input id="hexInputTrim" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexTrim(this.value)" onchange="applyHexTrim(this.value)"
+              style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
+            <div id="hexSwatchTrim" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#F2F0EC"></div>
+          </div>
+          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Or enter a custom trim hex code</span>
+        </div>
+                      </div>
+
+      <!-- STEP 7 · UPGRADES -->
+      <div class="wstep" data-step="4">
         <div class="grp">
           <span class="lbl">Roof Type</span>
           <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
@@ -711,7 +758,19 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 5 · WINDOWS -->
-      <div class="wstep" data-step="7">
+      <div class="wstep" data-step="5">
+        <div class="grp">
+          <span class="lbl">Tap a wall in the view to pick it</span>
+          <div id="doorActiveWall" style="font-size:12px;font-weight:700;color:var(--blue);margin:4px 0 10px">Active wall: Front</div>
+          <span class="lbl">Tap a door type</span>
+          <div id="doorGrid"><!-- sections + tiles --></div>
+          <div id="doorOptions" style="display:none;margin-top:10px"></div>
+        </div>
+        <div class="placed-list" id="placedDoors"></div>
+      </div>
+
+      <!-- STEP 3 · SIDING & COLOR -->
+      <div class="wstep" data-step="6">
         <div class="grp">
           <span class="lbl">Tap a wall in the view to pick it</span>
           <div id="winActiveWall" style="font-size:12px;font-weight:700;color:var(--blue);margin:4px 0 10px">Active wall: Front</div>
@@ -729,87 +788,7 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 6 · DOORS -->
-      <div class="wstep" data-step="6">
-        <div class="grp">
-          <span class="lbl">Tap a wall in the view to pick it</span>
-          <div id="doorActiveWall" style="font-size:12px;font-weight:700;color:var(--blue);margin:4px 0 10px">Active wall: Front</div>
-          <span class="lbl">Tap a door type</span>
-          <div id="doorGrid"><!-- sections + tiles --></div>
-          <div id="doorOptions" style="display:none;margin-top:10px"></div>
-        </div>
-        <div class="placed-list" id="placedDoors"></div>
-      </div>
-
-      <!-- STEP 3 · SIDING & COLOR -->
-      <div class="wstep" data-step="4">
-        <div class="grp">
-          <span class="lbl">Siding Style &middot; LP SmartSide</span>
-          <div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px">
-            <div class="pitch-btn sid-btn on" data-sid="vertical" onclick="setSiding('vertical',this)">Vertical<span class="sid-price"></span></div>
-            <div class="pitch-btn sid-btn" data-sid="horizontal" onclick="setSiding('horizontal',this)">Horizontal Lap<span class="sid-price"></span></div>
-            <div class="pitch-btn sid-btn" data-sid="board-batten" onclick="setSiding('board-batten',this)">Board &amp; Batten<span class="sid-price"></span></div>
-            <!-- 1x6 Pine T&G is retired from the menu (Sep 2026). HIDDEN, not
-                 deleted, and none of the pine rendering, stain, width or
-                 direction code is touched: designs already saved with pine are
-                 still out there on ?d= links, and staff still reopen them to
-                 re-quote. syncControlsFromState restores siding with
-                 mark('.sid-btn', SIDING), which matches on this element — drop
-                 it and a reopened pine build loads with no style selected while
-                 the 3D view still shows pine walls. Hidden, it keeps loading
-                 and pricing exactly as before; it just can't be newly chosen.
-                 To bring it back, delete the style attribute below. -->
-            <div class="pitch-btn sid-btn" data-sid="pine" style="display:none" onclick="setSiding('pine',this)">1x6 Pine T&amp;G<span class="sid-price"></span></div>
-          </div>
-          <!-- Direction only matters for the T&G boards — the LP panels have a
-               fixed orientation baked into the product. -->
-          <div id="pineDirWrap" style="display:none;margin-top:10px">
-            <span class="lbl">Board Direction</span>
-            <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
-              <div class="pitch-btn pinedir-btn on" onclick="setPineDir('vertical',this)">Vertical</div>
-              <div class="pitch-btn pinedir-btn" onclick="setPineDir('horizontal',this)">Horizontal</div>
-            </div>
-            <span class="lbl" style="margin-top:10px;display:block">Board Width</span>
-            <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
-              <div class="pitch-btn pinew-btn" onclick="setPineWidth(4,this)">1x4 &middot; 3&frac12;&quot;</div>
-              <div class="pitch-btn pinew-btn on" onclick="setPineWidth(6,this)">1x6 &middot; 5&frac12;&quot;</div>
-              <div class="pitch-btn pinew-btn" onclick="setPineWidth(8,this)">1x8 &middot; 7&frac14;&quot;</div>
-            </div>
-            <span class="lbl" style="margin-top:10px;display:block">Stain</span>
-            <div id="pineStainList"></div>
-          </div>
-        </div>
-        <div class="grp" style="margin-top:14px">
-          <!-- Schemes first, swatches under them. Someone who knows they want
-               navy will scroll past this; someone who does not wants to be
-               shown what good looks like rather than handed 64 combinations
-               and left to it. -->
-          <span class="lbl">Color Schemes</span>
-          <div id="schemeStrip" class="scheme-strip"></div>
-        </div>
-        <div class="grp" style="margin-top:14px">
-          <span class="lbl">Siding Color</span>
-          <div id="cg-s"></div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-            <input id="hexInput" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexSiding(this.value)" onchange="applyHexSiding(this.value)"
-              style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
-            <div id="hexSwatch" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#6E7377"></div>
-          </div>
-          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Enter any custom color as a hex code</span>
-        </div>
-        <div class="grp" style="margin-top:14px">
-          <span class="lbl">Trim Color</span>
-          <div id="cg-t"></div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-            <input id="hexInputTrim" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexTrim(this.value)" onchange="applyHexTrim(this.value)"
-              style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
-            <div id="hexSwatchTrim" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#F2F0EC"></div>
-          </div>
-          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Or enter a custom trim hex code</span>
-        </div>
-                      </div>
-
-      <!-- STEP 7 · UPGRADES -->
-      <div class="wstep" data-step="8">
+      <div class="wstep" data-step="7">
         <div class="grp">
           <span class="lbl">Interior Finish</span>
           <div class="wstep-sub" style="margin-bottom:6px">Bare studs, or finished walls you can hang things on.</div>
@@ -906,16 +885,7 @@ textarea.inp{resize:vertical}
            vent, door overhangs. Burying outdoor items at the bottom of an
            indoor step meant they were reached last, by someone already
            scrolling, which is the worst place for optional revenue. -->
-      <div class="wstep" data-step="10">
-        <div class="grp">
-          <span class="lbl">Add-Ons</span>
-          <div class="wstep-sub" style="margin:0 0 8px">Optional extras — tap to include.</div>
-          <div id="addonList"></div>
-        </div>
-      </div>
-
-      <!-- STEP 10 · ELECTRICAL (upsell, near the end) -->
-      <div class="wstep" data-step="9">
+      <div class="wstep" data-step="8">
         <div class="grp">
           <span class="lbl">Electrical Package</span>
           <div class="wstep-sub" id="elecBarnNote" style="display:none;margin:0 0 8px;color:#ffb86b">Essential isn't available on Barn / Gambrel yet — Basic and Core are.</div>
@@ -946,7 +916,16 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 9 · REVIEW -->
-      <div class="wstep" data-step="11">
+      <div class="wstep" data-step="9">
+        <div class="grp">
+          <span class="lbl">Add-Ons</span>
+          <div class="wstep-sub" style="margin:0 0 8px">Optional extras — tap to include.</div>
+          <div id="addonList"></div>
+        </div>
+      </div>
+
+      <!-- STEP 10 · ELECTRICAL (upsell, near the end) -->
+      <div class="wstep" data-step="10">
         <div class="grp">
           <span class="lbl">Your Build</span>
           <div style="font-size:13px;color:var(--w);line-height:1.7" id="reviewSummary"></div>
@@ -2507,96 +2486,18 @@ function sidingTileWorld(key){
        9ft wall with a gable is marginal once you allow for the screen.
      DETACHED GARAGE — 12x20 with a garage door; anything smaller will not take
        a vehicle, so quoting one would waste the lead's time. */
+/* Detached Garage and Golf Simulator were retired Sep 2026 along with the step
+   that offered them, which leaves this list with one entry and nothing that
+   reads it: renderUseGrid returns early now that #useGrid is gone, and pickUse
+   only ever fired from a tile in that grid. So applyUse, STOCK_BUILD and
+   captureStockBuild below are all unreachable too.
+   Left in place rather than deleted. It is inert - renderUseGrid guards on the
+   missing element - and tearing ~200 lines out of the middle of this file to
+   remove something that already does nothing is a worse trade than the
+   clutter. SHED_USE itself IS still read: applyDesignConfig restores it from
+   old permalinks, and the flooring recommendation checks it for 'garage'.
+   Worth a proper clean-up as its own change. */
 var SHED_USES = [
-  /* v465 — THREE OPTIONS. Eight tiles turned the opening step into a form to
-     read; three is a decision. The two named ones are the builds worth
-     presetting, because they are the ones with real constraints a customer
-     cannot be expected to know — ceiling height for a swing, door type and
-     length for a vehicle. Everything else is a shed, and "Design my own" is a
-     more honest label for it than six near-identical tiles.
-
-     BOTH NAMED BUILDS ARE 12x16 = 192 SQ FT, deliberately under the 200 permit
-     threshold. They are not the same shed: the garage gets a roll-up door and
-     9ft walls, the simulator gets 10ft walls, a finished interior and a
-     full-lite door. Same footprint, different building. */
-  /* elec was 'standard' until Sep 2026, when that tier was retired from the
-     price sheet and this preset was not updated with it. ELEC_MAP in
-     worker/pricing.js only knows basic/core/essential, so 'standard' matched
-     nothing and the engine priced the garage with NO electrical — $10,840,
-     to the dollar the same as choosing None — while the 3D view happily lit
-     the interior because its own check still listed 'standard'. A customer
-     could have been quoted an unpowered garage and nobody would have seen it
-     until handover. Core is the successor: mid-tier then, mid-tier now, and a
-     garage with a roll-up door wants outlets and an opener. */
-  {k:'garage',   name:'Detached Garage', sub:'Roll-up door, fits a car',
-   w:12, l:16, h:9,  style:'gable', elec:'core', door:'rollup',
-   /* A concrete pad, not blocks. You are driving a car onto this and jacking
-      it up on this; gravel and piers are fine under a shed and wrong under a
-      garage, and quoting it any other way starts a conversation we would only
-      have later anyway. */
-   foundation:'pad',
-   /* Two windows on the long walls. A garage with no glass is a cave the
-      moment the door is down, and these are the cheapest light there is. */
-   /* 36x24 because it is stocked in BOTH White and Black Vinyl. 24x30 is
-      white-only and 24x36 black-only, so either would have forced a resize
-      the moment someone switched to a scheme with the other trim. Wide and
-      low also sits above a workbench rather than behind it. */
-   windows:[ {wall:'left',  pos:0.35, w:36, h:24, cy:60},
-             {wall:'right', pos:0.65, w:36, h:24, cy:60} ],
-   /* No loft at 9ft walls with a vehicle under it — headroom over the bonnet
-      is the point of the 9ft, and a loft gives it straight back. */
-   loft:'none', roofType:'shingle', scheme:'grayblack'},
-
-  /* 10ft walls: 9ft is the stated minimum for a driver swing and 10ft the
-     real-world standard, and ceiling is the one dimension nobody can change
-     after the build. 12x16 gives 11.25 x 15.25 INSIDE once the walls are
-     deducted, which clears the 10ft width and 15ft depth minimums — the
-     largest even size that does so under the permit cap. */
-  {k:'golfsim',  name:'Golf Simulator',  sub:'10 ft walls for a full swing',
-   w:12, l:16, h:10, style:'gable', elec:'core', door:'resfull', finish:'painted',
-   foundation:'pad',
-   /* GLASS ON THE FRONT WALL ONLY, flanking the door.
-      A simulator is a dark room by function and every wall but the front has a
-      job that glass gets in the way of. The back wall carries the screen — a
-      window there lets in no usable light and spills it onto the back of the
-      very surface being projected onto. The side walls are the swing corridor
-      and the projector throw; daylight crossing either is glare on the screen
-      and a distraction mid-swing. An earlier version had a high band on the
-      left wall, which was better than the back but still lit the room from
-      the side.
-      The front wall is the one surface behind the golfer and out of the throw,
-      so light coming in there lands where nobody is looking. Two uprights, one
-      each side of the door, read as sidelights rather than as windows someone
-      forgot to leave out — and they can be shuttered or curtained as a pair
-      when the room needs to go properly dark.
-
-      14x36 uprights, stocked in both White and Black so the scheme can reframe
-      them either way. cy is left to defaultCyFor, which puts an upright at 52
-      — door height, which is the whole point of a sidelight. A band would have
-      been forced up under the plate instead.
-
-      pos: the front wall is W*12 = 144in and the door is 36in centred, so it
-      spans 54-90 and leaves a 54in field each side. 0.11 / 0.89 centres an
-      upright in each field, checked against posToAxis rather than assumed —
-      pos is NOT a plain fraction of the wall, it runs inside a half-window
-      margin at each end, so 0.11 lands at 27in and not at 16in. Symmetric
-      values stay symmetric either way, since 0.5 is the wall centre in both
-      conventions. */
-   windows:[ {wall:'front', pos:0.11, w:14, h:36, type:'Black Transom 14x36'},
-             {wall:'front', pos:0.89, w:14, h:36, type:'Black Transom 14x36'} ],
-   /* No loft, and this one is not a cost decision. The 10ft walls exist so a
-      driver clears the ceiling; hanging a loft in here would undo the single
-      reason this preset is not just a shed. */
-   /* Was charwhite, which is gone now the list is four. Black on Black is the
-      nearest thing in what remains and arguably the better fit anyway: a
-      simulator is a dark room by function, and the white full-lite door gives
-      the contrast the charcoal scheme was providing. */
-   loft:'none', roofType:'shingle', scheme:'blackblack'},
-
-  /* No preset at all. This one only records the choice and leaves the shed on
-     its defaults — applying a "custom" preset would be a contradiction, and
-     silently resizing someone who just said they want to design it themselves
-     is the opposite of what they asked for. */
   {k:'custom',   name:'Design My Own',   sub:'Start from scratch', custom:true}
 ];
 
@@ -10014,9 +9915,18 @@ function animate(){
    Interior finish lives with the loft and shelves rather than as an eleventh
    step: it's the same question — what's the inside like. */
 var WIZ_STEPS = [
-  {title:"What's it for?",    sub:"We'll set a starting point for you."},
-  {title:"Pick your size",     sub:"Width, length, and wall height."},
+  /* No "What's it for?" step. It offered two presets - Detached Garage and
+     Golf Simulator - alongside "Design My Own"; with the presets retired the
+     step had a single tile on it and asked a question nothing acted on, so the
+     designer opens on style instead.
+     Style leads, which reverses the order these sat in. Size led so that a
+     porch tile picked on the style step opened a depth ladder capped by a real
+     footprint rather than the 8x12 default. That cap still corrects itself -
+     setW and setL both call clampPorch - so the cost is a porch picker seeing
+     the 8x12 ladder first and coming back to it, against style being the
+     question a customer actually arrives with. */
   {title:"Choose your style",  sub:"Every build starts here."},
+  {title:"Pick your size",     sub:"Width, length, and wall height."},
   {title:"Foundation",         sub:"What your shed sits on."},
   {title:"Siding & color",     sub:"Pick your look early."},
   {title:"Roof",               sub:"Type, color, pitch, overhang & details."},
