@@ -17,7 +17,8 @@ why the obvious textbook detail is deliberately absent.
 | **A plain rail** | Under the glass. Nothing hangs off it. |
 | **Two tall panels** | Split by a centre stile, running most of the leaf. |
 | **A deep bottom rail** | Noticeably deeper than the rails above it. |
-| **Entry hardware** | Three small butt hinges tight to the jamb, and a round knob. |
+| **Short straps, on the rails** | Three of them, about half the length of a barn strap, and each one level with a rail: the top rail above the lites, the rail under them, and the bottom rail. |
+| **A round knob** | One, at about mid height. No deadbolt above it. |
 
 ## What the first version had, and why it was wrong
 
@@ -30,13 +31,28 @@ The shelf was also on the wrong side of the glass. In the reference the
 projecting piece is *over* the lites; the dentil shelf sits *under* them. So
 the one part that stood off the face stood off it in the wrong place.
 
-The other half of it was hardware. The Craftsman was in the shed-door family,
-so it was getting the decorative T-strap hinge — about nine inches of iron
-reaching a third of the way across the leaf and over the panels — and a
-T-handle, which is what goes on a barn. Next to the reference, with its three
-small butt hinges and a round knob, that was the loudest thing wrong with it.
-Only the hardware moved; the frame, jamb and panel materials are still the
-shed door's, because that is what the door is built out of.
+The other half of it was hardware, and this is worth reading carefully because
+the obvious fix was also wrong.
+
+The Craftsman was in the shed-door family, so it got the full-size decorative
+T-strap: about nine inches of iron reaching a third of the way across the leaf
+and over the panels, plus a T-handle, which is what goes on a barn. The first
+correction replaced the straps with small butt hinges, reasoning that a
+Craftsman is a residential entry door. Enlarge the photo and there are straps
+on it — top, middle and bottom. **The species was right. The size was wrong.**
+0.55 scale puts the plate at 2.6in and the reach at about 4.2in, which is what
+the photo measures, and keeps the tip clear of the glass at every leaf width.
+
+Then **where** they hang. `hingeYs` spreads hinges evenly over whatever part of
+the leaf is not glass, which is all it was written to do — it exists because a
+strap once landed across the cedar door's transom lites. Even spacing put the
+middle strap in the middle of a panel, with nothing behind it to screw into. In
+the reference all three are fitted to rails. `craftRailYs()` is now the single
+source for those heights: `addOverlays` draws the rails from it and the
+hardware hangs the straps from it, so they cannot drift apart.
+
+Only the hardware moved. The frame, jamb and panel materials are still the shed
+door's, because that is what the door is built out of.
 
 ## Where it lives
 
@@ -44,6 +60,9 @@ shed door's, because that is what the door is built out of.
   inches so the band does not grow into half the door on an 84in leaf.
 - `addOverlays()`, the `DOOR==='craftsman'` branch — the cap, the muntins, the
   rail and the panels.
-- the hardware branch — `isCraftHW` puts it with the residential doors.
+- `craftRailYs()` — the three rail heights, read by both the drawing and the
+  hardware.
+- the hardware branch — `isCraft` sets the strap scale, hangs them off
+  `craftRailYs()` and swaps the T-handle for a knob.
 - `tests/geometry/craftsmandoor.test.mjs` — each row of the table above, as a
   check against the geometry rather than against the numbers that placed it.

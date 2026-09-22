@@ -11,8 +11,9 @@
  *   2. FOUR lites, so three muntins.
  *   3. A plain rail under the glass. Nothing hangs off it.
  *   4. Two tall panels over a bottom rail deeper than the rails above it.
- *   5. Short strap hinges that stay beside the glass, not the full-size barn
- *      strap that reached a third of the way across the leaf.
+ *   5. Short strap hinges, FITTED TO THE RAILS — not the full-size barn strap
+ *      that reached a third of the way across the leaf, and not spread evenly
+ *      down it with the middle one floating in the middle of a panel.
  *
  * Each is checked as geometry — glass up top, a part standing proud of the
  * trim plane, bars over the panes — rather than by counting meshes, which a
@@ -298,6 +299,52 @@ test('the strap hinges are short ones, not barn straps', () => {
   assert.ok(reach < (gx0 - stileEdge) * 1.2,
     `no piece of hardware crosses onto the panels (reaches ${(reach/INCH).toFixed(1)}in ` +
     `from the leaf edge; the glass starts at ${((gx0-stileEdge)/INCH).toFixed(1)}in)`);
+});
+
+test('the straps are fitted to the rails, not spread down the door', () => {
+  /* A strap hinge needs solid timber behind it, so in the reference all three
+     land on rails: the top rail above the lites, the rail under them, and the
+     bottom rail. hingeYs spreads them evenly over whatever part of the leaf is
+     not glass — which is all it was written to do, and it put the middle one
+     in the middle of a panel, where a real one would have nothing to screw
+     into.
+
+     The rails and the hinge heights now come from one function. This is the
+     check that they still do: it is the shape of bug this file keeps finding
+     — the same number written in two places, right in one of them. */
+  const parts = doorParts(build('craftsman'));
+  const glass = glassOf(parts);
+  const gW = Math.max(...glass.map(g => g.max.x)) - Math.min(...glass.map(g => g.min.x));
+
+  // Horizontal rails on the leaf: wide, and not tall enough to be a stile.
+  const rails = parts.filter(x => x.type === 'BoxGeometry'
+    && (x.max.x - x.min.x) > gW * 0.9 && (x.max.y - x.min.y) < 0.06)
+    .map(x => (x.min.y + x.max.y) / 2);
+  assert.ok(rails.length >= 3, `the door has rails to hang off (found ${rails.length})`);
+
+  // The hardware, clustered into hinges by height.
+  const hw = parts.filter(x => {
+    const mt = x.obj.material;
+    return x.type !== 'PlaneGeometry' && mt && mt.color
+        && mt.color.r < 0.25 && mt.color.g < 0.25 && mt.color.b < 0.25
+        && (x.max.y - x.min.y) < 0.1;
+  });
+  assert.ok(hw.length, 'there is hardware on the door');
+  const ys = hw.map(h => (h.min.y + h.max.y) / 2).sort((a, b) => a - b);
+  const hinges = [];
+  for (const y of ys) {
+    if (!hinges.length || y - hinges[hinges.length - 1].at(-1) > 0.05) hinges.push([y]);
+    else hinges[hinges.length - 1].push(y);
+  }
+  assert.equal(hinges.length, 3, `three hinges (found ${hinges.length} clusters)`);
+
+  for (const cluster of hinges) {
+    const y = cluster.reduce((a, b) => a + b) / cluster.length;
+    const nearest = rails.reduce((a, r) => (Math.abs(r - y) < Math.abs(a - y) ? r : a));
+    assert.ok(Math.abs(nearest - y) < 0.03,
+      `a hinge at ${(y/INCH).toFixed(1)}in sits on a rail ` +
+      `(nearest rail is at ${(nearest/INCH).toFixed(1)}in, ${(Math.abs(nearest-y)/INCH).toFixed(1)}in away)`);
+  }
 });
 
 test('it no longer looks like the plain door', () => {

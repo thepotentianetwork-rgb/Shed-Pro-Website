@@ -7905,13 +7905,36 @@ function buildDoor(){
     var gp=new THREE.Mesh(new THREE.PlaneGeometry(lw-stile*2, y1-y0), glassMat);
     gp.position.set(x,(y0+y1)/2,0); gp.renderOrder=3; DG.add(gp);
   }
+  /* The trim board's dimensions. Out here rather than inside addOverlays
+     because the HARDWARE needs them too: a strap hinge that is fitted to a
+     rail has to know where the rail is, and the alternative to sharing these
+     is a hinge that is on the rail in the code that draws the rail and an
+     inch off it in the code that hangs the hinge. */
+  var TD=0.014;                   // trim board depth (flat)
+  var zf=0.032;                   // sits just proud of the leaf face
+  var braceW=0.03;                // X-brace board face width
+  var EB=0.042;                   // perimeter trim board width (~2.5")
+
+  /* WHERE THE CRAFTSMAN'S RAILS ARE. In the reference the straps are fitted
+     to the rails — one on the top rail above the lites, one on the rail under
+     them, one on the bottom rail — which is how a strap is actually hung: it
+     needs solid timber behind it, and a panel is a thin board in a groove.
+     Spread evenly down the leaf instead, the middle one floats in the middle
+     of a panel with nothing to screw into. */
+  function craftRailYs(){
+    var gg=glassRegion();
+    var railH=EB*0.85;
+    return {
+      railH: railH,
+      top: dh-EB/2-0.008,                             // frameEdge's top rail
+      underGlass: (gg ? gg.y0*dh : dh*0.7)-railH/2,   // the rail under the lites
+      bottom: EB/2+0.008                              // and its bottom rail
+    };
+  }
+
   // Detail overlays (muntins / braces / raised panels) — thin, flat trim boards
   // (same look as the shed trim), NOT thick blocks.
   function addOverlays(x, lw, g){
-    var TD=0.014;                 // trim board depth (flat)
-    var zf=0.032;                 // sits just proud of the leaf face
-    var braceW=0.03;              // X-brace board face width
-    var EB=0.042;                 // perimeter trim board width (~2.5")
     var lwF=lw-0.012;             // frame outer width: tight to the leaf edge
     var inW=lwF-EB*2;             // clear width between the stiles
     // PERIMETER FRAME at the leaf EDGES — like the catalog icons and real shed
@@ -7975,7 +7998,8 @@ function buildDoor(){
          the leaf, so the muntins are guaranteed to land over glass rather
          than over solid door an inch away from it. The fallback is only for a
          leaf built without a glazing spec at all. */
-      var railH=EB*0.85;
+      var cRails=craftRailYs();
+      var railH=cRails.railH;
       var liteTop=g ? g.y1*dh : fc.y1;
       var liteBot=g ? g.y0*dh : fc.y1-spanC*0.24;
       // Divided across the GLASS, not across the trim frame: the opening is
@@ -7995,8 +8019,10 @@ function buildDoor(){
       var capY=Math.min(liteTop+capH*0.5+0.004, fc.y1-capH*0.5);
       bx(lwF, capH, capD, muntinMat, x, capY, zf+(capD-TD)/2);
 
-      // The rail under the glass — plain, the full clear width.
-      var railY=liteBot-railH/2;
+      // The rail under the glass — plain, the full clear width. Its height
+      // comes from craftRailYs so the strap hinge lands on the rail this
+      // draws rather than near it.
+      var railY=cRails.underGlass;
       bx(inW, railH, TD, muntinMat, x, railY, zf);
 
       /* Two tall flat panels, split by a centre stile, over a deep bottom rail.
@@ -8385,6 +8411,14 @@ function buildDoor(){
     // Straps ride the RAILS like the photo: top strap on the top rail (above the
     // transom lites), lower strap on the lower mid rail.
     hgY=[dh-CED_TB/2, dh*CED_MIDRAIL];
+  } else if(isCraft){
+    /* Same idea, and the reference shows it plainly: top rail above the
+       lites, the rail under them, the bottom rail. hingeYs would have spread
+       these evenly over the solid part of the leaf instead — which keeps them
+       off the glass, which is all it was written to do, but puts the middle
+       one in the middle of a panel. */
+    var cr=craftRailYs();
+    hgY=[cr.top, cr.underGlass, cr.bottom];
   } else {
     hgY=hingeYs(3, hgS);
   }
