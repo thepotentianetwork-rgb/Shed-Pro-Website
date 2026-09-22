@@ -1,4 +1,4 @@
-# Geometry tests
+# Designer tests
 
 `designer.html` builds the shed in Three.js, and until now nothing checked the
 result — a hole in the roof was only found by someone looking at it.
@@ -14,7 +14,7 @@ placed the meshes, so it fails on the thing a customer would notice.
 Three.js is not vendored in git-friendly form by these tests; fetch it once:
 
 ```sh
-curl -sSo tests/geometry/three.js \
+curl -sSo tests/three.js \
   https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js
 node --test tests/geometry/porch.test.mjs
 ```
@@ -31,9 +31,18 @@ different library than production.
   pixel comparison: for **looking** at the geometry when a number is not enough.
   Shading is a single lambert term off the material colour, so textures and
   lighting do not appear.
-- `porch.test.mjs` — the porch roof closes over the porch at every overhang,
-  overhang type, pitch and depth, and the ceiling tucks under the roof rather
-  than through it.
+- `geometry/porch.test.mjs` — the porch roof closes over the porch at every
+  overhang, overhang type, pitch and depth, and the ceiling tucks under the
+  roof rather than through it.
+- `geometry/openings.test.mjs` — no daylight around the arched door, battens
+  keep off door and vent trim, and a gable vent sits dead centre.
+- `ui/snapping.test.mjs` — where a dragged window actually lands: the wall's
+  centre, a mirror, an even-spacing slot, another window's sill.
+- `ui/badges.test.mjs` — a style tile's badge takes the description's line, and
+  the description comes back when the badge goes.
+- `ui/addons.test.mjs` — the upgrades list groups under its section headings,
+  including the cases that only break later: an item added in the wrong place,
+  one with no section at all, and a section whose items are all hidden.
 
 ## Adding a test
 
@@ -41,3 +50,15 @@ different library than production.
 (`STYLE`, `W`, `L`, `H`, `PITCH`, `OVTYPE`, `OVH`, `PORCH_LOC`, …), call
 `__stubLights()`, then `buildShed()`. Lights live in `init()`, which needs a
 real renderer, so the harness supplies stand-ins.
+
+## Two things that will bite you
+
+**Cross-realm values.** The page runs inside a VM context, so its arrays and
+objects carry that realm's prototypes. `assert.deepStrictEqual` compares
+prototypes, so a correct array fails against a plain one — wrap it in
+`Array.from()` (or compare fields) first.
+
+**State between tests.** The page's globals are module state, not per-build.
+A selected item grows a highlight mesh, `addVent()` selects what it adds, and
+the next test then measures the highlight as if it were trim. Reset selection
+and `EDIT_MODE` in your build helper, not just the data arrays.

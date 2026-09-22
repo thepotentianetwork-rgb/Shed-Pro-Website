@@ -20,7 +20,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadDesigner } from './harness.mjs';
+import { loadDesigner } from '../harness.mjs';
 
 const { c } = loadDesigner();
 const T = c.THREE;

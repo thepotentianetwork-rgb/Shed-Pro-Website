@@ -87,6 +87,12 @@ canvas{display:block;width:100%;height:100%}
 .hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);border-radius:30px;padding:7px 18px;font-size:11px;color:var(--mu);white-space:nowrap}
 .dup-btn{position:absolute;top:14px;right:14px;display:none;background:rgba(43,181,232,.92);color:#06222e;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);font-family:inherit}
 .dup-btn:hover{background:#2BB5E8}
+.wall-pick{position:absolute;left:50%;transform:translateX(-50%);bottom:64px;display:none;align-items:center;gap:6px;background:rgba(20,22,26,.95);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 8px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:80;max-width:94%;flex-wrap:wrap;justify-content:center}
+.wall-pick-t{color:#8fe3ff;font-size:11px;font-weight:700;padding:0 4px;white-space:nowrap}
+.wall-pick button{background:rgba(43,181,232,.92);color:#06222e;border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.wall-pick button:hover{background:#2BB5E8}
+.wall-pick .wall-pick-x{background:transparent;color:#9aa4ad;font-size:15px;padding:2px 7px}
+.wall-pick .wall-pick-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .measure-guide{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(43,181,232,.92);color:#06222e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;white-space:nowrap;display:none;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .edit-badge{position:absolute;top:14px;left:14px;background:rgba(43,181,232,.16);border:1px solid rgba(43,181,232,.6);color:#2BB5E8;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;display:none}
 .wallpick.on{background:#2BB5E8 !important;color:#06222e !important;border-color:#2BB5E8 !important}
@@ -375,6 +381,15 @@ textarea.inp{resize:vertical}
    a list where every other row is flat.
    Popular and Luxury use the plain solid form. They live on other steps and
    never sit beside a foundation tier, so nothing competes. */
+/* The badge in a style tile's description line. Same orange as .tile-badge,
+   sized to sit on the subtitle row rather than in a corner. */
+.tile-price-badge{display:inline-block;background:#F8921E;color:#1a1205;border-radius:4px;
+  padding:1px 6px;font-size:9px;font-weight:900;letter-spacing:.3px;text-transform:uppercase}
+/* A section heading in the upgrades list. Quiet - it is a divider, not a
+   control, and the checkboxes under it are what the customer is aiming at. */
+.addon-sec{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mu);margin:14px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--br)}
+.addon-sec:first-child{margin-top:2px}
 .opt-badge{display:inline-block;margin-left:7px;background:#F8921E;color:#1a1205;
   font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
   text-transform:uppercase;line-height:1.5;vertical-align:middle;white-space:nowrap}
@@ -454,6 +469,18 @@ textarea.inp{resize:vertical}
          has been reading them and getting null. This sits beside the measure
          readout, which IS real, and shows only while something is selected. -->
     <button id="dupBtn" class="dup-btn" onclick="duplicateSelected()">&#10697; Duplicate</button>
+    <!-- Tapping a wall from any step asks what you want to put on it. Over the
+         canvas rather than in the side panel because the answer is about the
+         wall you just touched, and because the panel's item editor containers
+         (winEditor, winSelControls and friends) are read by syncEditorPanel but
+         do not exist in this markup - there is nowhere in it to put this. -->
+    <div id="wallPick" class="wall-pick">
+      <div class="wall-pick-t" id="wallPickT">Front wall</div>
+      <button onclick="wallPickGo('Doors')">Doors</button>
+      <button onclick="wallPickGo('Windows &amp; Vents')">Windows</button>
+      <button onclick="wallPickVents()">Vents</button>
+      <button class="wall-pick-x" onclick="hideWallPick()">&times;</button>
+    </div>
     <div id="editBadge" class="edit-badge">EDIT MODE &middot; drag a window along the wall or up/down</div>
     <div class="consult-nudge" id="consultNudge">
       <h4>Want a hand with this?</h4>
@@ -1416,6 +1443,20 @@ function buildPorchDeck(x0,x1,z0,z1,topY){
 } // A-frame porch: "none" | "side" (along length) | "front" (off width)
 var SIDE_PORCH=0;     // porch depth in feet (0 = none). Gable only.
 var WINDOW="none";   // legacy flag: "none" or "preset" — kept for the dropdown
+/* HOW FAR THE FAIRYTALE DOOR'S ARCH TRIM REACHES PAST ITS LEAF.
+
+   The door builder draws a standoff arc and a band around the leaf; the wall
+   builder has to keep the battens off them. Those are two different functions
+   and the numbers lived only in the first, so board & batten ran its 3/4in
+   strips straight across the arch: the battens are cut to the WALL opening,
+   which is the leaf, and the trim stands 4.7in proud of that on each side.
+
+   The wall CUT stays at the leaf — a hole the size of the trim would be a hole
+   you could see through. Only the batten clearance grows. */
+var FT_TRIM_GAP = 0.058;   // standoff from the leaf, ~3.5in
+var FT_TRIM_W   = 0.020;   // the band itself, ~1.2in
+function ftTrimReach(){ return FT_TRIM_GAP + FT_TRIM_W; }
+
 // Data-driven openings. Windows AND doors can live on ANY wall.
 //   wall: 'front'(+z) | 'back'(-z) | 'left'(-x) | 'right'(+x)
 //   pos:  0..1 along the wall's length (left→right as you face the wall from outside)
@@ -2270,6 +2311,18 @@ function init(){
     else if(!EDIT_MODE && pressStart && !pressMoved){
       setNDC(pressStart.x, pressStart.y);
       var jump=pickOpening();
+      if(!jump){
+        /* No item under the tap, so this is a tap on the WALL. Ask what goes on
+           it rather than doing nothing: on the style or size step, a wall is
+           the only thing there is to point at, and "I want a window there" is
+           the obvious thing to mean by pointing at it. */
+        var wsel=pickWall();
+        if(wsel && typeof showWallPick==='function'){
+          showWallPick(wsel);
+          pressStart=null;
+          return;
+        }
+      }
       if(jump){
         var dest=ITEM_STEP[jump.kind];
         /* Select first, then move. wizRender turns edit mode on for the
@@ -2292,10 +2345,23 @@ function init(){
       if(!pickOpening()){
         var wall=pickWall();
         if(wall){
+          var _wasEditing=selectedKind;          // what you were in the middle of
+          var _wallChanged=(ADD_WALL!==wall);
           ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall;
           // Deselect any active item so the next add creates a NEW item on this
           // wall (instead of swapping/moving the previously selected one).
           selectedKind=''; selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
+          /* BACK OUT OF THE ITEM EDITOR.
+             Picking a different wall while a window is selected ends that
+             window's edit — it is on the old wall and you are now looking at a
+             new one — but the editor stayed open over the top, showing controls
+             for something no longer selected. Close it and leave the customer on
+             that item type's own step, which is the menu they came from. */
+          if(_wasEditing && _wallChanged){
+            if(typeof closeSubPage==='function') closeSubPage();
+            var _back=(typeof ITEM_STEP!=='undefined') ? ITEM_STEP[_wasEditing] : null;
+            if(_back && typeof wizGoTo==='function') wizGoTo(_back);
+          }
           hideMeasureGuide();
           // close any open swap grids
           openWinCat=null; openDoorCat=null;
@@ -2737,6 +2803,27 @@ function stampStaticBadges(){
 function applyRecommendations(){
   var old=document.querySelectorAll('.tile-rec');
   for(var i=0;i<old.length;i++) old[i].parentNode.removeChild(old[i]);
+  /* A STYLE TILE SHOWS ITS BADGE WHERE ITS DESCRIPTION WAS.
+
+     The badge used to be an 8px corner label stacked above a subtitle saying
+     much the same thing — "Most space" over "Max loft space", "Modern" over
+     "Modern look" — which is two labels competing in a space that fits one.
+     The badge now takes the description's line, and a tile with no badge keeps
+     its description exactly as it was.
+
+     The description is stashed on the element the first time it is replaced,
+     because this runs again whenever the use or the step changes and a badge
+     can go away: without the original text there would be nothing to put back
+     and the line would just stay blank. Scoped to the style grid — .tile-price
+     carries real money on other grids, and a badge is not a price. */
+  var caps=document.querySelectorAll('#styleGrid .tile-price');
+  for(var r=0;r<caps.length;r++){
+    var cp=caps[r], keep=cp.getAttribute('data-desc');
+    if(keep!=null){ cp.textContent=keep; }
+  }
+  var marked=document.querySelectorAll('#styleGrid .tile[data-badged]');
+  for(var q=0;q<marked.length;q++) marked[q].removeAttribute('data-badged');
+
   function badge(sel, text){
     var els=document.querySelectorAll(sel);
     for(var j=0;j<els.length;j++){
@@ -2745,6 +2832,16 @@ function applyRecommendations(){
       // One badge per tile. The standing label goes on first, so a
       // recommendation arriving later would double up — skip if taken.
       if(el.querySelector && el.querySelector('.tile-rec')) continue;
+      if(el.getAttribute && el.getAttribute('data-badged')) continue;
+      var cap=(el.querySelector && el.closest && el.closest('#styleGrid'))
+                ? el.querySelector('.tile-price') : null;
+      if(cap){
+        if(cap.getAttribute('data-desc')==null) cap.setAttribute('data-desc', cap.textContent);
+        cap.innerHTML='<span class="tile-price-badge"></span>';
+        cap.firstChild.textContent=text;          // text, never markup
+        if(el.setAttribute) el.setAttribute('data-badged','1');
+        continue;
+      }
       var b=document.createElement('div');
       b.className='tile-rec'; b.textContent=text;
       el.appendChild(b);
@@ -6103,10 +6200,34 @@ function buildSnapGuides(){
     if(f.ax==='x') g.position.set(0,0,f.fixed); else g.position.set(f.fixed,0,0);
     shedGroup.add(g);
   }
+  function post(atPos, w, h, faint){
+    var g=new THREE.Group();
+    g.rotation.y=rotY;
+    var mm=faint ? new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.45})
+                 : mat;
+    var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.008), mm);
+    // atPos is 0..1 along the wall, measured the way posToAxis measures it.
+    m.position.set((atPos-0.5)*f.len, h/2, 0.06);
+    g.add(m);
+    if(f.ax==='x') g.position.set(0,0,f.fixed); else g.position.set(f.fixed,0,0);
+    shedGroup.add(g);
+  }
   // the height it lined up with
   if(SNAP_GUIDE.cy!=null) bar(f.len, 0.014, SNAP_GUIDE.cy*0.2/12);
   // and the centre of the wall
   if(SNAP_GUIDE.centre) bar(0.014, f.height, f.height/2);
+  /* EVEN SPACING. The bright post is where the item lands; on a ROW snap the
+     other slots get faint posts too, so it reads as "these are the even
+     positions and you are on one of them" rather than an unexplained line. */
+  if(SNAP_GUIDE.even && SNAP_GUIDE.evenAt!=null){
+    if(SNAP_GUIDE.evenSlots){
+      SNAP_GUIDE.evenSlots.forEach(function(sp){
+        if(Math.abs(sp-SNAP_GUIDE.evenAt)<1e-6) return;
+        post(sp, 0.008, f.height*0.9, true);
+      });
+    }
+    post(SNAP_GUIDE.evenAt, 0.014, f.height, false);
+  }
 }
 
 // Single-slope (lean-to) roof: HIGH at the FRONT (z=+l/2, where the door is),
@@ -7635,6 +7756,16 @@ function buildDoor(){
      spring sits one radius below the top. The wall opening stays rectangular
      (the banded wall cutter only does rectangles), so the corners left over
      above the arch are filled by the siding infill in addOverlays. */
+  /* The arched leaf's outline is inset from the opening it sits in, and the
+     siding infill has to cut a hole to exactly that outline. Those two insets
+     were written as separate literals — 0.012 for the leaf, 0.004 for the hole
+     — so the hole was 0.008 bigger than the leaf all the way round and you
+     could see daylight through the shed down both sides of the door and over
+     the arch. One number now, and the hole laps the leaf slightly rather than
+     meeting it exactly, because two edges at the identical coordinate is how
+     you get a flickering hairline instead of a seal. */
+  var FT_LEAF_INSET = 0.012;
+  var FT_FILL_LAP   = 0.002;
   function fairytaleShape(lw, dhh, inset){
     var a=lw/2 - (inset||0);
     var spring=Math.max(0.05, dhh - a - (inset||0));   // semicircle of radius a
@@ -7650,7 +7781,7 @@ function buildDoor(){
     if(isFairytale){
       // A real extruded arched profile. It was a rectangular slab with a curved
       // strap drawn on the face — the square top corners gave it away.
-      var geo=new THREE.ExtrudeGeometry(fairytaleShape(lw, dh, 0.012),
+      var geo=new THREE.ExtrudeGeometry(fairytaleShape(lw, dh, FT_LEAF_INSET),
         {depth:0.05, bevelEnabled:false});
       var lf=new THREE.Mesh(geo, leafMat);
       lf.position.set(x, 0, -0.025);
@@ -7825,10 +7956,13 @@ function buildDoor(){
          leaf: the leaf is deliberately narrower than the cut hole, so a
          rectangle sized to lw left a strip of nothing down each side — the
          vertical gap beside the arch. This spans the full dw. */
+      var _fl=0.004;                                   // lap the cut on every side
       var fillO=new THREE.Shape();
-      fillO.moveTo(-dw/2, -0.004); fillO.lineTo(-dw/2, dh+0.004);
-      fillO.lineTo( dw/2, dh+0.004); fillO.lineTo( dw/2, -0.004); fillO.closePath();
-      fillO.holes.push(fairytaleShape(lw, dh, 0.004));   // hug the leaf
+      fillO.moveTo(-dw/2-_fl, -_fl); fillO.lineTo(-dw/2-_fl, dh+_fl);
+      fillO.lineTo( dw/2+_fl, dh+_fl); fillO.lineTo( dw/2+_fl, -_fl); fillO.closePath();
+      // Hug the leaf for real: its own inset, plus a lap so the two edges
+      // overlap instead of meeting on the same line.
+      fillO.holes.push(fairytaleShape(lw, dh, FT_LEAF_INSET + FT_FILL_LAP));
       /* Match the WALL'S board layout, not just its scale. The wall rounds to a
          whole number of boards across the run so none is cut at a corner, then
          offsets by how far along the wall it is. A plain 1/tile repeat with no
@@ -7888,7 +8022,7 @@ function buildDoor(){
          z -0.025 with depth 0.05, so their front face is at +0.025 — anything
          placed behind that is buried and never renders. Both arcs used to do
          exactly that, which is why the trim "wasn't there". */
-      var trGap=0.058, trW=0.020;                        // 3.5in standoff, 1.2in band
+      var trGap=FT_TRIM_GAP, trW=FT_TRIM_W;              // 3.5in standoff, 1.2in band
       var rIn=lw/2+trGap, rOut=rIn+trW;
       var trO=archRing(rOut, dh+trGap+trW);
       trO.holes.push(archRing(rIn, dh+trGap));
@@ -7931,8 +8065,8 @@ function buildDoor(){
          inside the leaf and invisible. A proud frame reads the same way. */
       var FIN=0.2/12;                                    // one inch
       var stileW=4.5*FIN;
-      var pnO=fairytaleShape(lw, dh, 0.012);
-      pnO.holes.push(fairytaleShape(lw, dh, 0.012+stileW));
+      var pnO=fairytaleShape(lw, dh, FT_LEAF_INSET);
+      pnO.holes.push(fairytaleShape(lw, dh, FT_LEAF_INSET+stileW));
       var pnM=new THREE.Mesh(
         new THREE.ExtrudeGeometry(pnO,{depth:0.005,bevelEnabled:false}),
         new THREE.MeshStandardMaterial({color:ftPanel, roughness:0.62}));
@@ -8287,7 +8421,18 @@ function buildWallWithOpenings(wall){
   doorsData.forEach(function(dd){
     if(dd.wall!==wall) return;
     var dwi=dd.w*0.2/12, dhi=Math.min(dd.h*0.2/12, h-0.12);
-    holes.push({c:posToAxis(wall,dd.pos,dd.w), half:dwi/2, top:dhi, bot:0, isDoor:true});
+    var ho={c:posToAxis(wall,dd.pos,dd.w), half:dwi/2, top:dhi, bot:0, isDoor:true};
+    /* The fairytale door wears an arch trim that stands well outside its own
+       opening. Battens have to clear the trim, not the hole, or they run over
+       it — but the hole itself must stay the size of the leaf, so this is a
+       separate, wider figure the batten pass reads and the wall cutter
+       ignores. */
+    if(dd.style==='fairytale'){
+      var reach=ftTrimReach();
+      ho.battenHalf = dwi/2 + reach;
+      ho.battenTop  = dhi + reach;
+    }
+    holes.push(ho);
   });
   /* VENTS BREAK THE BATTENS BUT DO NOT CUT THE WALL.
      A vent is a louvre sitting ON the siding, so the panel behind it stays
@@ -8301,10 +8446,12 @@ function buildWallWithOpenings(wall){
   var ventBreaks=[];
   (typeof ventsData!=='undefined'?ventsData:[]).forEach(function(vd){
     if(vd.wall!==wall) return;
-    var vWs=16*0.2/12, vHs=8*0.2/12;
+    // The CASING is what the batten has to clear, not the louvre inside it.
+    // Cut to the louvre, the strips ran across the trim boards — and being
+    // 3/4in proud against an 0.018 board, they crossed in FRONT of them.
     var vcy=ventCyIn(vd)*0.2/12;               // not vd.cy — it may not be set yet
-    ventBreaks.push({c:posToAxis(wall,vd.pos,16), half:vWs/2,
-                     top:vcy+vHs/2, bot:vcy-vHs/2});
+    ventBreaks.push({c:posToAxis(wall,vd.pos,16), half:ventHalfW(),
+                     top:vcy+ventHalfH(), bot:vcy-ventHalfH()});
   });
   // local axis helper: place a wall panel of (segLen along axis, segH) centered at
   // axis coordinate ac and vertical center vy.
@@ -8382,12 +8529,17 @@ function buildWallWithOpenings(wall){
       // Vertical runs of this batten that are NOT crossed by an opening.
       var segs=[[0, h]];
       (openings||[]).forEach(function(hl){
-        var a0=hl.local-hl.half-bwid/2, a1=hl.local+hl.half+bwid/2;
+        // battenHalf/battenTop, where an opening sets them, is how much wall
+        // the batten has to keep off — trim included. Everything else clears
+        // its own hole, which is what half/top already are.
+        var cHalf=(hl.battenHalf!=null)?hl.battenHalf:hl.half;
+        var cTop =(hl.battenTop !=null)?hl.battenTop :hl.top;
+        var a0=hl.local-cHalf-bwid/2, a1=hl.local+cHalf+bwid/2;
         if(bl<a0 || bl>a1) return;               // this batten misses the opening
         var next=[];
         segs.forEach(function(sg){
           if(hl.bot>sg[0]+0.01) next.push([sg[0], Math.min(sg[1], hl.bot)]);
-          if(hl.top<sg[1]-0.01) next.push([Math.max(sg[0], hl.top), sg[1]]);
+          if(cTop<sg[1]-0.01) next.push([Math.max(sg[0], cTop), sg[1]]);
         });
         segs=next;
       });
@@ -8605,6 +8757,73 @@ function snapPeers(wall, kind, idx){
   return out;
 }
 
+/* EVERY WINDOW-HEIGHT ON THE BUILDING, not just this wall's.
+
+   Levelling a window against one on the wall you are already on is the easy
+   case and snapPeers covers it. The hard one is the wall that has no windows
+   yet: there is nothing on it to line up with, and eyeballing a sill against a
+   wall you cannot see at the same time is how you end up with one window three
+   inches high. So the other walls' sills are offered too, and the guide says
+   which wall it borrowed from. Same-wall matches are found first by snapDrag
+   and never reach this. */
+function sillsElsewhere(wall, kind, idx){
+  var out=[];
+  function add(list, k){
+    if(typeof list==='undefined' || !list) return;
+    list.forEach(function(o,i){
+      if(!o || o.wall===wall) return;
+      if(k===kind && i===idx) return;
+      if(o.cy==null) return;
+      out.push({cy:o.cy, wall:o.wall});
+    });
+  }
+  add(typeof windowsData!=='undefined'?windowsData:null, 'window');
+  add(typeof ventsData!=='undefined'?ventsData:null, 'vent');
+  return out;
+}
+
+/* WHERE THIS ITEM WOULD HAVE TO SIT FOR THE WALL TO LOOK EVENLY SPACED.
+
+   Two different offers, because "evenly spaced" means two different things
+   depending on what is already on the wall:
+
+   BETWEEN — half way between two neighbours. Always honest: wherever the
+   others are, landing here makes the gap to the left equal the gap to the
+   right.
+
+   ROW — the whole wall divided into equal gaps, item k of n at k/(n+1).
+   Offered ONLY when every other item is already sitting on one of those
+   slots, because otherwise snapping to the free slot produces a row that is
+   still not even and a guide that lied. With two windows already placed by
+   hand and a third being dragged, you get the BETWEEN offer; once the row IS
+   even, you get the ROW offer that keeps it even. */
+function evenTargets(wall, kind, idx, tol){
+  var peers=snapPeers(wall, kind, idx).map(function(p){ return p.pos; })
+              .filter(function(v){ return typeof v==='number' && isFinite(v); })
+              .sort(function(a,b){ return a-b; });
+  var out=[];
+  for(var i=0;i+1<peers.length;i++){
+    var mid=(peers[i]+peers[i+1])/2;
+    if(Math.abs(peers[i+1]-peers[i])>tol*2) out.push({pos:mid, mode:'between'});
+  }
+  var n=peers.length+1;
+  if(n>=3){
+    var slots=[]; for(var k=1;k<=n;k++) slots.push(k/(n+1));
+    var free=slots.slice(), ok=true;
+    for(var j=0;j<peers.length;j++){
+      var best=-1, bd=Infinity;
+      for(var q=0;q<free.length;q++){
+        var d=Math.abs(peers[j]-free[q]);
+        if(d<bd){ bd=d; best=q; }
+      }
+      if(best<0 || bd>tol){ ok=false; break; }
+      free.splice(best,1);
+    }
+    if(ok && free.length===1) out.push({pos:free[0], mode:'row', slots:slots});
+  }
+  return out;
+}
+
 function snapDrag(wall, kind, idx, pos, cy){
   var res={pos:pos, cy:cy, centre:false, cyAt:null, mirror:false};
   var lenIn=snapWallInches(wall);
@@ -8621,10 +8840,48 @@ function snapDrag(wall, kind, idx, pos, cy){
       if(Math.abs(pos-m)<=tol){ res.pos=m; res.mirror=true; break; }
     }
   }
+  /* Even spacing is tried AFTER centre and mirror, and only if neither took.
+     Centre is the stronger intent — on a wall with two windows, the middle of
+     the wall and the middle of the pair are usually the same place, and when
+     they are not, the wall's centre is the one a customer means. */
+  if(!res.centre && !res.mirror){
+    var evens=evenTargets(wall, kind, idx, tol);
+    var pick=null, pd=Infinity;
+    for(var e=0;e<evens.length;e++){
+      var d=Math.abs(pos-evens[e].pos);
+      // A ROW offer wins ties: it makes the whole wall even, not just one gap.
+      if(d<=tol && (d<pd-1e-9 || (Math.abs(d-pd)<=1e-9 && evens[e].mode==='row'))){
+        pd=d; pick=evens[e];
+      }
+    }
+    if(pick){ res.pos=pick.pos; res.even=pick.mode; res.evenSlots=pick.slots||null; }
+  }
+  /* Centre and mirror often land on an even slot too — the middle window of a
+     row of three IS the centre of the wall, and the fourth of a row of four is
+     the mirror of the first. The position is the same either way, but the even
+     guide says more (it shows the whole row), so where they coincide, show it. */
+  if(!res.even){
+    var also=evenTargets(wall, kind, idx, tol);
+    for(var a=0;a<also.length;a++){
+      if(also[a].mode==='row' && Math.abs(res.pos-also[a].pos)<1e-9){
+        res.even='row'; res.evenSlots=also[a].slots; break;
+      }
+    }
+  }
   if(cy!=null){
     for(var j=0;j<peers.length;j++){
       if(peers[j].cy==null) continue;
       if(Math.abs(cy-peers[j].cy)<=SNAP_TOL_IN){ res.cy=peers[j].cy; res.cyAt=peers[j].cy; break; }
+    }
+    // Nothing on this wall to level against — borrow a sill from another one.
+    if(res.cyAt==null){
+      var others=sillsElsewhere(wall, kind, idx);
+      var bo=null, bod=Infinity;
+      for(var o=0;o<others.length;o++){
+        var od=Math.abs(cy-others[o].cy);
+        if(od<=SNAP_TOL_IN && od<bod){ bod=od; bo=others[o]; }
+      }
+      if(bo){ res.cy=bo.cy; res.cyAt=bo.cy; res.cyFrom=bo.wall; }
     }
   }
   return res;
@@ -8634,11 +8891,15 @@ function snapDrag(wall, kind, idx, pos, cy){
    Kept separate so the drag handler can compare two states cheaply and only
    rebuild when the guide actually changes. */
 function snapGuideFor(wall, sn){
-  if(!sn || (!sn.centre && sn.cyAt==null)) return null;
-  return {wall:wall, cy:sn.cyAt, centre:!!sn.centre};
+  if(!sn || (!sn.centre && sn.cyAt==null && !sn.even)) return null;
+  return {wall:wall, cy:sn.cyAt, centre:!!sn.centre,
+          even:sn.even||null, evenAt:sn.even?sn.pos:null, evenSlots:sn.evenSlots||null,
+          cyFrom:sn.cyFrom||null};
 }
 function snapGuideKey(g){
-  return g ? (g.wall+'|'+(g.cy==null?'-':g.cy)+'|'+(g.centre?'c':'-')) : '';
+  return g ? [g.wall, (g.cy==null?'-':g.cy), (g.centre?'c':'-'),
+              (g.even||'-'), (g.evenAt==null?'-':g.evenAt.toFixed(4)),
+              (g.cyFrom||'-')].join('|') : '';
 }
 
 function posToAxis(wall, pos, sizeW_in){
@@ -9165,10 +9426,62 @@ var ventMeshes=[];
    quietly skipped the vent and ran the battens straight over it.
    Read-only: buildVents still owns the write, this just answers the question
    with the same arithmetic so the two cannot drift apart. */
+/* A VENT'S REAL FOOTPRINT ON THE WALL, trim included, in world units.
+
+   The louvre is 16x8; the casing around it is the same 3.3in board every
+   window and door gets. Three places need these numbers — the builder that
+   draws it, the batten pass that has to keep clear of it, and the gable-centre
+   sum below — and when only the builder knew them the battens were cut to the
+   bare louvre and ran across the casing, standing proud of it into the
+   bargain. */
+var VENT_W = 16*0.2/12, VENT_H = 8*0.2/12;
+var VENT_CASE = 0.055;                       // matches cB on windows, cB on doors
+function ventHalfW(){ return VENT_W/2 + VENT_CASE; }
+function ventHalfH(){ return VENT_H/2 + VENT_CASE; }
+
+/* WHERE A GABLE PUTS A VENT.
+
+   "Near the top of the wall" put it a foot BELOW the wall plate — in the wall,
+   under the gable rather than on it. A gable vent belongs in the middle of the
+   triangle, so that is where a new one goes: half way up the rise.
+
+   The triangle narrows as it climbs, so the height is only taken if the vent
+   and its casing still fit the width there. If it does not fit, it drops until
+   it does rather than poking out through the rake. Returns null when this wall
+   has no gable to sit on. */
+function ventGableCyIn(vd){
+  if(!vd) return null;
+  if(vd.wall!=='front' && vd.wall!=='back') return null;
+  if(typeof STYLE==='undefined' || STYLE==='leanto') return null;
+  var f=wallFrame(vd.wall);
+  var wallIn=f.height/(0.2/12);
+  /* The REAL rise, read off the roof that gets built. (PITCH*W)/2 measures the
+     run to the wall centreline, but the roof runs to the wall FACE, so it came
+     up short by WALL_FACE*PITCH — three quarters of an inch at 6/12, which is
+     exactly how far below true centre the vent sat. */
+  var gRiseIn;
+  if(STYLE==='barn'){ gRiseIn=barnProfile().barnH/(0.2/12); }
+  else if(typeof gableRoof==='function'){ gRiseIn=(gableRoof().ridgeY - H*0.2)/(0.2/12); }
+  else { gRiseIn=(PITCH*W)/2; }
+  if(!(gRiseIn>0)) return null;
+  var halfBaseIn=(f.len/2)/(0.2/12);
+  var needIn=ventHalfW()/(0.2/12);
+  /* Just the casing, plus a hair. This carried a further 2in of margin, which
+     sounds harmless and is not: on a 10x16 at 5/12 the vent fits dead centre
+     with room to spare, but the padded test said it did not and dropped it an
+     inch and a half. The constraint is the casing corner clearing the rake. */
+  var topPadIn=ventHalfH()/(0.2/12) + 0.5;    // keep the casing off the rake
+  for(var t=gRiseIn/2; t>0; t-=0.25){
+    var halfHereIn=halfBaseIn*(1 - (t+topPadIn)/gRiseIn);
+    if(halfHereIn>=needIn) return wallIn + t;
+  }
+  return null;                                 // no room on this gable
+}
 function ventCyIn(vd){
   var f=wallFrame(vd.wall);
   var wallIn=f.height/(0.2/12);
-  var cy=(vd.cy==null) ? wallIn-12 : vd.cy;
+  var _g=(vd.cy==null) ? ventGableCyIn(vd) : null;
+  var cy=(vd.cy==null) ? ((_g!=null) ? _g : wallIn-12) : vd.cy;
   var half=4;                                   // the vent is 8in tall
   var minCy=half+2, maxCy=wallIn-half-1;
   if((vd.wall==='front'||vd.wall==='back') && STYLE!=='leanto'){
@@ -9182,7 +9495,7 @@ function ventCyIn(vd){
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
-  var vW=16*0.2/12, vH=8*0.2/12;      // 16" wide x 8" tall
+  var vW=VENT_W, vH=VENT_H;           // 16" wide x 8" tall
   var frameMat=new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
   var slatMat=new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.7, metalness:0.1});
   ventsData.forEach(function(vd, idx){
@@ -9193,16 +9506,32 @@ function buildVents(){
     var cy=vd.cy*0.2/12;
     var grp=new THREE.Group();
     grp.userData={isVent:true, index:idx, wall:vd.wall};
-    var outZ=0.02;
-    // white frame
-    grp.add(mk(new THREE.BoxGeometry(vW+0.04, vH+0.04, 0.02), frameMat, 0, cy, outZ));
-    // dark louvre body
-    grp.add(mk(new THREE.BoxGeometry(vW, vH, 0.016), slatMat, 0, cy, outZ+0.004));
+    /* ON the wall, not in it. outZ was 0.02 against a wall face at 0.025, so
+       the louvre and its frame started 0.005 INSIDE the siding and the boards
+       closed over the edge of them. Everything now starts at the face. */
+    var WALL_Z=0.025;
+    var outZ=WALL_Z;
+    /* CASING, not a 1.2in lip. A vent wears the same 3.3in board a window
+       wears — that is what "the same trim as the rest of the shed" means, and
+       the old frame was a hair of trim colour around a louvre, which read as
+       siding butting straight into it. Four boards, same width, same depth and
+       the same trim material as the window casing. */
+    var vcD=0.018;
+    function vboard(bw,bh,dx,dy){
+      grp.add(mk(new THREE.BoxGeometry(bw,bh,vcD), frameMat, dx, cy+dy, WALL_Z+vcD/2));
+    }
+    vboard(vW+VENT_CASE*2, VENT_CASE, 0,  vH/2+VENT_CASE/2);   // head
+    vboard(vW+VENT_CASE*2, VENT_CASE, 0, -vH/2-VENT_CASE/2);   // sill
+    vboard(VENT_CASE, vH, -vW/2-VENT_CASE/2, 0);               // left leg
+    vboard(VENT_CASE, vH,  vW/2+VENT_CASE/2, 0);               // right leg
+    // dark louvre body, recessed a touch inside the casing so the boards read
+    // as standing proud of it the way a real casing does.
+    grp.add(mk(new THREE.BoxGeometry(vW, vH, 0.016), slatMat, 0, cy, WALL_Z+0.016/2));
     // horizontal slats (lighter lines)
     var slats=4;
     for(var s=0;s<slats;s++){
       var sy=cy - vH/2 + (s+0.5)*(vH/slats);
-      grp.add(mk(new THREE.BoxGeometry(vW-0.02, vH/slats*0.5, 0.02), frameMat, 0, sy, outZ+0.006));
+      grp.add(mk(new THREE.BoxGeometry(vW-0.02, vH/slats*0.5, 0.012), frameMat, 0, sy, WALL_Z+0.010));
     }
     if(EDIT_MODE && selectedKind==='vent' && selectedVent===idx){
       grp.add(mk(new THREE.BoxGeometry(vW+0.12, vH+0.12, 0.006),
@@ -10186,6 +10515,9 @@ function dedupeStepHeadings(){
   }
 }
 function wizRender(){
+  // Any step change ends the wall question — leaving the chip floating over a
+  // different step is how it turns into a button nobody knows the target of.
+  if(typeof hideWallPick==='function') hideWallPick();
   if(typeof closeSubPage==='function') closeSubPage();
   // The slope highlight is NOT tied to the Roof step — it only shows while the
   // person is actually adding or editing a dormer (see setDormerEdit). Leaving
@@ -10252,6 +10584,65 @@ function wizPrev(){ if(wizStep>0){ wizStep--; wizRender(); } }
 /* Jump to a step BY TITLE, for the same reason wizIs() asks by title: steps get
    reordered and a hardcoded index does not survive it. Returns false rather
    than landing somewhere arbitrary if the title is not in the table. */
+/* THE WALL CHOOSER — tap a wall on any step, say what goes on it.
+
+   ADD_WALL is set as soon as the chooser opens, not when a button is pressed:
+   the wall you tapped is the wall you meant whichever of the three you pick,
+   and setting it later meant the step opened pointed at the previous wall for
+   one render. Dismissing the chooser leaves it set, which is right — you did
+   choose that wall. */
+var WALL_PICK_FOR=null;
+function wallLabelFor(w){
+  return ({front:'Front wall', back:'Back wall', left:'Left wall', right:'Right wall'})[w] || 'Wall';
+}
+function showWallPick(wall){
+  if(!wall) return;
+  WALL_PICK_FOR=wall;
+  if(typeof ADD_WALL!=='undefined') ADD_WALL=wall;
+  if(typeof WIZ_ADDWALL_DOOR!=='undefined') WIZ_ADDWALL_DOOR=wall;
+  if(typeof syncWallUI==='function') syncWallUI();
+  var t=document.getElementById('wallPickT');
+  if(t) t.textContent=wallLabelFor(wall);
+  var el=document.getElementById('wallPick');
+  if(el) el.style.display='flex';
+}
+function hideWallPick(){
+  WALL_PICK_FOR=null;
+  var el=document.getElementById('wallPick');
+  if(el) el.style.display='none';
+}
+function wallPickGo(stepTitle){
+  var wall=WALL_PICK_FOR;
+  hideWallPick();
+  if(wall && typeof ADD_WALL!=='undefined'){ ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall; }
+  if(typeof wizGoTo==='function') wizGoTo(stepTitle);
+  if(typeof syncWallUI==='function') syncWallUI();
+  if(typeof buildShed==='function') buildShed();
+}
+/* Windows and vents share a step, so a "Vents" button that only navigated
+   would be the Windows button with a different label. It puts you on the
+   wall's vent instead: the one already there, or a new one if there is not,
+   which on a gable end lands dead centre in the triangle. */
+function wallPickVents(){
+  var wall=WALL_PICK_FOR;
+  hideWallPick();
+  if(wall && typeof ADD_WALL!=='undefined'){ ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall; }
+  if(typeof wizGoTo==='function') wizGoTo('Windows & Vents');
+  var found=-1;
+  if(typeof ventsData!=='undefined' && ventsData)
+    for(var i=0;i<ventsData.length;i++) if(ventsData[i] && ventsData[i].wall===wall){ found=i; break; }
+  if(found<0 && typeof addVent==='function'){
+    addVent();
+    found=(typeof ventsData!=='undefined' && ventsData.length) ? ventsData.length-1 : -1;
+  }
+  if(found>=0){
+    selectedKind='vent'; selectedVent=found;
+    selectedWindow=-1; selectedDoor=-1; selectedShelf=-1; selectedPorchLight=-1;
+  }
+  if(typeof syncWallUI==='function') syncWallUI();
+  if(typeof buildShed==='function') buildShed();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+}
 function wizGoTo(title){
   for(var i=0;i<WIZ_STEPS.length;i++){
     if(WIZ_STEPS[i].title===title){
@@ -12101,26 +12492,53 @@ function setFoundation(k){ FOUNDATION=k; if(k!=='pad') FOUNDATION_STAIN='none'; 
 // items (shutters, ridgeVent, skylight, stairs, statLadder, atticLadder) and
 // per-sqft ones (weatherGuard, radiantBarrier, houseWrap, hurricaneTies) both
 // come back as a single number \u2014 the client never sees the $/sqft rate.
+/* THE UPGRADES STEP, IN SECTIONS.
+
+   Fourteen checkboxes in one column made the customer read every line to find
+   the two they came for, and put "Remove Existing Concrete" next to "Flower
+   Boxes" as though they were the same kind of decision. Each item now names
+   the section it belongs to and the renderer groups them, in SECTION order
+   rather than item order, so adding one is still a single line.
+
+   The "shown in 3D" tag is gone from these rows. It told the customer which
+   items the model would draw, which is a fact about the software rather than
+   about the shed, and on a row already carrying a name, a badge and a price it
+   was a fourth thing competing for one line. `visual` went with it: the flag
+   existed only to print that tag and nothing else read it. The foundation list
+   keeps its own tag - different step, and there the choice really is about
+   what you will be looking at. */
+var ADDON_SECTIONS=[
+  {k:'openings', name:'Doors & Windows'},
+  {k:'access',   name:'Access'},
+  /* House wrap, radiant barrier, floor weather guard, ridge vent, hurricane
+     ties. What they have in common is the building envelope: keeping weather
+     and moisture out and air where it belongs. That is what you add if you
+     mean to finish the inside, and it is also just a better-built shed, which
+     is why they sit under one heading instead of being scattered between the
+     flower boxes and the demolition. */
+  {k:'envelope', name:'Insulation & Weatherproofing'},
+  /* Last on purpose: everything above adds to the new shed, these two clear
+     what is already on the site. Flat fees - the job is a crew and a dump run
+     whatever size the old shed was. */
+  {k:'site',     name:'Site Prep'}
+];
 var ADDON_ITEMS=[
-  {k:'flowerboxes', name:'Flower Boxes', perWindow:true, visual:true},
-  {k:'doorAwning',  name:'Door Overhang', price:'price TBD \u00b7 pick which doors on the Doors step', visual:true},
-  {k:'shutters',    name:'Shutters',      visual:true},
-  // needsRidge: hidden on styles with no ridge to vent \u2014 the option is
+  {k:'flowerboxes', name:'Flower Boxes', perWindow:true, sec:'openings'},
+  {k:'doorAwning',  name:'Door Overhang', price:'price TBD \u00b7 pick which doors on the Doors step', sec:'openings'},
+  {k:'shutters',    name:'Shutters',      sec:'openings'},
+  {k:'skylight',    name:'Skylight',      sec:'openings'},
+  {k:'stairs',      name:'Stairs',        sec:'access'},
+  {k:'statLadder',  name:'Stationary Ladder',      sec:'access'},
+  {k:'atticLadder', name:'Attic Pull-Down Ladder', sec:'access'},
+  // needsRidge: hidden on styles with no ridge to vent - the option is
   // otherwise tappable on a Lean-To for something that cannot be built.
-  {k:'ridgeVent',   name:'Roof Ridge Vent', visual:true, needsRidge:true},
-  {k:'skylight',    name:'Skylight'},
-  {k:'stairs',      name:'Stairs'},
-  {k:'statLadder',  name:'Stationary Ladder'},
-  {k:'atticLadder', name:'Attic Pull-Down Ladder'},
-  {k:'weatherGuard',name:'Floor Weather Guard'},
-  {k:'radiantBarrier',name:'Radiant Roof Barrier', visual:true},
-  {k:'houseWrap',   name:'House Wrap',     visual:true},
-  {k:'hurricaneTies',name:'Hurricane Ties'},
-  // Last on the list on purpose: everything above adds to the new shed, these
-  // two clear what is already on the site. Flat fees — the job is a crew and a
-  // dump run whatever size the old shed was.
-  {k:'shedRemoval',    name:'Remove Existing Shed'},
-  {k:'concreteRemoval',name:'Remove Existing Concrete'}
+  {k:'ridgeVent',   name:'Roof Ridge Vent', needsRidge:true, sec:'envelope'},
+  {k:'houseWrap',   name:'House Wrap',             sec:'envelope'},
+  {k:'radiantBarrier',name:'Radiant Roof Barrier', sec:'envelope'},
+  {k:'weatherGuard',name:'Floor Weather Guard',    sec:'envelope'},
+  {k:'hurricaneTies',name:'Hurricane Ties',        sec:'envelope'},
+  {k:'shedRemoval',    name:'Remove Existing Shed',     sec:'site'},
+  {k:'concreteRemoval',name:'Remove Existing Concrete', sec:'site'}
 ];
 function addonPriceText(it){
   if(it.price) return it.price;   // doorAwning's fixed "TBD" note
@@ -12134,18 +12552,47 @@ function renderAddons(){
   var host=document.getElementById('addonList'); if(!host) return;
   var html='';
   // (Cupola moved to the Roof step — it's roof hardware, not a general add-on.)
-  ADDON_ITEMS.forEach(function(it){
+  /* Walk the SECTIONS and pull each one's items, rather than walking the items
+     and printing a heading when the section changes. Same output while the
+     list happens to be sorted, but it cannot silently produce two "Access"
+     headings the day someone adds an item in the wrong place. A section whose
+     items are all hidden on this style prints no heading at all. */
+  function itemHidden(it){
     // Barn and Lean-To: gambrel has its own cap builder and the lean-to has no
     // ridge at all, so the vent geometry (built in the gable roof block) would
     // never appear.
-    if(it.needsRidge && !(STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak')) return;
+    return !!(it.needsRidge && !(STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak'));
+  }
+  var _shown=ADDON_ITEMS.filter(function(it){ return !itemHidden(it); });
+  var _ordered=[];
+  ADDON_SECTIONS.forEach(function(sec){
+    var mine=_shown.filter(function(it){ return it.sec===sec.k; });
+    if(mine.length) _ordered.push({head:sec.name});
+    mine.forEach(function(it){ _ordered.push({item:it}); });
+  });
+  // Anything with no section, or one that is not in the table, still renders —
+  // an unlabelled item is a bug, but hiding it from the customer is worse.
+  var _orphans=_shown.filter(function(it){
+    return !ADDON_SECTIONS.some(function(sec){ return sec.k===it.sec; });
+  });
+  if(_orphans.length){
+    _ordered.push({head:'More'});
+    _orphans.forEach(function(it){ _ordered.push({item:it}); });
+  }
+
+  _ordered.forEach(function(row){
+    if(row.head){
+      html+='<div class="addon-sec">'+row.head+'</div>';
+      return;
+    }
+    var it=row.item;
     var on=ADDONS[it.k];
     // Flower boxes + shutters get a finish picker once they're switched on.
     var colorKey=(it.k==='flowerboxes')?'fbColor':(it.k==='shutters')?'shutterColor':null;
     var showColors=(colorKey && on);
     html+='<div style="margin-bottom:6px">';
     html+='<div onclick="toggleAddon(\''+it.k+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:'+(showColors?'8px 8px 0 0':'8px')+';cursor:pointer;background:'+(on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+'">'+
-      '<div><div style="font-size:12px;font-weight:700;color:var(--w)">'+it.name+itemBadgeHTML('addon:'+it.k)+(it.visual?' <span style="color:var(--blue);font-size:10px">· shown in 3D</span>':'')+'</div><div style="font-size:11px;color:var(--mu)">'+addonPriceText(it)+'</div></div>'+
+      '<div><div style="font-size:12px;font-weight:700;color:var(--w)">'+it.name+itemBadgeHTML('addon:'+it.k)+'</div><div style="font-size:11px;color:var(--mu)">'+addonPriceText(it)+'</div></div>'+
       '<div style="width:22px;height:22px;border-radius:6px;flex-shrink:0;background:'+(on?'#2BB5E8':'transparent')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+';color:#06222e;font-weight:800;text-align:center;line-height:22px">'+(on?'\u2713':'')+'</div>'+
       '</div>';
     if(showColors){
@@ -12732,14 +13179,15 @@ function addVent(){
      and && binds tighter than ||, so a LEAN-TO's front wall took the gable
      branch even though a lean-to has no gable. Parenthesised now.
      Side walls, and every wall of a lean-to, keep the old spot near the top. */
-  var isGableEnd=((wall==='front'||wall==='back') && STYLE!=='leanto');
-  var cyIn;
-  if(isGableEnd){
-    var gRiseIn=(STYLE==='barn') ? barnProfile().barnH/(0.2/12) : (PITCH*W)/2;
-    cyIn=H*12 + gRiseIn/2;
-  } else {
-    cyIn=H*12-12;
-  }
+  /* ventGableCyIn owns this sum now. It was worked out here as well, off
+     (PITCH*W)/2 — a rise measured to the wall CENTRELINE when the roof runs to
+     its FACE, so every vent added from this button sat about three quarters of
+     an inch low at 6/12. Worse, this path writes a concrete cy, so the fix in
+     ventCyIn could never reach a vent created here: the two had to become one
+     function, not two that agree today. It also allows for the casing, which
+     this never did. */
+  var cyIn=(typeof ventGableCyIn==='function') ? ventGableCyIn({wall:wall, cy:null}) : null;
+  if(cyIn==null) cyIn=H*12-12;                   // no gable to sit on
   cyIn=Math.max(r.min, Math.min(r.max, cyIn));   // a shallow pitch may not have room
   ventsData.push({wall:wall, pos:0.5, cy:cyIn});
   selectedKind='vent'; selectedVent=ventsData.length-1;

@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
        https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js
    Same version the page loads. */
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO = join(HERE, '..', '..');
+const REPO = join(HERE, '..');
 const THREE_SRC = readFileSync(join(HERE, 'three.js'), 'utf8');
 const HTML = readFileSync(join(REPO, 'designer.html'), 'utf8');
 
