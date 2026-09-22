@@ -36,6 +36,11 @@ function El(cls, attrs){
       this.children[0].parentNode = this;
       this._text = '';
     },
+    classList: {
+      add(n){ const c=(e.className||'').split(/\s+/).filter(Boolean); if(!c.includes(n)) c.push(n); e.className=c.join(' '); },
+      remove(n){ e.className=(e.className||'').split(/\s+/).filter(Boolean).filter(x=>x!==n).join(' '); },
+      contains(n){ return (' '+(e.className||'')+' ').includes(' '+n+' '); },
+    },
     getAttribute(k){ return k in this.attrs ? this.attrs[k] : null; },
     setAttribute(k,v){ this.attrs[k] = String(v); },
     removeAttribute(k){ delete this.attrs[k]; },
@@ -133,6 +138,23 @@ test('a recommendation outranks a standing badge, and is given back after', () =
   c.SHED_USE = 'custom'; c.applyRecommendations();
   assert.equal(shown('gable'), badgeText('gable'), 'and the standing badge returns');
   assert.ok(isBadge('gable'));
+});
+
+test('the badged line gets its extra spacing, and gives it back', () => {
+  /* The gap belongs to the badge, not to the line. A restored description that
+     kept the class would leave an unbadged tile with empty space above words
+     that never asked for it — and it restores on every step change, so it
+     would be most tiles most of the time. */
+  c.SHED_USE = 'custom'; c.applyRecommendations();
+  assert.ok(tiles['barn'].price.classList.contains('has-badge'), 'a badged line is spaced');
+  assert.ok(!tiles['unbadged'].price.classList.contains('has-badge'), 'a plain description is not');
+
+  c.SHED_USE = 'golfsim'; c.applyRecommendations();
+  assert.ok(tiles['gable'].price.classList.contains('has-badge'), 'the recommended tile is spaced');
+
+  c.SHED_USE = 'custom'; c.applyRecommendations();
+  assert.ok(!tiles['unbadged'].price.classList.contains('has-badge'),
+    'and the unbadged tile never picked it up');
 });
 
 test('the premium shells get the black badge, the rest do not', () => {
