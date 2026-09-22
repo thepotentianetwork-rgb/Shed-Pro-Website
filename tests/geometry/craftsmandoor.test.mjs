@@ -107,9 +107,15 @@ test('there are dentil blocks under the shelf', () => {
   const b = doorBox(parts);
   const trim = parts.filter(x => x.type === 'BoxGeometry' && (x.max.x - x.min.x) > 0.2);
   const shelfY = Math.min(...trim.filter(x => x.max.z === Math.max(...trim.map(t => t.max.z))).map(x => x.min.y));
+  /* Confined to the leaf. Without the x bound a hinge on the casing, which is
+     small and sits at about the same height, counts as a dentil and the
+     spacing check fails on a door that is perfectly even. */
+  const glass = glassOf(parts);
+  const gx0 = Math.min(...glass.map(g => g.min.x)), gx1 = Math.max(...glass.map(g => g.max.x));
   const blocks = parts.filter(x => x.type === 'BoxGeometry'
     && x.max.y <= shelfY + 1e-3 && x.max.y > shelfY - 0.05
-    && (x.max.x - x.min.x) < 0.09 && (x.max.y - x.min.y) < 0.03);
+    && (x.max.x - x.min.x) < 0.09 && (x.max.y - x.min.y) < 0.03
+    && x.min.x > gx0 - 0.02 && x.max.x < gx1 + 0.02);
   assert.ok(blocks.length >= 3, `a row of blocks beneath it (found ${blocks.length})`);
   const xs = blocks.map(v => (v.min.x + v.max.x) / 2).sort((p, q) => p - q);
   const gaps = xs.slice(1).map((v, i) => v - xs[i]);
@@ -127,6 +133,59 @@ test('the panels below are split in two', () => {
     && (x.max.x - x.min.x) < 0.05
     && Math.abs((x.min.x + x.max.x) / 2 - centre) < 0.02);
   assert.ok(mullion.length >= 1, 'a centre mullion divides the lower half');
+});
+
+test('you can see INTO the shed through the lites', () => {
+  /* The point of the glass, and what was wrong after the first attempt: the
+     lites were drawn, divided and lit, over a leaf that was still a solid
+     slab. glassRegion returned null for this door, so nothing was ever cut.
+     A pane you cannot see through is a painted rectangle.
+
+     Glass is transparent, so "blocked" means an OPAQUE thing stopped the ray,
+     not any thing at all. */
+  const parts = doorParts(build('craftsman'));
+  const b = doorBox(parts);
+  const objs = []; c.shedGroup.traverse(x => { if (x.isMesh) objs.push(x); });
+  const zWall = c.encLft()*0.2/2 + 0.025;
+  const opaque = (hit) => {
+    const mt = hit.object.material;
+    return !(mt && mt.transparent === true && (mt.opacity || 1) < 0.6);
+  };
+  const glass = glassOf(parts);
+  const gy0 = Math.min(...glass.map(g => g.min.y)), gy1 = Math.max(...glass.map(g => g.max.y));
+  const gx0 = Math.min(...glass.map(g => g.min.x)), gx1 = Math.max(...glass.map(g => g.max.x));
+  let through = 0, tot = 0;
+  for (let x = gx0 + 0.01; x < gx1 - 0.01; x += 0.006)
+    for (let y = gy0 + 0.01; y < gy1 - 0.01; y += 0.006) {
+      tot++;
+      const rc = new T.Raycaster(new T.Vector3(x, y, zWall + 0.6), new T.Vector3(0,0,-1), 0, 6);
+      if (!rc.intersectObjects(objs, false).filter(h => h.point.z > zWall - 0.12).some(opaque)) through++;
+    }
+  assert.ok(through > tot * 0.5,
+    `most of the glass sees through (${through} of ${tot} rays)`);
+
+  // And the rest of the door does not, or it is not a door.
+  const below = b.y0 + (gy0 - b.y0) * 0.5;
+  const rc = new T.Raycaster(new T.Vector3(0, below, zWall + 0.6), new T.Vector3(0,0,-1), 0, 6);
+  assert.ok(rc.intersectObjects(objs, false).filter(h => h.point.z > zWall - 0.12).some(opaque),
+    'the panel below the glass is solid');
+});
+
+test('the muntins sit on the glass, not beside it', () => {
+  // The opening is narrower than the trim frame's clear width, so muntins
+  // spaced across the FRAME land off the lites. Both now read one stile width.
+  const parts = doorParts(build('craftsman'));
+  const glass = glassOf(parts);
+  const gx0 = Math.min(...glass.map(g => g.min.x)), gx1 = Math.max(...glass.map(g => g.max.x));
+  const gy = (Math.min(...glass.map(g => g.min.y)) + Math.max(...glass.map(g => g.max.y))) / 2;
+  const bars = parts.filter(x => x.type === 'BoxGeometry'
+    && x.min.y < gy && x.max.y > gy && (x.max.x - x.min.x) < 0.05
+    && x.min.x > gx0 - 0.01 && x.max.x < gx1 + 0.01
+    && (x.max.y - x.min.y) < (gx1 - gx0) * 3);
+  for (const bar of bars) {
+    assert.ok(bar.min.x > gx0 && bar.max.x < gx1,
+      `a bar at ${((bar.min.x+bar.max.x)/2).toFixed(3)} is inside the glass ${gx0.toFixed(3)}..${gx1.toFixed(3)}`);
+  }
 });
 
 test('it no longer looks like the plain door', () => {
