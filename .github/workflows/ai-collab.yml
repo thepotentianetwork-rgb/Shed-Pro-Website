@@ -1,0 +1,334 @@
+# OpenAI plans, Claude Code implements, OpenAI reviews, Claude fixes once,
+# and a human gets a pull request.
+#
+# MANUAL TRIGGER ONLY. There is no push, schedule or issue trigger, and adding
+# one is a deliberate act. This repository deploys to shedpro-utah.com from
+# main, so a merge is a deploy — nothing here merges anything.
+#
+# See docs/ai-collab.md for what it costs, what it cannot do, and how to stop it.
+
+name: AI collaboration (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "What should be done? Write it as you would to a contractor."
+        required: true
+        type: string
+      openai_model:
+        description: "OpenAI model for planning and review"
+        required: false
+        default: "gpt-4o"
+        type: string
+      claude_model:
+        description: "Claude model for implementation"
+        required: false
+        default: "claude-sonnet-5"
+        type: string
+      skip_fix_round:
+        description: "Skip the automated fix round — open the PR with the review as-is"
+        required: false
+        default: false
+        type: boolean
+
+# Least privilege. contents to push a branch, pull-requests to open one.
+# Nothing else — no packages, no deployments, no actions, no id-token.
+permissions:
+  contents: write
+  pull-requests: write
+
+# One at a time. Two runs editing the same file from two branches is a mess
+# nobody asked for, and cancel-in-progress would leave half-finished branches.
+concurrency:
+  group: ai-collab
+  cancel-in-progress: false
+
+jobs:
+  collaborate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      AI_TASK: ${{ inputs.task }}
+      OPENAI_MODEL: ${{ inputs.openai_model }}
+
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Record the starting point
+        id: base
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "branch=ai/$(date +%Y%m%d-%H%M%S)-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch Three.js for the test harness
+        run: curl -sSfo tests/three.js https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js
+
+      - name: Count the tests before anything changes
+        id: before
+        run: |
+          set +e
+          node --test tests/geometry/*.test.mjs tests/ui/*.test.mjs > before.log 2>&1
+          code=$?
+          set -e
+          count=$(grep -E '^# tests ' before.log | tail -1 | awk '{print $3}')
+          fail=$(grep -E '^# fail ' before.log | tail -1 | awk '{print $3}')
+          echo "count=${count:-0}" >> "$GITHUB_OUTPUT"
+          echo "Baseline: ${count:-0} tests, ${fail:-?} failing (exit $code)"
+          # A red baseline is not this workflow's fault, but it must not be
+          # mistaken later for damage the run caused.
+          if [ "${fail:-0}" != "0" ]; then
+            echo "::warning::main is not green before this run: ${fail} failing"
+          fi
+
+      # ---- 1. OpenAI plans -------------------------------------------------
+      - name: Plan (OpenAI)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: node scripts/ai/plan.mjs --task "$AI_TASK" --out plan.md --model "$OPENAI_MODEL"
+
+      - name: Show the plan
+        run: |
+          { echo "## Plan"; echo; cat plan.md; } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---- 2. Claude Code implements --------------------------------------
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Implement (Claude Code)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -o pipefail
+          cat > implement-prompt.txt <<'PROMPT'
+          You are implementing a change to this repository. A plan is in plan.md.
+
+          THE PLAN IS ADVICE, NOT ORDERS. It was written by a model that could
+          only see a summary of this repository, not the files. Where it is
+          wrong about the code, do the right thing and say so in your final
+          message. Following a wrong plan faithfully is worse than departing
+          from it.
+
+          THE TASK, as the owner wrote it, is in the environment variable
+          AI_TASK. That is the thing to satisfy. The plan is one reading of it.
+
+          Rules that are checked automatically after you finish. Breaking one
+          fails the run and wastes it:
+            - Three.js stays at r128. designer.html must keep loading
+              three@0.128.0.
+            - No pricing logic in this repository. designer.html must keep
+              reading quoteCache; the prices come from a separate worker.
+            - Tests may be ADDED. No test file may be deleted and the total
+              test count may not fall.
+            - Do not touch .github/, scripts/ai/, vercel.json or .gitignore.
+            - No build step, no npm dependency, no bundler. Static files only.
+
+          Run the tests when you are done:
+            node --test tests/geometry/*.test.mjs tests/ui/*.test.mjs
+
+          If you cannot do the task within these rules, make no changes and say
+          why. An empty diff with a clear explanation is a good outcome; a
+          plausible diff that does the wrong thing is not.
+          PROMPT
+          claude -p "$(cat implement-prompt.txt)" \
+            --model "${{ inputs.claude_model }}" \
+            --permission-mode acceptEdits \
+            --allowedTools "Read,Write,Edit,Glob,Grep,Bash(node --test*),Bash(git diff*),Bash(git status*),Bash(curl -sSfo tests/three.js*)" \
+            2>&1 | tee implement.log
+
+      - name: Guard the diff
+        id: guard1
+        run: |
+          set +e
+          node scripts/ai/guard.mjs "${{ steps.base.outputs.sha }}" --tests-before "${{ steps.before.outputs.count }}" 2>&1 | tee guard1.log
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Stop if the guard failed
+        if: steps.guard1.outputs.code != '0'
+        run: |
+          { echo "## Guard failed"; echo; echo '```'; cat guard1.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          echo "The change broke a rule that is not negotiable. No branch pushed, no PR opened."
+          exit 1
+
+      # ---- 3. Tests --------------------------------------------------------
+      - name: Run the tests
+        id: tests1
+        run: |
+          set +e
+          node --test tests/geometry/*.test.mjs tests/ui/*.test.mjs > tests.log 2>&1
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          echo "count=$(grep -E '^# tests ' tests.log | tail -1 | awk '{print $3}')" >> "$GITHUB_OUTPUT"
+          echo "fail=$(grep -E '^# fail ' tests.log | tail -1 | awk '{print $3}')" >> "$GITHUB_OUTPUT"
+          tail -20 tests.log
+          exit 0
+
+      # ---- 4. OpenAI reviews ----------------------------------------------
+      - name: Review (OpenAI)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node scripts/ai/review.mjs \
+            --base "${{ steps.base.outputs.sha }}" \
+            --tests tests.log --plan plan.md --out review.json --model "$OPENAI_MODEL"
+          cat review.json
+
+      - name: Decide whether a fix round is warranted
+        id: verdict
+        run: |
+          issues=$(node -e "const r=require('./review.json');console.log((r.issues||[]).length)")
+          echo "issues=$issues" >> "$GITHUB_OUTPUT"
+          # A fix round runs if the reviewer found something, OR the tests are
+          # red — a red suite is a fact, not an opinion, and deserves a go.
+          if [ "$issues" != "0" ] || [ "${{ steps.tests1.outputs.code }}" != "0" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---- 5. Claude fixes, ONCE ------------------------------------------
+      - name: Fix (Claude Code) — one round only
+        if: steps.verdict.outputs.needed == 'true' && inputs.skip_fix_round != true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -o pipefail
+          cat > fix-prompt.txt <<'PROMPT'
+          Your change was reviewed. The review is in review.json and the test
+          output is in tests.log.
+
+          THIS IS THE ONLY FIX ROUND. There is no second pass, so deal with
+          what is actually wrong rather than starting something larger.
+
+          Failing tests come first — they are facts. Then the reviewer's issues.
+          If you disagree with an issue, leave the code alone and say why in
+          your final message; a reviewer that could not see the files is
+          sometimes wrong, and arguing in the pull request is better than
+          making a change you think is incorrect.
+
+          The same rules still apply and are still checked: Three.js r128, no
+          pricing logic here, no test deleted and the count may not fall, and
+          nothing under .github/ or scripts/ai/.
+          PROMPT
+          claude -p "$(cat fix-prompt.txt)" \
+            --model "${{ inputs.claude_model }}" \
+            --permission-mode acceptEdits \
+            --allowedTools "Read,Write,Edit,Glob,Grep,Bash(node --test*),Bash(git diff*),Bash(git status*)" \
+            2>&1 | tee fix.log
+
+      - name: Guard the diff again
+        if: steps.verdict.outputs.needed == 'true' && inputs.skip_fix_round != true
+        run: node scripts/ai/guard.mjs "${{ steps.base.outputs.sha }}" --tests-before "${{ steps.before.outputs.count }}"
+
+      - name: Re-run the tests
+        id: tests2
+        if: steps.verdict.outputs.needed == 'true' && inputs.skip_fix_round != true
+        run: |
+          set +e
+          node --test tests/geometry/*.test.mjs tests/ui/*.test.mjs > tests-final.log 2>&1
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          echo "fail=$(grep -E '^# fail ' tests-final.log | tail -1 | awk '{print $3}')" >> "$GITHUB_OUTPUT"
+          tail -20 tests-final.log
+          exit 0
+
+      # ---- 6. A pull request, for a person ---------------------------------
+      - name: Anything to open?
+        id: changed
+        run: |
+          if [ -z "$(git status --porcelain)" ] && [ -z "$(git diff ${{ steps.base.outputs.sha }} --name-only)" ]; then
+            echo "any=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report an empty run
+        if: steps.changed.outputs.any == 'false'
+        run: |
+          {
+            echo "## No changes"
+            echo
+            echo "The implementer made no edits. Its explanation:"
+            echo
+            echo '```'
+            tail -40 implement.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open the pull request
+        if: steps.changed.outputs.any == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          git config user.name  "shedpro-ai[bot]"
+          git config user.email "noreply@users.noreply.github.com"
+          git checkout -b "${{ steps.base.outputs.branch }}"
+          git add -A
+          git commit -m "AI: ${AI_TASK}" -m "Planned by OpenAI (${OPENAI_MODEL}), implemented by Claude Code (${{ inputs.claude_model }}).
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Nothing here has been reviewed by a person yet." || echo "nothing staged"
+          git push -u origin "${{ steps.base.outputs.branch }}"
+
+          node -e '
+            const fs=require("fs");
+            const r=JSON.parse(fs.readFileSync("review.json","utf8"));
+            const t1="${{ steps.tests1.outputs.fail }}", t2="${{ steps.tests2.outputs.fail }}";
+            const ran="${{ steps.verdict.outputs.needed }}"==="true" && "${{ inputs.skip_fix_round }}"!=="true";
+            const L=[];
+            L.push("**Nobody has read this yet.** It was planned by OpenAI, written by Claude Code and reviewed by OpenAI. It is not merged and nothing is deployed.");
+            L.push("");
+            L.push("## Task"); L.push(""); L.push("> "+process.env.AI_TASK.replace(/\n/g,"\n> "));
+            L.push("");
+            L.push("## Tests"); L.push("");
+            L.push("| | failing |"); L.push("|---|---|");
+            L.push("| after implementation | "+(t1||"?")+" |");
+            if(ran) L.push("| after the fix round | "+(t2||"?")+" |");
+            L.push("");
+            L.push("## OpenAI review"); L.push("");
+            if(r.error) L.push("⚠️ **The review did not run properly — treat this change as unreviewed.**");
+            L.push(r.summary||"(no summary)");
+            if((r.issues||[]).length){
+              L.push(""); L.push("### Issues raised"); L.push("");
+              for(const i of r.issues) L.push("- **"+(i.title||"issue")+"** — "+(i.detail||""));
+              L.push(""); L.push(ran?"One automated fix round ran against these.":"No fix round ran.");
+            }
+            L.push(""); L.push("## Plan"); L.push(""); L.push("<details><summary>The plan it worked from</summary>");
+            L.push(""); L.push(fs.readFileSync("plan.md","utf8")); L.push(""); L.push("</details>");
+            L.push(""); L.push("---"); L.push("");
+            L.push("Merging this deploys it: Vercel publishes shedpro-utah.com from `main`.");
+            fs.writeFileSync("pr-body.md", L.join("\n"));
+          '
+          gh pr create \
+            --title "AI: ${AI_TASK}" \
+            --body-file pr-body.md \
+            --base "${{ github.ref_name }}" \
+            --head "${{ steps.base.outputs.branch }}" \
+            --label "ai-generated" || \
+          gh pr create \
+            --title "AI: ${AI_TASK}" \
+            --body-file pr-body.md \
+            --base "${{ github.ref_name }}" \
+            --head "${{ steps.base.outputs.branch }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Result"
+            echo
+            echo "- tests after implementation: ${{ steps.tests1.outputs.fail }} failing"
+            echo "- review issues: ${{ steps.verdict.outputs.issues }}"
+            echo "- fix round: ${{ steps.verdict.outputs.needed }}"
+            echo
+            echo "Nothing was merged and nothing was deployed."
+          } >> "$GITHUB_STEP_SUMMARY"
