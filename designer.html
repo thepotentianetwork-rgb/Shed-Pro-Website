@@ -85,6 +85,8 @@ header{background:rgba(12,12,12,.96);border-bottom:1px solid var(--br);padding:0
 .vp{flex:1;position:relative;overflow:hidden}
 canvas{display:block;width:100%;height:100%}
 .hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);border-radius:30px;padding:7px 18px;font-size:11px;color:var(--mu);white-space:nowrap}
+.dup-btn{position:absolute;top:14px;right:14px;display:none;background:rgba(43,181,232,.92);color:#06222e;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);font-family:inherit}
+.dup-btn:hover{background:#2BB5E8}
 .measure-guide{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(43,181,232,.92);color:#06222e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;white-space:nowrap;display:none;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .edit-badge{position:absolute;top:14px;left:14px;background:rgba(43,181,232,.16);border:1px solid rgba(43,181,232,.6);color:#2BB5E8;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;display:none}
 .wallpick.on{background:#2BB5E8 !important;color:#06222e !important;border-color:#2BB5E8 !important}
@@ -446,6 +448,12 @@ textarea.inp{resize:vertical}
     <canvas id="c"></canvas>
     <div class="hint">Drag to rotate &nbsp;&middot;&nbsp; Scroll to zoom</div>
     <div id="measureGuide" class="measure-guide"></div>
+    <!-- DUPLICATE. Floated over the canvas rather than added to the editor
+         panel, because that panel's containers (winSelControls,
+         doorSelControls, ventSelControls) are not in this document - the code
+         has been reading them and getting null. This sits beside the measure
+         readout, which IS real, and shows only while something is selected. -->
+    <button id="dupBtn" class="dup-btn" onclick="duplicateSelected()">&#10697; Duplicate</button>
     <div id="editBadge" class="edit-badge">EDIT MODE &middot; drag a window along the wall or up/down</div>
     <div class="consult-nudge" id="consultNudge">
       <h4>Want a hand with this?</h4>
@@ -2117,22 +2125,34 @@ function init(){
       // gable above it is the same wall.
       var r=pointerOnWall(wd.wall, wd.w, wd.h, false, true);
       if(!r) return;
-      if(Math.abs(wd.pos-r.pos)<1e-4 && wd.cy===r.cyIn){ showMeasureGuide(wd); return; }
-      wd.pos=r.pos; wd.cy=r.cyIn;
+      var sw=snapDrag(wd.wall,'window',selectedWindow,r.pos,r.cyIn);
+      var gw=snapGuideFor(wd.wall, sw), gwKey=snapGuideKey(gw);
+      /* Rebuild when the GUIDE changes too, not only the position. Snapping
+         means the last few pixels of a drag move nothing, and that is exactly
+         when the line has to appear - gated on position alone it never did. */
+      var movedW=!(Math.abs(wd.pos-sw.pos)<1e-4 && wd.cy===sw.cy);
+      if(!movedW && gwKey===snapGuideKey(SNAP_GUIDE)){ showMeasureGuide(wd); return; }
+      wd.pos=sw.pos; wd.cy=sw.cy; SNAP_GUIDE=gw;
       buildShed(); showMeasureGuide(wd); syncEditorPanel();
     } else if(selectedKind==='door' && selectedDoor>=0 && doorsData[selectedDoor]){
       var dd=doorsData[selectedDoor];
       var r2=pointerOnWall(dd.wall, dd.w, dd.h, true);
       if(!r2) return;
-      if(Math.abs(dd.pos-r2.pos)<1e-4){ showMeasureGuide(dd); return; }
-      dd.pos=r2.pos;
+      var sd2=snapDrag(dd.wall,'door',selectedDoor,r2.pos,null);
+      var gd=snapGuideFor(dd.wall, sd2), gdKey=snapGuideKey(gd);
+      var movedD=!(Math.abs(dd.pos-sd2.pos)<1e-4);
+      if(!movedD && gdKey===snapGuideKey(SNAP_GUIDE)){ showMeasureGuide(dd); return; }
+      dd.pos=sd2.pos; SNAP_GUIDE=gd;
       buildShed(); showMeasureGuide(dd); syncEditorPanel();
     } else if(selectedKind==='vent' && selectedVent>=0 && ventsData[selectedVent]){
       var vd=ventsData[selectedVent];
       var r3=pointerOnWall(vd.wall, 16, 8, false, true);
       if(!r3) return;
-      if(Math.abs(vd.pos-r3.pos)<1e-4 && vd.cy===r3.cyIn){ return; }
-      vd.pos=r3.pos; vd.cy=r3.cyIn;
+      var sv=snapDrag(vd.wall,'vent',selectedVent,r3.pos,r3.cyIn);
+      var gv=snapGuideFor(vd.wall, sv), gvKey=snapGuideKey(gv);
+      var movedV=!(Math.abs(vd.pos-sv.pos)<1e-4 && vd.cy===sv.cy);
+      if(!movedV && gvKey===snapGuideKey(SNAP_GUIDE)){ return; }
+      vd.pos=sv.pos; vd.cy=sv.cy; SNAP_GUIDE=gv;
       buildShed(); syncEditorPanel();
     } else if(selectedKind==='shelf' && selectedShelf>=0 && shelvesData[selectedShelf]){
       var sd=shelvesData[selectedShelf];
@@ -2227,7 +2247,16 @@ function init(){
   // pointer UP
   function onUp(){
     drag=false;
-    if(draggingWindow){ draggingWindow=false; hideMeasureGuide(); }
+    if(draggingWindow){
+      draggingWindow=false;
+      /* Read BEFORE hiding: hideMeasureGuide clears SNAP_GUIDE itself, so
+         checking it afterwards is always false and the bars stay on the wall
+         after the drop. The lines are geometry in the scene, so clearing the
+         state is not enough on its own - it takes the rebuild. */
+      var hadGuide=!!SNAP_GUIDE;
+      hideMeasureGuide();
+      if(hadGuide) buildShed();
+    }
     /* TAP AN ITEM WITH EDIT MODE OFF -> GO TO ITS STEP.
        Picking used to be gated entirely on EDIT_MODE, which only the Doors,
        Windows, Interior and Electrical steps turn on. So on the style step, or
@@ -6021,6 +6050,42 @@ function buildShed(){
     });
   }
   if(typeof applyLighting==='function') applyLighting();  // re-attach pkg lights & day/night
+  if(typeof buildSnapGuides==='function') buildSnapGuides();
+}
+
+/* THE GUIDELINES. Thin bright bars laid on the wall face at whatever the drag
+   snapped to: a horizontal one at the height it lined up with, a vertical one
+   down the middle of the wall when it centred.
+
+   Built here rather than kept as persistent objects because buildShed clears
+   and rebuilds shedGroup on every change, so anything held across a rebuild is
+   a dangling reference. Cheap enough - two boxes, only while a drag is snapped.
+
+   MeshBasicMaterial, not Standard: a guide is an annotation, not a part of the
+   shed, and it should read the same in daylight and at night. Seated at 0.06,
+   just off the 0.05 wall face, so it is not fighting the wall for the same
+   pixels. */
+function buildSnapGuides(){
+  if(!SNAP_GUIDE || typeof THREE==='undefined' || typeof shedGroup==='undefined') return;
+  if(typeof EDIT_MODE!=='undefined' && !EDIT_MODE) return;
+  var f=(typeof wallFrame==='function') ? wallFrame(SNAP_GUIDE.wall) : null;
+  if(!f) return;
+  var rotY={front:0, back:Math.PI, right:Math.PI/2, left:-Math.PI/2}[SNAP_GUIDE.wall];
+  if(rotY==null) return;
+  var mat=new THREE.MeshBasicMaterial({color:0x2BB5E8});
+  function bar(w,h,y){
+    var g=new THREE.Group();
+    g.rotation.y=rotY;
+    var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.008), mat);
+    m.position.set(0, y, 0.06);
+    g.add(m);
+    if(f.ax==='x') g.position.set(0,0,f.fixed); else g.position.set(f.fixed,0,0);
+    shedGroup.add(g);
+  }
+  // the height it lined up with
+  if(SNAP_GUIDE.cy!=null) bar(f.len, 0.014, SNAP_GUIDE.cy*0.2/12);
+  // and the centre of the wall
+  if(SNAP_GUIDE.centre) bar(0.014, f.height, f.height/2);
 }
 
 // Single-slope (lean-to) roof: HIGH at the FRONT (z=+l/2, where the door is),
@@ -8476,6 +8541,85 @@ function wallFrame(wall){
 }
 // Convert pos (0..1) + size to the world center coordinate ALONG the wall axis.
 // Returns the world coordinate on the wall's length axis (x for front/back, z for sides).
+/* ── SNAPPING WHILE DRAGGING ────────────────────────────────────────────────
+   Dragging used to take the pointer position literally, so centring a window
+   or lining two up meant nudging until the readout looked right. These pull to
+   the places people are actually aiming for.
+
+   Top level rather than inside the canvas closure so it can be exercised on
+   its own - it is pure apart from reading W, L and the placed-item arrays.
+
+   Three targets, in priority order:
+     1. the centre of the wall
+     2. the MIRROR of another opening on the same wall, so a pair flanks the
+        centre evenly without measuring
+     3. the HEIGHT of another opening, so two windows sit on one line
+   Centre wins over mirror because it is the line people ask for by name; the
+   two are within a few inches of each other whenever a single peer is already
+   near the middle, and picking the wrong one there is the difference between
+   "centred" and "nearly centred". */
+var SNAP_TOL_IN = 3;             // how close the pointer has to get, in inches
+var SNAP_GUIDE = null;           // {wall, cy, centre} while a drag is snapped
+
+function snapWallInches(wall){
+  return ((wall==='front'||wall==='back') ? W : L) * 12;
+}
+
+/* Everything else placed on this wall, minus the item being dragged. Doors are
+   included for the mirror but carry cy:null - they stand on the floor, so
+   "line it up with the door" is not a height anyone wants. */
+function snapPeers(wall, kind, idx){
+  var out=[];
+  function add(list, k){
+    if(typeof list==='undefined' || !list) return;
+    list.forEach(function(o,i){
+      if(!o || o.wall!==wall) return;
+      if(k===kind && i===idx) return;
+      out.push({pos:o.pos, cy:(k==='door') ? null : o.cy});
+    });
+  }
+  add(typeof windowsData!=='undefined'?windowsData:null, 'window');
+  add(typeof ventsData!=='undefined'?ventsData:null, 'vent');
+  add(typeof doorsData!=='undefined'?doorsData:null, 'door');
+  return out;
+}
+
+function snapDrag(wall, kind, idx, pos, cy){
+  var res={pos:pos, cy:cy, centre:false, cyAt:null, mirror:false};
+  var lenIn=snapWallInches(wall);
+  /* Tolerance in POS units derived from inches, so the pull feels the same on
+     a 6ft wall and a 32ft one. A flat 0.02 would be 1.4" on one and 7.7" on
+     the other, which is why it is not a flat number. */
+  var tol = (lenIn>0) ? (SNAP_TOL_IN/lenIn) : 0.02;
+  var peers=snapPeers(wall, kind, idx);
+
+  if(Math.abs(pos-0.5)<=tol){ res.pos=0.5; res.centre=true; }
+  else {
+    for(var i=0;i<peers.length;i++){
+      var m=1-peers[i].pos;
+      if(Math.abs(pos-m)<=tol){ res.pos=m; res.mirror=true; break; }
+    }
+  }
+  if(cy!=null){
+    for(var j=0;j<peers.length;j++){
+      if(peers[j].cy==null) continue;
+      if(Math.abs(cy-peers[j].cy)<=SNAP_TOL_IN){ res.cy=peers[j].cy; res.cyAt=peers[j].cy; break; }
+    }
+  }
+  return res;
+}
+
+/* What the guide should show for a snap result, or null for "nothing snapped".
+   Kept separate so the drag handler can compare two states cheaply and only
+   rebuild when the guide actually changes. */
+function snapGuideFor(wall, sn){
+  if(!sn || (!sn.centre && sn.cyAt==null)) return null;
+  return {wall:wall, cy:sn.cyAt, centre:!!sn.centre};
+}
+function snapGuideKey(g){
+  return g ? (g.wall+'|'+(g.cy==null?'-':g.cy)+'|'+(g.centre?'c':'-')) : '';
+}
+
 function posToAxis(wall, pos, sizeW_in){
   var f=wallFrame(wall);
   var sw=sizeW_in*0.2/12;
@@ -12746,6 +12890,73 @@ function addDoor(){
   selectedKind='door'; selectedDoor=doorsData.length-1; selectedWindow=-1;
   if(!EDIT_MODE) toggleEditMode(); else { buildShed(); syncEditorPanel(); }
 }
+/* ── DUPLICATE THE SELECTED ITEM ────────────────────────────────────────────
+   Copies the selected window, door or vent and drops the copy on the same
+   wall, at the same height, offset along it. Placing two windows by hand meant
+   adding a second from the catalogue and then matching its size, type and sill
+   by eye; this makes a pair one tap, and the snapping above then lines the copy
+   up with the original.
+
+   Mirrored first, offset second. A window at 0.3 has a natural partner at 0.7,
+   which is what someone duplicating a window on the front of a shed almost
+   always wants - and it lands on the mirror snap, so nudging it afterwards
+   holds the symmetry instead of breaking it. Only when the mirror is already
+   occupied does it fall back to stepping along the wall.
+   Everything is copied by value. Pushing the same object twice gives two
+   entries that move together, which reads as the duplicate having failed. */
+function duplicateSelected(){
+  function spotFor(wall, srcPos, taken, minGap){
+    var mirror=1-srcPos;
+    if(Math.abs(mirror-srcPos)>minGap &&
+       !taken.some(function(p){ return Math.abs(p-mirror)<minGap; })){
+      return mirror;
+    }
+    /* Walk outward from the original rather than from the middle: stepping
+       from 0.5 can land the copy on the far side of another opening, which
+       looks like it went somewhere random. */
+    for(var step=minGap; step<=1; step+=minGap){
+      var cands=[srcPos+step, srcPos-step];
+      for(var i=0;i<cands.length;i++){
+        var c=cands[i];
+        if(c<0.05 || c>0.95) continue;
+        if(!taken.some(function(p){ return Math.abs(p-c)<minGap; })) return c;
+      }
+    }
+    return null;
+  }
+
+  if(selectedKind==='window' && selectedWindow>=0 && windowsData[selectedWindow]){
+    var src=windowsData[selectedWindow];
+    var taken=windowsData.filter(function(w){return w.wall===src.wall;}).map(function(w){return w.pos;});
+    var pos=spotFor(src.wall, src.pos, taken, 0.18);
+    if(pos==null) return false;                   // no room; leave it be
+    windowsData.push({wall:src.wall, pos:pos, w:src.w, h:src.h, cy:src.cy, type:src.type});
+    selectedWindow=windowsData.length-1; selectedKind='window';
+  } else if(selectedKind==='door' && selectedDoor>=0 && doorsData[selectedDoor]){
+    var sd=doorsData[selectedDoor];
+    var dtaken=doorsData.filter(function(d){return d.wall===sd.wall;}).map(function(d){return d.pos;});
+    var dpos=spotFor(sd.wall, sd.pos, dtaken, 0.25);
+    if(dpos==null) return false;
+    doorsData.push({wall:sd.wall, pos:dpos, style:sd.style, w:sd.w, h:sd.h});
+    selectedDoor=doorsData.length-1; selectedKind='door';
+  } else if(selectedKind==='vent' && selectedVent>=0 && ventsData[selectedVent]){
+    var sv=ventsData[selectedVent];
+    var vtaken=ventsData.filter(function(v){return v.wall===sv.wall;}).map(function(v){return v.pos;});
+    var vpos=spotFor(sv.wall, sv.pos, vtaken, 0.14);
+    if(vpos==null) return false;
+    ventsData.push({wall:sv.wall, pos:vpos, cy:sv.cy});
+    selectedVent=ventsData.length-1; selectedKind='vent';
+  } else {
+    return false;
+  }
+  buildShed();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(typeof renderPlacedWindows==='function') renderPlacedWindows();
+  if(typeof renderPlacedDoors==='function') renderPlacedDoors();
+  if(typeof updateSum==='function') updateSum();
+  return true;
+}
+
 function removeSelected(){
   if(selectedKind==='window' && selectedWindow>=0){
     windowsData.splice(selectedWindow,1); selectedWindow=-1;
@@ -12813,6 +13024,17 @@ function openingDims(o, isDoor){
 }
 // Keep the editor panel in sync with current state.
 function syncEditorPanel(){
+  /* The Duplicate chip. Driven from here because this already runs on every
+     selection change, and gated on the three kinds duplicateSelected handles -
+     a button that does nothing for shelves and porch lights would be worse
+     than no button. */
+  var dup=document.getElementById('dupBtn');
+  if(dup){
+    var canDup = (selectedKind==='window' && selectedWindow>=0)
+              || (selectedKind==='door'   && selectedDoor>=0)
+              || (selectedKind==='vent'   && selectedVent>=0);
+    dup.style.display = canDup ? 'block' : 'none';
+  }
   var ed=document.getElementById('winEditor');
   var anything=(windowsData.length>0||doorsData.length>0);
   if(ed) ed.style.display='block';
@@ -12875,6 +13097,10 @@ function showMeasureGuide(o){
 function hideMeasureGuide(){
   var g=document.getElementById('measureGuide');
   if(g) g.style.display='none';
+  /* The readout and the guidelines belong to the same gesture, so they go
+     together. The rebuild that actually removes the bars is the caller's - this
+     runs mid-drag too, and rebuilding here would fight the drag. */
+  SNAP_GUIDE=null;
 }
 
 // Toggle day/night and add package-specific lights. Called by setElectrical and
