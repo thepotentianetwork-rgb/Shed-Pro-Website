@@ -13729,6 +13729,20 @@ function freeSlot(taken, want, gap, lo, hi){
   return null;
 }
 
+/* The other half of freeSlot: it stops new duplicates being made, this drops
+   the ones already saved. Keeps the FIRST of each set, so the item keeps the
+   position the customer put it in. */
+function dropStacked(list, keys){
+  var seen={}, out=[];
+  (list||[]).forEach(function(o){
+    if(!o || typeof o!=='object') return;
+    var k=keys.map(function(f){ return String(o[f]); }).join('\u0001');
+    if(seen[k]) return;
+    seen[k]=true; out.push(o);
+  });
+  return out;
+}
+
 // ---- SHELVES (interior, movable along a wall) ----
 var SHELF_GAP_IN = 14;      // a 16in board plus room to reach into it
 function addShelf(){
@@ -15143,9 +15157,22 @@ function applyDesignConfig(c){
     if(c.addons && typeof c.addons==='object')ADDONS=c.addons;
     if(Array.isArray(c.doors))doorsData=c.doors;
     if(Array.isArray(c.windows))windowsData=c.windows;
-    if(Array.isArray(c.vents))ventsData=c.vents;
-    if(Array.isArray(c.shelves))shelvesData=c.shelves;
-    if(Array.isArray(c.porchLights))porchLightsData=c.porchLights;
+    /* DESIGNS SAVED BEFORE addShelf/addVent STAGGERED ANYTHING.
+       They can hold several records at one identical coordinate — a real
+       customer's saved design has three shelves at {back, 0.5, 48, 16, 10}
+       and two vents at {front, 0.5, 111.375}. You could only ever see one of
+       each; the pricer counted every one, and quoted $330 of shelving and
+       venting that is not on the shed.
+       Saved designs cannot be edited: handleSaveDesign only ever INSERTs
+       under a fresh code, so the stored row keeps its duplicates forever.
+       Dropping them HERE fixes the shed and the price for every old design
+       the moment anyone opens it, without touching a stored row.
+       Exact matches only. Two shelves an inch apart are a choice, however odd;
+       two at the identical coordinate are one shelf and a billing error, and
+       there is no build in which the second one could ever be seen. */
+    if(Array.isArray(c.vents))ventsData=dropStacked(c.vents, ['wall','pos','cy']);
+    if(Array.isArray(c.shelves))shelvesData=dropStacked(c.shelves, ['wall','pos','cy','depth','len']);
+    if(Array.isArray(c.porchLights))porchLightsData=dropStacked(c.porchLights, ['wall','pos','style']);
     if(typeof syncBulbVisibility==='function') syncBulbVisibility();
     // Restores porchLightsData above first — syncPorchLightVisibility() would
     // otherwise wipe it right back out on a permalink saved before Essential
