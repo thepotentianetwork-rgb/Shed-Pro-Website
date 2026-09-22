@@ -411,7 +411,17 @@ textarea.inp{resize:vertical}
    the orange badge: at 9px that is most of what reads as expensive. */
 .tile-price-badge.tier-luxury{background:linear-gradient(160deg,#25211a 0%,#0d0c0a 100%);
   color:#E8C87A;border:1px solid rgba(232,200,122,.55);letter-spacing:1px;
-  padding:3px 9px;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+  padding:3px 9px 3px 7px;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+/* The sparkle is CSS, not text. The badge's label is written with textContent
+   precisely so a label can never carry markup, and reaching for innerHTML to
+   hang an icon on it would give that up for a decoration. ::before also means
+   any future luxury badge gets it without being told.
+   U+2726, a four-pointed star, rather than the sparkles emoji: emoji render in
+   their own colours and would fight the gold this badge is built around. The
+   glow is small on purpose - it is a wink, not a light show. */
+.tile-price-badge.tier-luxury::before{content:"\2726";margin-right:5px;font-size:10px;
+  letter-spacing:0;line-height:1;vertical-align:-0.5px;color:#F2D89A;
+  text-shadow:0 0 5px rgba(242,216,154,.75)}
 /* A section heading in the upgrades list. Quiet - it is a divider, not a
    control, and the checkboxes under it are what the customer is aiming at. */
 .addon-sec{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;

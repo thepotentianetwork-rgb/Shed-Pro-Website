@@ -19,7 +19,12 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { loadDesigner } from '../harness.mjs';
+
+const HTML = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'designer.html'), 'utf8');
 const { c } = loadDesigner();
 
 // A DOM small enough to hand-check and big enough for applyRecommendations.
@@ -155,6 +160,22 @@ test('the badged line gets its extra spacing, and gives it back', () => {
   c.SHED_USE = 'custom'; c.applyRecommendations();
   assert.ok(!tiles['unbadged'].price.classList.contains('has-badge'),
     'and the unbadged tile never picked it up');
+});
+
+test('the sparkle is decoration, not part of the label', () => {
+  /* It is drawn by CSS on ::before. If it ever migrates into the text, the
+     badge's label stops being something set with textContent — which is the
+     one thing keeping markup out of a label — and the star starts turning up
+     in anything that reads the label back. */
+  c.SHED_USE = 'custom'; c.applyRecommendations();
+  for (const [st] of STYLES) {
+    if (!isBadge(st)) continue;
+    assert.ok(!/[\u2726\u2727\u2728\u2605\u2606]/.test(shown(st)),
+      `${st}: the label is "${shown(st)}" with no star in it`);
+  }
+  const css = HTML.match(/\.tile-price-badge\.tier-luxury::before\{[^}]*\}/);
+  assert.ok(css, 'the luxury badge draws its sparkle in CSS');
+  assert.ok(/content:"\\2726"/.test(css[0]), 'a four-pointed star, not an emoji');
 });
 
 test('the premium shells get the black badge, the rest do not', () => {
