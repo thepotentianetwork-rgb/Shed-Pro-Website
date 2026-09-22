@@ -22,7 +22,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadDesigner, meshes } from './harness.mjs';
+import { loadDesigner, meshes } from '../harness.mjs';
 
 const { c } = loadDesigner();
 const T = c.THREE;
@@ -30,8 +30,14 @@ c.scene = new T.Scene(); c.shedGroup = new T.Group(); c.scene.add(c.shedGroup);
 const INCH = 0.2 / 12;
 
 function build(cfg) {
+  /* Selection and edit mode are reset on every build, not just the data. A
+     selected item grows a highlight ring — a vent's is 0.12 wider than its
+     casing — and addVent selects what it adds, so one test leaving a selection
+     behind made the next one measure the ring instead of the trim. */
   Object.assign(c, { STYLE:'gable', W:12, L:20, H:9, PITCH:6, OVTYPE:'all4', OVH:12,
     ROOFTYPE:'shingle', INSIDE_VIEW:false, SIDING:'vertical', PORCH_LOC:'none', SIDE_PORCH:0,
+    EDIT_MODE:false, selectedKind:'', selectedWindow:-1, selectedDoor:-1, selectedVent:-1,
+    selectedShelf:-1, selectedPorchLight:-1,
     doorsData:[], windowsData:[], ventsData:[], shelvesData:[] }, cfg);
   c.__stubLights(); c.shedGroup.clear(); c.buildShed(); c.shedGroup.updateMatrixWorld(true);
   return meshes(c);
@@ -129,6 +135,27 @@ for (const [W, L, H, PITCH] of [[12,20,9,6], [8,12,8,4], [16,24,10,10], [10,16,7
       assert.ok(halfBase * (1 - above/rise) >= vHalfW - 1e-6,
         'and wherever it ended up, the casing is inside the rake');
     }
+  });
+}
+
+for (const [W, L, H, PITCH] of [[12,20,9,6], [16,24,10,10], [10,16,8,5]]) {
+  test(`the Add Vent button centres it too — ${W}x${L}, ${H}ft, ${PITCH}/12`, () => {
+    /* The path a customer actually takes. addVent writes a concrete cy, so the
+       default in ventCyIn never sees it — this had its own copy of the sum and
+       its own copy of the error, and fixing only the default would have left
+       every vent anyone actually adds sitting low. */
+    build({ W, L, H, PITCH, ventsData:[] });
+    c.ADD_WALL = 'front';
+    c.addVent();
+    assert.equal(c.ventsData.length, 1, 'the button adds one vent');
+    const m = build({ W, L, H, PITCH, ventsData: c.ventsData });
+    const lift = c.shedGroup.position.y, h = H*0.2;
+    const v = partsOf(m, 'isVent');
+    const vy = (Math.min(...v.map(p=>p.min.y)) + Math.max(...v.map(p=>p.max.y))) / 2;
+    const mid = (h + lift + c.gableRoof().ridgeY + lift) / 2;
+    assert.ok(Math.abs(vy - mid) < 0.004,
+      `centred in the gable: ${vy.toFixed(4)} vs ${mid.toFixed(4)} (${((vy-mid)/INCH).toFixed(2)} in out)`);
+    c.ventsData = [];
   });
 }
 

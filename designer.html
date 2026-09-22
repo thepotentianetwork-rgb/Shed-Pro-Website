@@ -87,6 +87,12 @@ canvas{display:block;width:100%;height:100%}
 .hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);border-radius:30px;padding:7px 18px;font-size:11px;color:var(--mu);white-space:nowrap}
 .dup-btn{position:absolute;top:14px;right:14px;display:none;background:rgba(43,181,232,.92);color:#06222e;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);font-family:inherit}
 .dup-btn:hover{background:#2BB5E8}
+.wall-pick{position:absolute;left:50%;transform:translateX(-50%);bottom:64px;display:none;align-items:center;gap:6px;background:rgba(20,22,26,.95);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 8px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:80;max-width:94%;flex-wrap:wrap;justify-content:center}
+.wall-pick-t{color:#8fe3ff;font-size:11px;font-weight:700;padding:0 4px;white-space:nowrap}
+.wall-pick button{background:rgba(43,181,232,.92);color:#06222e;border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.wall-pick button:hover{background:#2BB5E8}
+.wall-pick .wall-pick-x{background:transparent;color:#9aa4ad;font-size:15px;padding:2px 7px}
+.wall-pick .wall-pick-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .measure-guide{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(43,181,232,.92);color:#06222e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;white-space:nowrap;display:none;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .edit-badge{position:absolute;top:14px;left:14px;background:rgba(43,181,232,.16);border:1px solid rgba(43,181,232,.6);color:#2BB5E8;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;display:none}
 .wallpick.on{background:#2BB5E8 !important;color:#06222e !important;border-color:#2BB5E8 !important}
@@ -375,6 +381,10 @@ textarea.inp{resize:vertical}
    a list where every other row is flat.
    Popular and Luxury use the plain solid form. They live on other steps and
    never sit beside a foundation tier, so nothing competes. */
+/* The badge in a style tile's description line. Same orange as .tile-badge,
+   sized to sit on the subtitle row rather than in a corner. */
+.tile-price-badge{display:inline-block;background:#F8921E;color:#1a1205;border-radius:4px;
+  padding:1px 6px;font-size:9px;font-weight:900;letter-spacing:.3px;text-transform:uppercase}
 .opt-badge{display:inline-block;margin-left:7px;background:#F8921E;color:#1a1205;
   font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
   text-transform:uppercase;line-height:1.5;vertical-align:middle;white-space:nowrap}
@@ -454,6 +464,18 @@ textarea.inp{resize:vertical}
          has been reading them and getting null. This sits beside the measure
          readout, which IS real, and shows only while something is selected. -->
     <button id="dupBtn" class="dup-btn" onclick="duplicateSelected()">&#10697; Duplicate</button>
+    <!-- Tapping a wall from any step asks what you want to put on it. Over the
+         canvas rather than in the side panel because the answer is about the
+         wall you just touched, and because the panel's item editor containers
+         (winEditor, winSelControls and friends) are read by syncEditorPanel but
+         do not exist in this markup - there is nowhere in it to put this. -->
+    <div id="wallPick" class="wall-pick">
+      <div class="wall-pick-t" id="wallPickT">Front wall</div>
+      <button onclick="wallPickGo('Doors')">Doors</button>
+      <button onclick="wallPickGo('Windows &amp; Vents')">Windows</button>
+      <button onclick="wallPickVents()">Vents</button>
+      <button class="wall-pick-x" onclick="hideWallPick()">&times;</button>
+    </div>
     <div id="editBadge" class="edit-badge">EDIT MODE &middot; drag a window along the wall or up/down</div>
     <div class="consult-nudge" id="consultNudge">
       <h4>Want a hand with this?</h4>
@@ -2284,6 +2306,18 @@ function init(){
     else if(!EDIT_MODE && pressStart && !pressMoved){
       setNDC(pressStart.x, pressStart.y);
       var jump=pickOpening();
+      if(!jump){
+        /* No item under the tap, so this is a tap on the WALL. Ask what goes on
+           it rather than doing nothing: on the style or size step, a wall is
+           the only thing there is to point at, and "I want a window there" is
+           the obvious thing to mean by pointing at it. */
+        var wsel=pickWall();
+        if(wsel && typeof showWallPick==='function'){
+          showWallPick(wsel);
+          pressStart=null;
+          return;
+        }
+      }
       if(jump){
         var dest=ITEM_STEP[jump.kind];
         /* Select first, then move. wizRender turns edit mode on for the
@@ -2306,10 +2340,23 @@ function init(){
       if(!pickOpening()){
         var wall=pickWall();
         if(wall){
+          var _wasEditing=selectedKind;          // what you were in the middle of
+          var _wallChanged=(ADD_WALL!==wall);
           ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall;
           // Deselect any active item so the next add creates a NEW item on this
           // wall (instead of swapping/moving the previously selected one).
           selectedKind=''; selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
+          /* BACK OUT OF THE ITEM EDITOR.
+             Picking a different wall while a window is selected ends that
+             window's edit — it is on the old wall and you are now looking at a
+             new one — but the editor stayed open over the top, showing controls
+             for something no longer selected. Close it and leave the customer on
+             that item type's own step, which is the menu they came from. */
+          if(_wasEditing && _wallChanged){
+            if(typeof closeSubPage==='function') closeSubPage();
+            var _back=(typeof ITEM_STEP!=='undefined') ? ITEM_STEP[_wasEditing] : null;
+            if(_back && typeof wizGoTo==='function') wizGoTo(_back);
+          }
           hideMeasureGuide();
           // close any open swap grids
           openWinCat=null; openDoorCat=null;
@@ -2751,6 +2798,27 @@ function stampStaticBadges(){
 function applyRecommendations(){
   var old=document.querySelectorAll('.tile-rec');
   for(var i=0;i<old.length;i++) old[i].parentNode.removeChild(old[i]);
+  /* A STYLE TILE SHOWS ITS BADGE WHERE ITS DESCRIPTION WAS.
+
+     The badge used to be an 8px corner label stacked above a subtitle saying
+     much the same thing — "Most space" over "Max loft space", "Modern" over
+     "Modern look" — which is two labels competing in a space that fits one.
+     The badge now takes the description's line, and a tile with no badge keeps
+     its description exactly as it was.
+
+     The description is stashed on the element the first time it is replaced,
+     because this runs again whenever the use or the step changes and a badge
+     can go away: without the original text there would be nothing to put back
+     and the line would just stay blank. Scoped to the style grid — .tile-price
+     carries real money on other grids, and a badge is not a price. */
+  var caps=document.querySelectorAll('#styleGrid .tile-price');
+  for(var r=0;r<caps.length;r++){
+    var cp=caps[r], keep=cp.getAttribute('data-desc');
+    if(keep!=null){ cp.textContent=keep; }
+  }
+  var marked=document.querySelectorAll('#styleGrid .tile[data-badged]');
+  for(var q=0;q<marked.length;q++) marked[q].removeAttribute('data-badged');
+
   function badge(sel, text){
     var els=document.querySelectorAll(sel);
     for(var j=0;j<els.length;j++){
@@ -2759,6 +2827,16 @@ function applyRecommendations(){
       // One badge per tile. The standing label goes on first, so a
       // recommendation arriving later would double up — skip if taken.
       if(el.querySelector && el.querySelector('.tile-rec')) continue;
+      if(el.getAttribute && el.getAttribute('data-badged')) continue;
+      var cap=(el.querySelector && el.closest && el.closest('#styleGrid'))
+                ? el.querySelector('.tile-price') : null;
+      if(cap){
+        if(cap.getAttribute('data-desc')==null) cap.setAttribute('data-desc', cap.textContent);
+        cap.innerHTML='<span class="tile-price-badge"></span>';
+        cap.firstChild.textContent=text;          // text, never markup
+        if(el.setAttribute) el.setAttribute('data-badged','1');
+        continue;
+      }
       var b=document.createElement('div');
       b.className='tile-rec'; b.textContent=text;
       el.appendChild(b);
@@ -6117,10 +6195,34 @@ function buildSnapGuides(){
     if(f.ax==='x') g.position.set(0,0,f.fixed); else g.position.set(f.fixed,0,0);
     shedGroup.add(g);
   }
+  function post(atPos, w, h, faint){
+    var g=new THREE.Group();
+    g.rotation.y=rotY;
+    var mm=faint ? new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.45})
+                 : mat;
+    var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.008), mm);
+    // atPos is 0..1 along the wall, measured the way posToAxis measures it.
+    m.position.set((atPos-0.5)*f.len, h/2, 0.06);
+    g.add(m);
+    if(f.ax==='x') g.position.set(0,0,f.fixed); else g.position.set(f.fixed,0,0);
+    shedGroup.add(g);
+  }
   // the height it lined up with
   if(SNAP_GUIDE.cy!=null) bar(f.len, 0.014, SNAP_GUIDE.cy*0.2/12);
   // and the centre of the wall
   if(SNAP_GUIDE.centre) bar(0.014, f.height, f.height/2);
+  /* EVEN SPACING. The bright post is where the item lands; on a ROW snap the
+     other slots get faint posts too, so it reads as "these are the even
+     positions and you are on one of them" rather than an unexplained line. */
+  if(SNAP_GUIDE.even && SNAP_GUIDE.evenAt!=null){
+    if(SNAP_GUIDE.evenSlots){
+      SNAP_GUIDE.evenSlots.forEach(function(sp){
+        if(Math.abs(sp-SNAP_GUIDE.evenAt)<1e-6) return;
+        post(sp, 0.008, f.height*0.9, true);
+      });
+    }
+    post(SNAP_GUIDE.evenAt, 0.014, f.height, false);
+  }
 }
 
 // Single-slope (lean-to) roof: HIGH at the FRONT (z=+l/2, where the door is),
@@ -8650,6 +8752,73 @@ function snapPeers(wall, kind, idx){
   return out;
 }
 
+/* EVERY WINDOW-HEIGHT ON THE BUILDING, not just this wall's.
+
+   Levelling a window against one on the wall you are already on is the easy
+   case and snapPeers covers it. The hard one is the wall that has no windows
+   yet: there is nothing on it to line up with, and eyeballing a sill against a
+   wall you cannot see at the same time is how you end up with one window three
+   inches high. So the other walls' sills are offered too, and the guide says
+   which wall it borrowed from. Same-wall matches are found first by snapDrag
+   and never reach this. */
+function sillsElsewhere(wall, kind, idx){
+  var out=[];
+  function add(list, k){
+    if(typeof list==='undefined' || !list) return;
+    list.forEach(function(o,i){
+      if(!o || o.wall===wall) return;
+      if(k===kind && i===idx) return;
+      if(o.cy==null) return;
+      out.push({cy:o.cy, wall:o.wall});
+    });
+  }
+  add(typeof windowsData!=='undefined'?windowsData:null, 'window');
+  add(typeof ventsData!=='undefined'?ventsData:null, 'vent');
+  return out;
+}
+
+/* WHERE THIS ITEM WOULD HAVE TO SIT FOR THE WALL TO LOOK EVENLY SPACED.
+
+   Two different offers, because "evenly spaced" means two different things
+   depending on what is already on the wall:
+
+   BETWEEN — half way between two neighbours. Always honest: wherever the
+   others are, landing here makes the gap to the left equal the gap to the
+   right.
+
+   ROW — the whole wall divided into equal gaps, item k of n at k/(n+1).
+   Offered ONLY when every other item is already sitting on one of those
+   slots, because otherwise snapping to the free slot produces a row that is
+   still not even and a guide that lied. With two windows already placed by
+   hand and a third being dragged, you get the BETWEEN offer; once the row IS
+   even, you get the ROW offer that keeps it even. */
+function evenTargets(wall, kind, idx, tol){
+  var peers=snapPeers(wall, kind, idx).map(function(p){ return p.pos; })
+              .filter(function(v){ return typeof v==='number' && isFinite(v); })
+              .sort(function(a,b){ return a-b; });
+  var out=[];
+  for(var i=0;i+1<peers.length;i++){
+    var mid=(peers[i]+peers[i+1])/2;
+    if(Math.abs(peers[i+1]-peers[i])>tol*2) out.push({pos:mid, mode:'between'});
+  }
+  var n=peers.length+1;
+  if(n>=3){
+    var slots=[]; for(var k=1;k<=n;k++) slots.push(k/(n+1));
+    var free=slots.slice(), ok=true;
+    for(var j=0;j<peers.length;j++){
+      var best=-1, bd=Infinity;
+      for(var q=0;q<free.length;q++){
+        var d=Math.abs(peers[j]-free[q]);
+        if(d<bd){ bd=d; best=q; }
+      }
+      if(best<0 || bd>tol){ ok=false; break; }
+      free.splice(best,1);
+    }
+    if(ok && free.length===1) out.push({pos:free[0], mode:'row', slots:slots});
+  }
+  return out;
+}
+
 function snapDrag(wall, kind, idx, pos, cy){
   var res={pos:pos, cy:cy, centre:false, cyAt:null, mirror:false};
   var lenIn=snapWallInches(wall);
@@ -8666,10 +8835,48 @@ function snapDrag(wall, kind, idx, pos, cy){
       if(Math.abs(pos-m)<=tol){ res.pos=m; res.mirror=true; break; }
     }
   }
+  /* Even spacing is tried AFTER centre and mirror, and only if neither took.
+     Centre is the stronger intent — on a wall with two windows, the middle of
+     the wall and the middle of the pair are usually the same place, and when
+     they are not, the wall's centre is the one a customer means. */
+  if(!res.centre && !res.mirror){
+    var evens=evenTargets(wall, kind, idx, tol);
+    var pick=null, pd=Infinity;
+    for(var e=0;e<evens.length;e++){
+      var d=Math.abs(pos-evens[e].pos);
+      // A ROW offer wins ties: it makes the whole wall even, not just one gap.
+      if(d<=tol && (d<pd-1e-9 || (Math.abs(d-pd)<=1e-9 && evens[e].mode==='row'))){
+        pd=d; pick=evens[e];
+      }
+    }
+    if(pick){ res.pos=pick.pos; res.even=pick.mode; res.evenSlots=pick.slots||null; }
+  }
+  /* Centre and mirror often land on an even slot too — the middle window of a
+     row of three IS the centre of the wall, and the fourth of a row of four is
+     the mirror of the first. The position is the same either way, but the even
+     guide says more (it shows the whole row), so where they coincide, show it. */
+  if(!res.even){
+    var also=evenTargets(wall, kind, idx, tol);
+    for(var a=0;a<also.length;a++){
+      if(also[a].mode==='row' && Math.abs(res.pos-also[a].pos)<1e-9){
+        res.even='row'; res.evenSlots=also[a].slots; break;
+      }
+    }
+  }
   if(cy!=null){
     for(var j=0;j<peers.length;j++){
       if(peers[j].cy==null) continue;
       if(Math.abs(cy-peers[j].cy)<=SNAP_TOL_IN){ res.cy=peers[j].cy; res.cyAt=peers[j].cy; break; }
+    }
+    // Nothing on this wall to level against — borrow a sill from another one.
+    if(res.cyAt==null){
+      var others=sillsElsewhere(wall, kind, idx);
+      var bo=null, bod=Infinity;
+      for(var o=0;o<others.length;o++){
+        var od=Math.abs(cy-others[o].cy);
+        if(od<=SNAP_TOL_IN && od<bod){ bod=od; bo=others[o]; }
+      }
+      if(bo){ res.cy=bo.cy; res.cyAt=bo.cy; res.cyFrom=bo.wall; }
     }
   }
   return res;
@@ -8679,11 +8886,15 @@ function snapDrag(wall, kind, idx, pos, cy){
    Kept separate so the drag handler can compare two states cheaply and only
    rebuild when the guide actually changes. */
 function snapGuideFor(wall, sn){
-  if(!sn || (!sn.centre && sn.cyAt==null)) return null;
-  return {wall:wall, cy:sn.cyAt, centre:!!sn.centre};
+  if(!sn || (!sn.centre && sn.cyAt==null && !sn.even)) return null;
+  return {wall:wall, cy:sn.cyAt, centre:!!sn.centre,
+          even:sn.even||null, evenAt:sn.even?sn.pos:null, evenSlots:sn.evenSlots||null,
+          cyFrom:sn.cyFrom||null};
 }
 function snapGuideKey(g){
-  return g ? (g.wall+'|'+(g.cy==null?'-':g.cy)+'|'+(g.centre?'c':'-')) : '';
+  return g ? [g.wall, (g.cy==null?'-':g.cy), (g.centre?'c':'-'),
+              (g.even||'-'), (g.evenAt==null?'-':g.evenAt.toFixed(4)),
+              (g.cyFrom||'-')].join('|') : '';
 }
 
 function posToAxis(wall, pos, sizeW_in){
@@ -9250,7 +9461,11 @@ function ventGableCyIn(vd){
   if(!(gRiseIn>0)) return null;
   var halfBaseIn=(f.len/2)/(0.2/12);
   var needIn=ventHalfW()/(0.2/12);
-  var topPadIn=ventHalfH()/(0.2/12) + 2;      // keep the casing off the rake
+  /* Just the casing, plus a hair. This carried a further 2in of margin, which
+     sounds harmless and is not: on a 10x16 at 5/12 the vent fits dead centre
+     with room to spare, but the padded test said it did not and dropped it an
+     inch and a half. The constraint is the casing corner clearing the rake. */
+  var topPadIn=ventHalfH()/(0.2/12) + 0.5;    // keep the casing off the rake
   for(var t=gRiseIn/2; t>0; t-=0.25){
     var halfHereIn=halfBaseIn*(1 - (t+topPadIn)/gRiseIn);
     if(halfHereIn>=needIn) return wallIn + t;
@@ -10295,6 +10510,9 @@ function dedupeStepHeadings(){
   }
 }
 function wizRender(){
+  // Any step change ends the wall question — leaving the chip floating over a
+  // different step is how it turns into a button nobody knows the target of.
+  if(typeof hideWallPick==='function') hideWallPick();
   if(typeof closeSubPage==='function') closeSubPage();
   // The slope highlight is NOT tied to the Roof step — it only shows while the
   // person is actually adding or editing a dormer (see setDormerEdit). Leaving
@@ -10361,6 +10579,65 @@ function wizPrev(){ if(wizStep>0){ wizStep--; wizRender(); } }
 /* Jump to a step BY TITLE, for the same reason wizIs() asks by title: steps get
    reordered and a hardcoded index does not survive it. Returns false rather
    than landing somewhere arbitrary if the title is not in the table. */
+/* THE WALL CHOOSER — tap a wall on any step, say what goes on it.
+
+   ADD_WALL is set as soon as the chooser opens, not when a button is pressed:
+   the wall you tapped is the wall you meant whichever of the three you pick,
+   and setting it later meant the step opened pointed at the previous wall for
+   one render. Dismissing the chooser leaves it set, which is right — you did
+   choose that wall. */
+var WALL_PICK_FOR=null;
+function wallLabelFor(w){
+  return ({front:'Front wall', back:'Back wall', left:'Left wall', right:'Right wall'})[w] || 'Wall';
+}
+function showWallPick(wall){
+  if(!wall) return;
+  WALL_PICK_FOR=wall;
+  if(typeof ADD_WALL!=='undefined') ADD_WALL=wall;
+  if(typeof WIZ_ADDWALL_DOOR!=='undefined') WIZ_ADDWALL_DOOR=wall;
+  if(typeof syncWallUI==='function') syncWallUI();
+  var t=document.getElementById('wallPickT');
+  if(t) t.textContent=wallLabelFor(wall);
+  var el=document.getElementById('wallPick');
+  if(el) el.style.display='flex';
+}
+function hideWallPick(){
+  WALL_PICK_FOR=null;
+  var el=document.getElementById('wallPick');
+  if(el) el.style.display='none';
+}
+function wallPickGo(stepTitle){
+  var wall=WALL_PICK_FOR;
+  hideWallPick();
+  if(wall && typeof ADD_WALL!=='undefined'){ ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall; }
+  if(typeof wizGoTo==='function') wizGoTo(stepTitle);
+  if(typeof syncWallUI==='function') syncWallUI();
+  if(typeof buildShed==='function') buildShed();
+}
+/* Windows and vents share a step, so a "Vents" button that only navigated
+   would be the Windows button with a different label. It puts you on the
+   wall's vent instead: the one already there, or a new one if there is not,
+   which on a gable end lands dead centre in the triangle. */
+function wallPickVents(){
+  var wall=WALL_PICK_FOR;
+  hideWallPick();
+  if(wall && typeof ADD_WALL!=='undefined'){ ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall; }
+  if(typeof wizGoTo==='function') wizGoTo('Windows & Vents');
+  var found=-1;
+  if(typeof ventsData!=='undefined' && ventsData)
+    for(var i=0;i<ventsData.length;i++) if(ventsData[i] && ventsData[i].wall===wall){ found=i; break; }
+  if(found<0 && typeof addVent==='function'){
+    addVent();
+    found=(typeof ventsData!=='undefined' && ventsData.length) ? ventsData.length-1 : -1;
+  }
+  if(found>=0){
+    selectedKind='vent'; selectedVent=found;
+    selectedWindow=-1; selectedDoor=-1; selectedShelf=-1; selectedPorchLight=-1;
+  }
+  if(typeof syncWallUI==='function') syncWallUI();
+  if(typeof buildShed==='function') buildShed();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+}
 function wizGoTo(title){
   for(var i=0;i<WIZ_STEPS.length;i++){
     if(WIZ_STEPS[i].title===title){
@@ -12841,14 +13118,15 @@ function addVent(){
      and && binds tighter than ||, so a LEAN-TO's front wall took the gable
      branch even though a lean-to has no gable. Parenthesised now.
      Side walls, and every wall of a lean-to, keep the old spot near the top. */
-  var isGableEnd=((wall==='front'||wall==='back') && STYLE!=='leanto');
-  var cyIn;
-  if(isGableEnd){
-    var gRiseIn=(STYLE==='barn') ? barnProfile().barnH/(0.2/12) : (PITCH*W)/2;
-    cyIn=H*12 + gRiseIn/2;
-  } else {
-    cyIn=H*12-12;
-  }
+  /* ventGableCyIn owns this sum now. It was worked out here as well, off
+     (PITCH*W)/2 — a rise measured to the wall CENTRELINE when the roof runs to
+     its FACE, so every vent added from this button sat about three quarters of
+     an inch low at 6/12. Worse, this path writes a concrete cy, so the fix in
+     ventCyIn could never reach a vent created here: the two had to become one
+     function, not two that agree today. It also allows for the casing, which
+     this never did. */
+  var cyIn=(typeof ventGableCyIn==='function') ? ventGableCyIn({wall:wall, cy:null}) : null;
+  if(cyIn==null) cyIn=H*12-12;                   // no gable to sit on
   cyIn=Math.max(r.min, Math.min(r.max, cyIn));   // a shallow pitch may not have room
   ventsData.push({wall:wall, pos:0.5, cy:cyIn});
   selectedKind='vent'; selectedVent=ventsData.length-1;
