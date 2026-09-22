@@ -6136,6 +6136,7 @@ function buildShed(){
   buildDoor();
   buildWindows();
   buildVents();
+  buildRamps();
   buildPorchLights();
   buildInterior();
   buildShelves();
@@ -9492,6 +9493,117 @@ function ventCyIn(vd){
   return Math.max(minCy, Math.min(maxCy, cy));
 }
 
+/* METAL RAMPS AT THE DRIVE-IN DOOR.
+
+   A shed on blocks stands 8.4in off the ground and a quad cannot climb a
+   threshold, so this is a real ramp rather than a step: a checker-plate deck
+   on a 4:1 run with a curb down each side to stop a wheel walking off.
+
+   WHICH DOOR. A 36in walk door is not something you ride through, so a ramp
+   goes on every door at least DRIVE_IN_MIN_IN wide. If the shed has no door
+   that wide, the widest one gets it anyway — a customer who has paid for a
+   ramp and can see no ramp will assume it is broken, and a narrow door with a
+   ramp is a truer picture of what turns up on the truck than nothing is.
+
+   The deck lands at floor level and runs OUT from the wall, so it sits on the
+   ground rather than hanging off the building. On a slab (lift 0.055) it is
+   short and shallow; on blocks (0.14) it is longer. */
+var DRIVE_IN_MIN_IN = 48;
+var RAMP_RUN_RATIO  = 4;        // 4 along for 1 up
+var rampMeshes=[];
+function rampDoors(){
+  if(typeof doorsData==='undefined' || !doorsData || !doorsData.length) return [];
+  /* ONE ramp, at the widest drive-in door. The add-on is a flat $200 for the
+     shed, so building one at every wide door would hand a customer with two
+     roll-ups two ramps for the price of one and put a picture on screen that
+     the quote does not pay for. If two doors should ever mean two ramps, the
+     price has to become per-door in worker/pricing.js at the same time. */
+  var wide=doorsData.filter(function(dd){ return dd && (dd.w||0)>=DRIVE_IN_MIN_IN; });
+  var pool=wide.length ? wide : doorsData;
+  var best=null;
+  pool.forEach(function(dd){ if(dd && (!best || (dd.w||0)>(best.w||0))) best=dd; });
+  return best ? [best] : [];
+}
+function buildRamps(){
+  rampMeshes=[];
+  if(typeof ADDONS==='undefined' || !ADDONS.ramp) return;
+  if(typeof INSIDE_VIEW!=='undefined' && INSIDE_VIEW) return;
+  var lift=(typeof FOUNDATION_LIFT!=='undefined') ? FOUNDATION_LIFT : 0;
+  if(!(lift>0.001)) return;              // flush to the ground: nothing to climb
+  var INCH=0.2/12;
+  var deckMat=new THREE.MeshStandardMaterial({color:0x9aa1a8, roughness:0.45, metalness:0.75});
+  var curbMat=new THREE.MeshStandardMaterial({color:0x767d84, roughness:0.5,  metalness:0.75});
+  var run=lift*RAMP_RUN_RATIO;
+  var slope=Math.sqrt(run*run + lift*lift);
+  var ang=Math.atan2(lift, run);
+  rampDoors().forEach(function(dd){
+    var f=wallFrame(dd.wall);
+    if(!f) return;
+    var wideIn=Math.max(30, (dd.w||36)-2);           // just inside the jambs
+    var wRamp=wideIn*INCH;
+    var ac=posToAxis(dd.wall, dd.pos, dd.w);         // along-wall centre, world
+    var grp=new THREE.Group();
+    grp.userData={isRamp:true};
+    /* The ramp is OUTSIDE the shed and the shed is lifted, so it is built in
+       world space and the lift is subtracted: shedGroup carries every child up
+       by FOUNDATION_LIFT, and a ramp that rode up with it would hang in the
+       air with its toe off the ground. */
+    var outN=(f.ax==='x') ? f.nz : f.nx;
+    /* Local +z points AWAY from the wall on every wall (see the placement
+       below), so the far end is the one that has to drop. Rotating the other
+       way built a ramp that climbed as it left the building, with its toe in
+       mid air and its high end at the threshold - measured, not guessed. */
+    var deck=new THREE.Mesh(new THREE.BoxGeometry(wRamp, 0.012, slope), deckMat);
+    deck.rotation.x=ang;
+    /* Everything that sits ON the deck has to be placed on the SLOPED plane.
+       A mesh's own rotation turns it about its origin and does nothing to its
+       position, so a rib placed at (0, n, d) stays at height n whatever d is:
+       the ribs came out as a flat row hovering over the deck, crossing through
+       it at the low end and floating 3in clear at the high end. Offsets go
+       through the same rotation the deck gets — `along` runs down the slope,
+       `off` stands normal to it. */
+    function onDeck(m, along, off, x){
+      m.rotation.x=ang;
+      m.position.set(x||0,
+        off*Math.cos(ang) - along*Math.sin(ang),
+        off*Math.sin(ang) + along*Math.cos(ang));
+      return m;
+    }
+    var curbH=2.5*INCH, curbT=1*INCH;
+    var curbs=[-1,1].map(function(sg){
+      return onDeck(new THREE.Mesh(new THREE.BoxGeometry(curbT, curbH, slope), curbMat),
+                    0, curbH/2, sg*(wRamp/2 - curbT/2));
+    });
+    // Tread ribs, so it reads as checker plate rather than a painted wedge.
+    var ribs=[];
+    var nRib=Math.max(3, Math.round(slope/(3*INCH)));
+    for(var i=1;i<nRib;i++){
+      var t=i/nRib;
+      ribs.push(onDeck(new THREE.Mesh(
+        new THREE.BoxGeometry(wRamp-curbT*2, 0.004, 0.6*INCH), curbMat),
+        (t-0.5)*slope, 0.008, 0));
+    }
+    [deck].concat(curbs, ribs).forEach(function(m){ m.castShadow=true; grp.add(m); });
+    // Lay the group down the slope: high end at the threshold, toe on the dirt.
+    grp.position.y = lift/2;
+    var outFromWall = 0.025 + run/2;                 // wall face, then half the run
+    if(f.ax==='x'){
+      grp.position.x = ac;
+      grp.position.z = f.fixed + outN*outFromWall;
+      grp.rotation.y = (outN>0) ? 0 : Math.PI;
+    } else {
+      grp.position.z = ac;
+      grp.position.x = f.fixed + outN*outFromWall;
+      grp.rotation.y = (outN>0) ? Math.PI/2 : -Math.PI/2;
+    }
+    // shedGroup, not scene, so the ramp moves with the building; the y above is
+    // relative to the shed floor, which is where the top of the ramp belongs.
+    grp.position.y = lift/2 - lift;                  // floor level down to grade
+    shedGroup.add(grp);
+    rampMeshes.push(grp);
+  });
+}
+
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
@@ -12527,6 +12639,7 @@ var ADDON_ITEMS=[
   {k:'doorAwning',  name:'Door Overhang', price:'price TBD \u00b7 pick which doors on the Doors step', sec:'openings'},
   {k:'shutters',    name:'Shutters',      sec:'openings'},
   {k:'skylight',    name:'Skylight',      sec:'openings'},
+  {k:'ramp',        name:'Metal Ramp',    sec:'access'},
   {k:'stairs',      name:'Stairs',        sec:'access'},
   {k:'statLadder',  name:'Stationary Ladder',      sec:'access'},
   {k:'atticLadder', name:'Attic Pull-Down Ladder', sec:'access'},
