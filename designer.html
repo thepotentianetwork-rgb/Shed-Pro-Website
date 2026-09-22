@@ -8431,17 +8431,13 @@ function buildDoor(){
     barrel.position.set(cx, cy, LEAF_Z+0.007); barrel.castShadow=true; DG.add(barrel);
     hwPiece(0.020, 0.050, cx+dir*0.015, cy, LEAF_Z);   // leaf plate onto the door
   }
-  /* `bolt` off draws the knob alone. The Craftsman reference has one small
-     round knob and nothing above it; a deadbolt is right for the residential
-     doors, where this came from, and is one detail too many next to that. */
-  function residKnob(cx, cy, bolt){
+  function residKnob(cx, cy){
     var rose=new THREE.Mesh(new THREE.CylinderGeometry(0.024,0.024,0.009,16), hwSilver);
     rose.rotation.x=Math.PI/2; rose.position.set(cx, cy, LEAF_Z+0.005); DG.add(rose);
     var knob=new THREE.Mesh(new THREE.SphereGeometry(0.019,14,10), hwSilver);
     knob.scale.set(1,1,0.8);
     knob.position.set(cx, cy, LEAF_Z+0.020); knob.castShadow=true; DG.add(knob);
     // deadbolt above the knob
-    if(bolt===false) return;
     var dRose=new THREE.Mesh(new THREE.CylinderGeometry(0.019,0.019,0.009,16), hwSilver);
     dRose.rotation.x=Math.PI/2; dRose.position.set(cx, cy+0.078, LEAF_Z+0.005); DG.add(dRose);
     var dCyl=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.014,16), hwSilver);
@@ -8489,11 +8485,10 @@ function buildDoor(){
     // edge rather than out on a jamb that no longer exists.
     var lo=isFairytale ? -(dw/2-0.006) : -(dw/2+tw/2);   // centered on the casing board
     hgY.forEach(function(hy){ strapHinge(lo, hy, 1, hgS); });
-    /* The T-handle is right for a shed door and wrong for this one: the
-       reference Craftsman has a small round knob at about mid height, and a
-       lock-in-the-plate T-handle next to it reads as a different product. */
-    if(isCraft) residKnob((dw/2)-0.075, dh*0.46, false);
-    else        doorKnob((dw/2)-0.075, dh*0.46);
+    /* The T-handle, same as every other shed door. The Craftsman briefly got
+       a round knob off the reference photo; the handle and latch are meant to
+       be the one piece of hardware that does NOT change with the style. */
+    doorKnob((dw/2)-0.075, dh*0.46);
   } else {
     var loL=-(dw/2+tw/2), loR=(dw/2+tw/2);           // both outer casing boards
     hgY.forEach(function(hy){
@@ -8502,8 +8497,7 @@ function buildDoor(){
     });
     // Handle sits DEAD CENTRE on the astragal — the centre trim strip between
     // the leaves — whose face is proud of the leaves (0.012 + 0.025).
-    if(isCraft) residKnob(0, dh*0.44, false);
-    else        doorKnob(0, dh*0.44, 0.037);
+    doorKnob(0, dh*0.44, 0.037);
   }
 
     // ---- DOOR OVERHANG (optional) — the shed-roof canopy over double doors that

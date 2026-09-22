@@ -18,7 +18,7 @@ why the obvious textbook detail is deliberately absent.
 | **Two tall panels** | Split by a centre stile, running most of the leaf. |
 | **A deep bottom rail** | Noticeably deeper than the rails above it. |
 | **Short straps, on the rails** | Three of them, about half the length of a barn strap, and each one level with a rail: the top rail above the lites, the rail under them, and the bottom rail. |
-| **A round knob** | One, at about mid height. No deadbolt above it. |
+| **The handle** | NOT taken from the photo. The T-handle stays, the same as every other shed door — see below. |
 
 ## What the first version had, and why it was wrong
 
@@ -51,8 +51,14 @@ the reference all three are fitted to rails. `craftRailYs()` is now the single
 source for those heights: `addOverlays` draws the rails from it and the
 hardware hangs the straps from it, so they cannot drift apart.
 
-Only the hardware moved. The frame, jamb and panel materials are still the shed
-door's, because that is what the door is built out of.
+Only the hinges moved. The frame, jamb and panel materials are still the shed
+door's, because that is what the door is built out of — and so is the handle.
+
+**The handle and latch do not change with the style.** The photo has a small
+round knob and this briefly copied it, which was reading the reference too
+literally: it is a picture of a competitor's door, not a parts list, and the
+T-handle with the lock in the plate is the hardware that actually gets fitted.
+The door style changes the door. It does not change what you grab.
 
 ## Where it lives
 
@@ -62,7 +68,7 @@ door's, because that is what the door is built out of.
   rail and the panels.
 - `craftRailYs()` — the three rail heights, read by both the drawing and the
   hardware.
-- the hardware branch — `isCraft` sets the strap scale, hangs them off
-  `craftRailYs()` and swaps the T-handle for a knob.
+- the hardware branch — `isCraft` sets the strap scale and hangs them off
+  `craftRailYs()`. It does not touch the handle.
 - `tests/geometry/craftsmandoor.test.mjs` — each row of the table above, as a
   check against the geometry rather than against the numbers that placed it.

@@ -15,6 +15,10 @@
  *      that reached a third of the way across the leaf, and not spread evenly
  *      down it with the middle one floating in the middle of a panel.
  *
+ * The HANDLE is deliberately not on that list. It is the standard shed
+ * T-handle on every style, so these tests look at the hinge side of the door
+ * and say nothing about the latch side.
+ *
  * Each is checked as geometry — glass up top, a part standing proud of the
  * trim plane, bars over the panes — rather than by counting meshes, which a
  * three-panel door would also pass.
@@ -45,6 +49,22 @@ function doorBox(parts) {
            y0:Math.min(...parts.map(v=>v.min.y)), y1:Math.max(...parts.map(v=>v.max.y)),
            z1:Math.max(...parts.map(v=>v.max.z)) };
 }
+// Dark metal on the door: hinges, and the handle. `hingeSide` keeps only the
+// hinges — the handle is on the latch side by definition, and a test about
+// where hinges hang has nothing to say about it. Without this the T-handle
+// counts as a fourth hinge that is not on any rail, and as a hinge that
+// "reaches" the full width of the door.
+const hardware = (parts) => parts.filter(x => {
+  const mt = x.obj.material;
+  return x.type !== 'PlaneGeometry' && mt && mt.color
+      && mt.color.r < 0.25 && mt.color.g < 0.25 && mt.color.b < 0.25;
+});
+const hingeSide = (parts) => {
+  const b = doorBox(parts);
+  const mid = (b.x0 + b.x1) / 2;
+  return hardware(parts).filter(h => (h.min.x + h.max.x) / 2 < mid);
+};
+
 // Glass is the only thing on the door built as a PlaneGeometry.
 const glassOf = (parts) => parts.filter(x => x.type === 'PlaneGeometry');
 
@@ -288,13 +308,8 @@ test('the strap hinges are short ones, not barn straps', () => {
   const gx0 = Math.min(...glass.map(g => g.min.x));
   const stileEdge = Math.min(...parts.filter(x => x.type === 'BoxGeometry'
     && (x.max.y - x.min.y) > 0.5).map(x => x.min.x));        // the leaf's own edge
-  const hw = parts.filter(x => {
-    const mt = x.obj.material;
-    return x.type !== 'PlaneGeometry' && mt && mt.color
-        && mt.color.r < 0.25 && mt.color.g < 0.25 && mt.color.b < 0.25
-        && (x.max.x - x.min.x) < 0.2 && (x.max.y - x.min.y) < 0.2;
-  });
-  assert.ok(hw.length, 'there is hardware on the door at all');
+  const hw = hingeSide(parts).filter(x => (x.max.x - x.min.x) < 0.2 && (x.max.y - x.min.y) < 0.2);
+  assert.ok(hw.length, 'there are hinges on the door at all');
   const reach = Math.max(...hw.map(h => h.max.x - stileEdge));
   assert.ok(reach < (gx0 - stileEdge) * 1.2,
     `no piece of hardware crosses onto the panels (reaches ${(reach/INCH).toFixed(1)}in ` +
@@ -323,13 +338,8 @@ test('the straps are fitted to the rails, not spread down the door', () => {
   assert.ok(rails.length >= 3, `the door has rails to hang off (found ${rails.length})`);
 
   // The hardware, clustered into hinges by height.
-  const hw = parts.filter(x => {
-    const mt = x.obj.material;
-    return x.type !== 'PlaneGeometry' && mt && mt.color
-        && mt.color.r < 0.25 && mt.color.g < 0.25 && mt.color.b < 0.25
-        && (x.max.y - x.min.y) < 0.1;
-  });
-  assert.ok(hw.length, 'there is hardware on the door');
+  const hw = hingeSide(parts).filter(x => (x.max.y - x.min.y) < 0.1);
+  assert.ok(hw.length, 'there are hinges on the door');
   const ys = hw.map(h => (h.min.y + h.max.y) / 2).sort((a, b) => a - b);
   const hinges = [];
   for (const y of ys) {
