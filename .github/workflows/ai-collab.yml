@@ -142,6 +142,41 @@ jobs:
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "branch=ai/$(date +%Y%m%d-%H%M%S)-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
 
+      # The run writes a dozen files into the workspace — the plan, the
+      # prompts, the review, four test logs. The first real run committed all
+      # of them: 2,254 lines of them, alongside a three-line change.
+      #
+      # .git/info/exclude rather than .gitignore, because .gitignore is a
+      # tracked file this workflow is forbidden to touch (and rightly: hiding
+      # files from the diff would hide them from the guard). info/exclude is
+      # local to the checkout, never committed, and `git add -A` respects it.
+      - name: Keep the run's own files out of the commit
+        run: |
+          cat >> .git/info/exclude <<'EOF'
+          # written by the ai-collab workflow — local only, never committed
+          plan.md
+          review.json
+          task.txt
+          pr-body.md
+          tests.log
+          tests-final.log
+          before.log
+          guard1.log
+          implement.log
+          fix.log
+          implement-prompt.txt
+          fix-prompt.txt
+          EOF
+
+      # THE TASK, as a file. It was passed only as $AI_TASK, and the
+      # implementer's allowed tools cannot read an environment variable —
+      # there is no `printenv` in the list and there should not be. It worked
+      # from the plan alone and said so in its final message, which is the
+      # only reason anyone found out. A plan is one model's reading of the
+      # task; the task itself is the thing to satisfy.
+      - name: Write the task where the implementer can read it
+        run: printf '%s' "$AI_TASK" > task.txt
+
       - name: Fetch Three.js for the test harness
         run: curl -sSfo tests/three.js https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js
 
@@ -186,8 +221,9 @@ jobs:
           message. Following a wrong plan faithfully is worse than departing
           from it.
 
-          THE TASK, as the owner wrote it, is in the environment variable
-          AI_TASK. That is the thing to satisfy. The plan is one reading of it.
+          THE TASK, as the owner wrote it, is in task.txt. READ THAT FILE
+          FIRST. It is the thing to satisfy; the plan is one reading of it.
+          Where the two disagree, the task wins.
 
           Rules that are checked automatically after you finish. Breaking one
           fails the run and wastes it:
@@ -278,6 +314,8 @@ jobs:
           your final message; a reviewer that could not see the files is
           sometimes wrong, and arguing in the pull request is better than
           making a change you think is incorrect.
+
+          The original task is in task.txt if you need it again.
 
           The same rules still apply and are still checked: Three.js r128, no
           pricing logic here, no test deleted and the count may not fall, and

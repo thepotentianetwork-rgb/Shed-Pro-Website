@@ -133,6 +133,65 @@ test('an ordinary change passes', () => {
   } finally { r.cleanup(); }
 });
 
+/* THE BUG THESE TESTS MISSED, and how they missed it.
+ *
+ * Every guard test below commits its change before running the guard. The
+ * real workflow never does: Claude Code edits the working tree and has no
+ * `git commit` in its allowed tools. The guard compared `base...HEAD`, so on
+ * a real run HEAD was still the base, the diff was empty, and it printed
+ * `guard: ok` having inspected nothing at all. Three runs of that.
+ *
+ * So these three do it the way the real thing does — no commit — and they
+ * fail against the old guard. */
+test('it sees an UNCOMMITTED change, because that is the only kind there is', () => {
+  const r = repo();
+  try {
+    writeFileSync(join(r.dir, '.github/workflows/ai-collab.yml'), 'name: x\npermissions: write-all\n');
+    // deliberately not committed
+    const g = guard(r);
+    assert.equal(g.ok, false, 'the guard must not pass a working-tree change it has not looked at');
+    assert.match(g.out, /\.github\//);
+  } finally { r.cleanup(); }
+});
+
+test('it sees an uncommitted NEW file', () => {
+  /* A file git has never heard of is invisible to any diff, and "the agent
+     wrote a brand new file" is exactly what a protected-path check is for. */
+  const r = repo();
+  try {
+    writeFileSync(join(r.dir, '.github/workflows/sneak.yml'), 'name: sneak\n');
+    const g = guard(r);
+    assert.equal(g.ok, false);
+    assert.match(g.out, /sneak\.yml/);
+  } finally { r.cleanup(); }
+});
+
+test('it sees an uncommitted DELETED test', () => {
+  const r = repo();
+  try {
+    rmSync(join(r.dir, 'tests/geometry/porch.test.mjs'));
+    const g = guard(r);
+    assert.equal(g.ok, false);
+    assert.match(g.out, /deleted a test file/);
+  } finally { r.cleanup(); }
+});
+
+test("it refuses the run's own working files", () => {
+  /* The first real run committed 2,254 lines of plan, prompts, review JSON
+     and test logs next to a three-line change, because `git add -A` does not
+     know which files the workflow wrote about itself. They are kept out with
+     .git/info/exclude now; this is the check for when that stops working. */
+  const r = repo();
+  try {
+    writeFileSync(join(r.dir, 'plan.md'), '# a plan\n');
+    writeFileSync(join(r.dir, 'tests.log'), 'lots of output\n');
+    const g = guard(r);
+    assert.equal(g.ok, false);
+    assert.match(g.out, /plan\.md/);
+    assert.match(g.out, /tests\.log/);
+  } finally { r.cleanup(); }
+});
+
 test('it refuses a change to its own workflow', () => {
   // The one that matters most: a job that can edit its workflow can widen its
   // own permissions, and the next run starts with whatever it granted itself.

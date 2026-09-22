@@ -81,6 +81,14 @@ function sandbox() {
   mkdirSync(join(dir, 'scripts/ai'), { recursive: true });
   cpSync(join(REPO, 'scripts/ai'), join(dir, 'scripts/ai'), { recursive: true });
   cpSync(join(REPO, 'tests'), join(dir, 'tests'), { recursive: true, filter: (s) => !/three\.js$/.test(s) });
+  /* The workflow's "Keep the run's own files out of the commit" step, which
+     the dry run has to do too or it is not simulating the real checkout: the
+     plan, the logs and the prompts land in this directory, and without the
+     exclude they read as part of the change. */
+  writeFileSync(join(dir, '.git/info/exclude'),
+    ['plan.md','review.json','task.txt','pr-body.md','tests.log','tests-final.log',
+     'before.log','guard1.log','implement.log','fix.log','implement-prompt.txt',
+     'fix-prompt.txt'].join('\n') + '\n');
   run('git add -A && git commit -qm base');
   return { dir, run, base: run('git rev-parse HEAD').trim(), cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }

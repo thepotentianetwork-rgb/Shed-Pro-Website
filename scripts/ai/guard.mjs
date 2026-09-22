@@ -64,15 +64,48 @@ export const INVARIANTS = [
   },
 ];
 
-export function changedFiles(baseRef) {
-  const out = sh(`git diff --name-only ${baseRef}...HEAD`).trim();
+/* WHAT "CHANGED" MEANS, and why it is not `baseRef...HEAD`.
+ *
+ * It was, and the guard was inert for it. Claude Code edits the WORKING TREE
+ * and never commits — its allowed tools are Read/Write/Edit and four specific
+ * Bash commands, none of which is `git commit`. So at the moment the guard
+ * runs, HEAD is still the base commit, `baseRef...HEAD` is empty, and the
+ * guard printed `guard: ok` having looked at nothing. Every protected-path
+ * and deleted-test check passed by default. The tests did not catch it
+ * because they committed their changes first, which the real run never does.
+ *
+ * Two dots, no HEAD, compares the base commit to the working tree — which
+ * covers the change whether it was committed, staged, or neither. Untracked
+ * files are added separately because a diff cannot see a file git has never
+ * heard of, and "the agent wrote a brand new file" is exactly the case a
+ * protected-path check exists for. */
+function untracked() {
+  const out = sh('git ls-files --others --exclude-standard').trim();
   return out ? out.split('\n').filter(Boolean) : [];
 }
 
+export function changedFiles(baseRef) {
+  const out = sh(`git diff --name-only ${baseRef}`).trim();
+  const tracked = out ? out.split('\n').filter(Boolean) : [];
+  return [...new Set([...tracked, ...untracked()])];
+}
+
 export function deletedFiles(baseRef) {
-  const out = sh(`git diff --diff-filter=D --name-only ${baseRef}...HEAD`).trim();
+  const out = sh(`git diff --diff-filter=D --name-only ${baseRef}`).trim();
   return out ? out.split('\n').filter(Boolean) : [];
 }
+
+/* The run's own working files. They are written into the workspace by the
+   workflow, not by the agent, and they have no business in a pull request:
+   the first real run committed 2,254 lines of plan, prompts, review JSON and
+   test logs alongside a three-line change. The workflow keeps them out of
+   `git add` with .git/info/exclude; this is the check for when that stops
+   working, because an ignore file failing silently is how they got in. */
+export const SCRATCH = [
+  'plan.md', 'review.json', 'task.txt', 'pr-body.md',
+  'tests.log', 'tests-final.log', 'before.log', 'guard1.log',
+  'implement.log', 'fix.log', 'implement-prompt.txt', 'fix-prompt.txt',
+];
 
 export function checkAll({ baseRef, testsBefore, testsAfter }) {
   const violations = [];
@@ -80,6 +113,9 @@ export function checkAll({ baseRef, testsBefore, testsAfter }) {
   for (const f of changedFiles(baseRef)) {
     for (const p of PROTECTED) {
       if (p.pattern.test(f)) violations.push(`touched a protected path: ${f} — ${p.why}`);
+    }
+    if (SCRATCH.includes(f)) {
+      violations.push(`the run's own working file is in the diff: ${f} — it belongs in the log, not in the pull request`);
     }
   }
 
