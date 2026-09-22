@@ -90,7 +90,12 @@ export function loadDesigner() {
   c.__stubLights = () => {
     const L = (extra) => Object.assign({
       intensity: 1, color: { setHex() {}, set() {} }, groundColor: { setHex() {} },
-      position: { set() {}, copy() {} }, target: { position: { set() {} } },
+      /* Records, rather than swallowing. A no-op `set` made the sun's POSITION
+         untestable, which is exactly where the rig's two-copies-of-a-number
+         bug lived — the intensities were checkable and the azimuth was not. */
+      position: { x:0, y:0, z:0, set(x,y,z){ this.x=x; this.y=y; this.z=z; },
+                  copy(v){ this.x=v.x; this.y=v.y; this.z=v.z; } },
+      target: { position: { set() {} } },
       shadow: { mapSize: { set() {} }, camera: {}, bias: 0, normalBias: 0, radius: 0 },
       castShadow: false, visible: true,
     }, extra || {});
