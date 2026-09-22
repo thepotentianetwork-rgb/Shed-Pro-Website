@@ -1,20 +1,22 @@
-/* A CRAFTSMAN DOOR IS A SPECIFIC THING.
+/* THE CRAFTSMAN DOOR, against the reference photo in docs/craftsman-door.md.
  *
- * This one was a perimeter frame with two cross rails — a plain three-panel
- * door wearing the name. What makes a door read Craftsman, in order of how
- * much work each part does:
+ * These tests were first written from the STYLE rather than from the photo:
+ * three lites over a projecting dentil shelf with blocks beneath it. That is
+ * a correct description of a textbook Craftsman entry door and it is not the
+ * door being copied, so the tests passed on a door that did not match. They
+ * now check the reference, feature by feature:
  *
- *   1. A row of small LITES across the top. Three narrow ones, not one wide
- *      pane: the divisions are the point.
- *   2. A DENTIL SHELF under the glass — a shelf that actually projects from
- *      the face, with small blocks beneath it. This is the signature, and it
- *      is the part that cannot be faked with a line, because a line is what
- *      the old door already had.
- *   3. Flat panels below, plain and tall.
+ *   1. A head cap ABOVE the glass — the projecting piece is over the lites,
+ *      not under them.
+ *   2. FOUR lites, so three muntins.
+ *   3. A plain rail under the glass. Nothing hangs off it.
+ *   4. Two tall panels over a bottom rail deeper than the rails above it.
+ *   5. Short strap hinges that stay beside the glass, not the full-size barn
+ *      strap that reached a third of the way across the leaf.
  *
- * So the tests look for those three things as geometry — glass up top, a part
- * standing proud of the trim plane, blocks under it — rather than counting
- * meshes, which a three-panel door would also pass.
+ * Each is checked as geometry — glass up top, a part standing proud of the
+ * trim plane, bars over the panes — rather than by counting meshes, which a
+ * three-panel door would also pass.
  *
  * Run: node --test tests/geometry/craftsmandoor.test.mjs
  */
@@ -55,9 +57,10 @@ test('the top of the door is glazed', () => {
   assert.ok(top > b.y0 + h * 0.7, `the glass is up at the top (${((top-b.y0)/h*100).toFixed(0)}% up the door)`);
 });
 
-test('the glass is divided into three lites, not left as one pane', () => {
+test('the glass is divided into four lites, not left as one pane', () => {
   /* The divisions are what makes it Craftsman rather than a lite-over-panel
-     door, so this counts the muntins crossing the glass band. */
+     door, so this counts the muntins crossing the glass band. FOUR panes:
+     the reference has four and this was built with three. */
   const parts = doorParts(build('craftsman'));
   const glass = glassOf(parts);
   const gTop = Math.max(...glass.map(g => g.max.y));
@@ -74,19 +77,26 @@ test('the glass is divided into three lites, not left as one pane', () => {
     && (x.max.y - x.min.y) > band * 0.6 && (x.max.y - x.min.y) < band * 1.3
     && (x.max.x - x.min.x) < 0.05
     && x.min.x > gx0 - 0.01 && x.max.x < gx1 + 0.01);
-  assert.equal(muntins.length, 2, `two muntins make three lites (found ${muntins.length})`);
+  assert.equal(muntins.length, 3, `three muntins make four lites (found ${muntins.length})`);
   // Measured against the GLASS, which is what they divide — not the door box,
   // which includes the casing and the stiles outside it.
   const xs = muntins.map(mn => (mn.min.x + mn.max.x) / 2).sort((p, q) => p - q);
-  const third = (gx1 - gx0) / 3;
-  assert.ok(Math.abs((xs[1] - xs[0]) - third) < third * 0.15,
-    `evenly spaced across the glass (${(xs[1]-xs[0]).toFixed(4)} apart, a third is ${third.toFixed(4)})`);
-  assert.ok(Math.abs((xs[0] + xs[1]) / 2 - (gx0 + gx1) / 2) < 0.005, 'and centred');
+  const quarter = (gx1 - gx0) / 4;
+  for (let i = 1; i < xs.length; i++) {
+    assert.ok(Math.abs((xs[i] - xs[i - 1]) - quarter) < quarter * 0.15,
+      `evenly spaced across the glass (${(xs[i]-xs[i-1]).toFixed(4)} apart, a quarter is ${quarter.toFixed(4)})`);
+  }
+  assert.ok(Math.abs((xs[0] + xs[xs.length - 1]) / 2 - (gx0 + gx1) / 2) < 0.005, 'and centred');
 });
 
-test('the dentil shelf actually projects from the face', () => {
-  /* The signature, and the part a line cannot do. Anything at the trim plane
-     is a line; the shelf has to stand in front of it. */
+test('the head cap projects from the face, above the glass', () => {
+  /* The part a line cannot do. Anything at the trim plane is a line, and a
+     line is what the door already had before any of this.
+
+     The side it is on is half the test. A textbook Craftsman shelf sits UNDER
+     the lites; in the reference the projecting piece is over them, and the
+     first version put it under — so the one part standing off the face stood
+     off it in the wrong place. */
   const parts = doorParts(build('craftsman'));
   const b = doorBox(parts);
   const trim = parts.filter(x => x.type === 'BoxGeometry' && (x.max.x - x.min.x) > 0.2);
@@ -94,33 +104,52 @@ test('the dentil shelf actually projects from the face', () => {
   const proud = faces[0] - faces[faces.length - 1];
   assert.ok(proud > 0.015,
     `something wide stands clear of the trim plane by ${(proud/INCH).toFixed(1)}in`);
-  // and it sits below the glass, not somewhere else on the door
   const glass = glassOf(parts);
+  const gTop = Math.max(...glass.map(g => g.max.y));
   const gBot = Math.min(...glass.map(g => g.min.y));
-  const shelf = trim.filter(x => Math.abs(x.max.z - faces[0]) < 1e-6)[0];
-  assert.ok(shelf.max.y <= gBot + 0.02, 'the shelf is under the glass');
-  assert.ok(shelf.min.y > b.y0 + (b.y1 - b.y0) * 0.4, 'and up in the top half, where it belongs');
+  const cap = trim.filter(x => Math.abs(x.max.z - faces[0]) < 1e-6)[0];
+  assert.ok(cap.min.y >= gTop - 0.01,
+    `the cap is above the glass (cap bottom ${cap.min.y.toFixed(3)}, glass top ${gTop.toFixed(3)})`);
+  assert.ok(cap.max.y < b.y1, 'and still on the door, under the head trim');
+  // It spans the leaf, not just the opening — in the reference it runs past
+  // the glass to both stiles.
+  const gW = Math.max(...glass.map(g => g.max.x)) - Math.min(...glass.map(g => g.min.x));
+  assert.ok((cap.max.x - cap.min.x) > gW * 1.2,
+    `and runs wider than the glass (${((cap.max.x-cap.min.x)/INCH).toFixed(1)}in against ${(gW/INCH).toFixed(1)}in)`);
+  assert.ok(gBot > b.y0, 'sanity: the glass is a band, not the whole door');
 });
 
-test('there are dentil blocks under the shelf', () => {
+test('the rail under the glass is plain, and the bottom rail is the deep one', () => {
+  /* The correction, stated as geometry. The first version hung a row of
+     dentil blocks off the rail beneath the lites; the reference has nothing
+     there, and instead carries its weight at the foot of the door, where the
+     bottom rail is visibly deeper than the rails above it. */
   const parts = doorParts(build('craftsman'));
   const b = doorBox(parts);
-  const trim = parts.filter(x => x.type === 'BoxGeometry' && (x.max.x - x.min.x) > 0.2);
-  const shelfY = Math.min(...trim.filter(x => x.max.z === Math.max(...trim.map(t => t.max.z))).map(x => x.min.y));
-  /* Confined to the leaf. Without the x bound a hinge on the casing, which is
-     small and sits at about the same height, counts as a dentil and the
-     spacing check fails on a door that is perfectly even. */
   const glass = glassOf(parts);
+  const gBot = Math.min(...glass.map(g => g.min.y));
   const gx0 = Math.min(...glass.map(g => g.min.x)), gx1 = Math.max(...glass.map(g => g.max.x));
+  /* Confined to the leaf's clear width, so a hinge or a knob out on the
+     casing is not mistaken for a block. */
   const blocks = parts.filter(x => x.type === 'BoxGeometry'
-    && x.max.y <= shelfY + 1e-3 && x.max.y > shelfY - 0.05
+    && x.max.y < gBot && x.max.y > gBot - 0.06
     && (x.max.x - x.min.x) < 0.09 && (x.max.y - x.min.y) < 0.03
-    && x.min.x > gx0 - 0.02 && x.max.x < gx1 + 0.02);
-  assert.ok(blocks.length >= 3, `a row of blocks beneath it (found ${blocks.length})`);
-  const xs = blocks.map(v => (v.min.x + v.max.x) / 2).sort((p, q) => p - q);
-  const gaps = xs.slice(1).map((v, i) => v - xs[i]);
-  const spread = Math.max(...gaps) - Math.min(...gaps);
-  assert.ok(spread < 0.01, `evenly spaced (gaps vary by ${(spread/INCH).toFixed(2)}in)`);
+    && x.min.x > gx0 && x.max.x < gx1);
+  assert.equal(blocks.length, 0,
+    `nothing hangs off the rail under the glass (found ${blocks.length})`);
+
+  // Full-width rails on the leaf, by height.
+  const rails = parts.filter(x => x.type === 'BoxGeometry'
+    && (x.max.x - x.min.x) > (gx1 - gx0) * 0.9
+    && (x.max.y - x.min.y) < 0.06 && x.max.y < gBot);
+  assert.ok(rails.length >= 2, `there are rails below the glass (found ${rails.length})`);
+  const lowest = rails.reduce((a, r) => (r.min.y < a.min.y ? r : a));
+  const others = rails.filter(r => r !== lowest);
+  const deepest = Math.max(...others.map(r => r.max.y - r.min.y));
+  assert.ok((lowest.max.y - lowest.min.y) > deepest,
+    `the bottom rail is the deepest (${((lowest.max.y-lowest.min.y)/INCH).toFixed(2)}in ` +
+    `against ${(deepest/INCH).toFixed(2)}in)`);
+  assert.ok(lowest.min.y < b.y0 + (b.y1 - b.y0) * 0.2, 'and it is at the foot of the door');
 });
 
 test('the panels below are split in two', () => {
@@ -243,14 +272,56 @@ test('every style with a glazed band declares it, so hingeYs can dodge it', () =
   }
 });
 
+test('the strap hinges are short ones, not barn straps', () => {
+  /* It was in the shed-door family at full strap size: about nine inches of
+     iron reaching a third of the way across the leaf and over the panels.
+
+     The reference has straps too — the species was right and this test was
+     first written to replace them with butt hinges, which would have been a
+     different door again. What is wrong is the SIZE, so that is what this
+     measures: REACH from the leaf edge, because a barn strap is not a bigger
+     hinge, it is a hinge that crosses the door. At the old scale it reaches
+     11.8in and the glass starts at 9.3in. */
+  const parts = doorParts(build('craftsman'));
+  const glass = glassOf(parts);
+  const gx0 = Math.min(...glass.map(g => g.min.x));
+  const stileEdge = Math.min(...parts.filter(x => x.type === 'BoxGeometry'
+    && (x.max.y - x.min.y) > 0.5).map(x => x.min.x));        // the leaf's own edge
+  const hw = parts.filter(x => {
+    const mt = x.obj.material;
+    return x.type !== 'PlaneGeometry' && mt && mt.color
+        && mt.color.r < 0.25 && mt.color.g < 0.25 && mt.color.b < 0.25
+        && (x.max.x - x.min.x) < 0.2 && (x.max.y - x.min.y) < 0.2;
+  });
+  assert.ok(hw.length, 'there is hardware on the door at all');
+  const reach = Math.max(...hw.map(h => h.max.x - stileEdge));
+  assert.ok(reach < (gx0 - stileEdge) * 1.2,
+    `no piece of hardware crosses onto the panels (reaches ${(reach/INCH).toFixed(1)}in ` +
+    `from the leaf edge; the glass starts at ${((gx0-stileEdge)/INCH).toFixed(1)}in)`);
+});
+
 test('it no longer looks like the plain door', () => {
   // The old craftsman was a frame and two rails, which is what 'basic' already
   // is plus lines. If these two ever converge again, something has been undone.
   const craft = doorParts(build('craftsman'));
   const basic = doorParts(build('basic'));
   assert.ok(glassOf(craft).length > glassOf(basic).length, 'only one of them is glazed');
-  assert.ok(craft.length > basic.length + 5,
-    `and it carries real detail (${craft.length} parts against ${basic.length})`);
+  /* Not a part count. Swapping the strap hinges for butt hinges took a dozen
+     meshes off the door while making it MORE like the reference, so a count
+     would have called that a regression. What separates it from the plain
+     door is the features: glass, bars over the glass, and something standing
+     off the face. */
+  const wide = (ps) => ps.filter(x => x.type === 'BoxGeometry' && (x.max.x - x.min.x) > 0.2);
+  const relief = (ps) => { const f = wide(ps).map(x => x.max.z); return Math.max(...f) - Math.min(...f); };
+  assert.ok(relief(craft) > 0.015 && relief(craft) > relief(basic) + 0.01,
+    `the craftsman has a part standing off its face and the plain door does not ` +
+    `(${(relief(craft)/INCH).toFixed(1)}in against ${(relief(basic)/INCH).toFixed(1)}in)`);
+  const g = glassOf(craft);
+  const gy = (Math.min(...g.map(v => v.min.y)) + Math.max(...g.map(v => v.max.y))) / 2;
+  const gx0 = Math.min(...g.map(v => v.min.x)), gx1 = Math.max(...g.map(v => v.max.x));
+  const bars = craft.filter(x => x.type === 'BoxGeometry' && x.min.y < gy && x.max.y > gy
+    && (x.max.x - x.min.x) < 0.05 && x.min.x > gx0 && x.max.x < gx1);
+  assert.ok(bars.length >= 3, `and its glass is divided (${bars.length} bars)`);
 });
 
 test('it holds together on a wide leaf as well as a narrow one', () => {

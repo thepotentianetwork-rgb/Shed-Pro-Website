@@ -7828,11 +7828,13 @@ function buildDoor(){
          and you could not see into the shed through any of them, which is the
          one thing glass is for.
          Sized in inches like the cedar door's transom, not as a fraction of
-         the height, so the band stays 11in whether the leaf is 76in or 84in
-         rather than growing into half the door. The top rail is deep enough
-         that the perimeter trim's own rail lands above the glass instead of
-         across it. */
-      var kY1=dh-3.4*IN, kY0=kY1-11*IN;
+         the height, so the band stays the same whether the leaf is 76in or
+         84in rather than growing into half the door.
+
+         5.5in of rail above it, not 3.4. The top rail is ~2.5in, and the head
+         cap that sits over the glass needs somewhere to be; at 3.4 the cap
+         and the rail were fighting for the same inch. */
+      var kY1=dh-5.5*IN, kY0=kY1-9.5*IN;
       return {y0:kY0/dh, y1:kY1/dh};
     }
     return null;                            // shed doors + 6-panel + fairytale = solid
@@ -7948,25 +7950,29 @@ function buildDoor(){
       // plain door still gets the perimeter frame (see the catalog icon)
       frameEdge();
     } else if(DOOR==='craftsman'){
-      /* A CRAFTSMAN DOOR IS A SPECIFIC THING, and this was not it: a perimeter
-         frame with two cross rails, i.e. a plain three-panel door wearing the
-         name. What makes a door read Craftsman, in order of how much work each
-         one does:
+      /* BUILT FROM A REFERENCE DOOR, not from the idea of one.
+         See docs/craftsman-door.md for the photo this is measured off.
 
-           1. A ROW OF SMALL LITES across the top - three narrow ones, not one
-              wide pane. The divisions are the point.
-           2. A DENTIL SHELF under the glass: a shelf that actually projects
-              from the face, with little square blocks beneath it. This is the
-              signature. Without it the door is just a lite-over-panel door.
-           3. Flat panels below, TWO of them side by side, tall and plain.
+         The first attempt reasoned from the style instead: three lites and a
+         projecting dentil shelf with blocks under it, which is a textbook
+         Craftsman entry door and is NOT the door being copied. What the
+         reference actually has, top to bottom:
+
+           1. A head cap — a thin shelf ABOVE the glass, spanning the full
+              leaf width, standing proud of the face. The projecting piece is
+              over the lites, not under them.
+           2. FOUR lites across the top, in a band about 9.5in deep.
+           3. A plain rail under the glass. No dentils, no blocks.
+           4. Two tall flat panels, running most of the leaf, over a bottom
+              rail deep enough to read as one.
 
          Drawn from the top down so each band's edge is the next one's start
          and the door cannot end up with a gap or an overlap between them. */
       var fc=frameEdge();
       var spanC=fc.y1-fc.y0;
 
-      /* 1 - the lites. The band comes from g, the SAME opening glassRegion cut
-         in the leaf, so the muntins are guaranteed to land over glass rather
+      /* The lites. The band comes from g, the SAME opening glassRegion cut in
+         the leaf, so the muntins are guaranteed to land over glass rather
          than over solid door an inch away from it. The fallback is only for a
          leaf built without a glazing spec at all. */
       var railH=EB*0.85;
@@ -7975,35 +7981,41 @@ function buildDoor(){
       // Divided across the GLASS, not across the trim frame: the opening is
       // narrower than the frame's clear width, so dividing the frame put the
       // bars off the lites by half an inch each.
-      var nLite=3, gW=lw-leafStile(lw)*2;
+      var nLite=4, gW=lw-leafStile(lw)*2;
       for(var cl=1;cl<nLite;cl++){
-        bx(EB*0.46, liteTop-liteBot, TD, muntinMat,
+        bx(EB*0.40, liteTop-liteBot, TD, muntinMat,
            x-gW/2+gW*(cl/nLite), (liteTop+liteBot)/2, zf);
       }
-      // the rail that carries the shelf
+
+      /* The head cap, over the glass. It PROJECTS: a cap you cannot see from
+         the side is a line, and a line is what the door had before any of
+         this. It sits in the gap between the top rail and the glass, which is
+         why glassRegion leaves 5.5in up there rather than 3.4. */
+      var capH=0.016, capD=TD+0.024;
+      var capY=Math.min(liteTop+capH*0.5+0.004, fc.y1-capH*0.5);
+      bx(lwF, capH, capD, muntinMat, x, capY, zf+(capD-TD)/2);
+
+      // The rail under the glass — plain, the full clear width.
       var railY=liteBot-railH/2;
       bx(inW, railH, TD, muntinMat, x, railY, zf);
 
-      // 2 - the dentil shelf. It PROJECTS: a Craftsman shelf you cannot see
-      // from the side is a line, and a line is what the old door already had.
-      var shelfY=railY-railH/2;
-      var shelfD=TD+0.026;                      // stands proud of the trim face
-      var shelfH=0.016;
-      bx(lwF, shelfH, shelfD, muntinMat, x, shelfY-shelfH/2, zf+(shelfD-TD)/2);
-      // the blocks under it, evenly spaced across the clear width
-      var nDent=5, dentW=inW/(nDent*2+1), dentH=0.014;
-      for(var dq=0;dq<nDent;dq++){
-        bx(dentW, dentH, TD+0.012, muntinMat,
-           x-inW/2+dentW*(1.5+dq*2), shelfY-shelfH-dentH/2, zf+0.006);
-      }
+      /* Two tall flat panels, split by a centre stile, over a deep bottom rail.
 
-      // 3 - two tall flat panels under it, split by a centre mullion.
-      var panTop=shelfY-shelfH-dentH-0.006;
-      var panBot=fc.y0+railH*0.5;
+         The stile is a full trim board wide, not the hairline it started as:
+         in the reference the gap between the two panels reads about the same
+         as the stiles at the door's edges.
+
+         The rail under the panels sits DIRECTLY on the frame's bottom rail —
+         panBot is half the rail's own depth above fc.y0 — so the two meet and
+         read as one deep rail. Set higher, they leave a two-inch strip of
+         bare leaf between them, and the door looks like the panels are
+         sliding off the bottom of it. */
+      var panTop=railY-railH/2;
+      var panBot=fc.y0+railH*0.55;
       if(panTop-panBot>0.06){
-        bx(EB*0.55, panTop-panBot, TD, muntinMat, x, (panTop+panBot)/2, zf);
+        bx(EB, panTop-panBot, TD, muntinMat, x, (panTop+panBot)/2, zf);
         bx(inW, railH*0.7, TD, muntinMat, x, panTop, zf);      // rail over the panels
-        bx(inW, railH*0.7, TD, muntinMat, x, panBot, zf);      // and under them
+        bx(inW, railH*1.1, TD, muntinMat, x, panBot, zf);      // onto the frame's own
       }
     } else if(DOOR==='xtrim'){
       var fx=frameEdge();
@@ -8326,7 +8338,15 @@ function buildDoor(){
   /* Fairytale straps are SHORT and sit tight to the leaf edge — three of them
      spread over the straight part of the door, not reaching a third of the way
      across it. 0.62 is about 5.7in, down from 9.1. */
-  var hgS=isCedar?1.5:(isFairytale?0.62:1.0);        // cedar = oversized straps
+  /* STRAP SIZE, per style.
+     The Craftsman was at 1.0 — about 9in of iron reaching a third of the way
+     across the leaf and over the panels. Blown up, the reference door has
+     straps too, so the species was right; the SIZE was not. They are short
+     ones, roughly half that, sitting close to the jamb. 0.55 puts the plate
+     at 2.6in and the reach at about 4.2in, which is what the photo measures,
+     and keeps the tip well clear of the glass on every leaf width. */
+  var isCraft=(DOOR==='craftsman');
+  var hgS=isCedar?1.5:(isFairytale?0.62:(isCraft?0.55:1.0));
   // Hinge heights come from the door's SOLID bands, never the glass. The cedar
   // strap was landing straight across the transom lites; this walks the leaf,
   // subtracts the glazed band, and spreads the hinges over what's left.
@@ -8377,13 +8397,17 @@ function buildDoor(){
     barrel.position.set(cx, cy, LEAF_Z+0.007); barrel.castShadow=true; DG.add(barrel);
     hwPiece(0.020, 0.050, cx+dir*0.015, cy, LEAF_Z);   // leaf plate onto the door
   }
-  function residKnob(cx, cy){
+  /* `bolt` off draws the knob alone. The Craftsman reference has one small
+     round knob and nothing above it; a deadbolt is right for the residential
+     doors, where this came from, and is one detail too many next to that. */
+  function residKnob(cx, cy, bolt){
     var rose=new THREE.Mesh(new THREE.CylinderGeometry(0.024,0.024,0.009,16), hwSilver);
     rose.rotation.x=Math.PI/2; rose.position.set(cx, cy, LEAF_Z+0.005); DG.add(rose);
     var knob=new THREE.Mesh(new THREE.SphereGeometry(0.019,14,10), hwSilver);
     knob.scale.set(1,1,0.8);
     knob.position.set(cx, cy, LEAF_Z+0.020); knob.castShadow=true; DG.add(knob);
     // deadbolt above the knob
+    if(bolt===false) return;
     var dRose=new THREE.Mesh(new THREE.CylinderGeometry(0.019,0.019,0.009,16), hwSilver);
     dRose.rotation.x=Math.PI/2; dRose.position.set(cx, cy+0.078, LEAF_Z+0.005); DG.add(dRose);
     var dCyl=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.014,16), hwSilver);
@@ -8431,7 +8455,11 @@ function buildDoor(){
     // edge rather than out on a jamb that no longer exists.
     var lo=isFairytale ? -(dw/2-0.006) : -(dw/2+tw/2);   // centered on the casing board
     hgY.forEach(function(hy){ strapHinge(lo, hy, 1, hgS); });
-    doorKnob((dw/2)-0.075, dh*0.46);
+    /* The T-handle is right for a shed door and wrong for this one: the
+       reference Craftsman has a small round knob at about mid height, and a
+       lock-in-the-plate T-handle next to it reads as a different product. */
+    if(isCraft) residKnob((dw/2)-0.075, dh*0.46, false);
+    else        doorKnob((dw/2)-0.075, dh*0.46);
   } else {
     var loL=-(dw/2+tw/2), loR=(dw/2+tw/2);           // both outer casing boards
     hgY.forEach(function(hy){
@@ -8440,7 +8468,8 @@ function buildDoor(){
     });
     // Handle sits DEAD CENTRE on the astragal — the centre trim strip between
     // the leaves — whose face is proud of the leaves (0.012 + 0.025).
-    doorKnob(0, dh*0.44, 0.037);
+    if(isCraft) residKnob(0, dh*0.44, false);
+    else        doorKnob(0, dh*0.44, 0.037);
   }
 
     // ---- DOOR OVERHANG (optional) — the shed-roof canopy over double doors that
