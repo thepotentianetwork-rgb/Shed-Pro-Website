@@ -63,6 +63,79 @@ jobs:
         with:
           node-version: "22"
 
+      # Before anything is installed or any call is paid for. The first run of
+      # this workflow died four steps in with "OPENAI_API_KEY is not set", which
+      # is true but reads like a bug in the script rather than a secret that is
+      # missing from THIS repository. Both keys are checked together, so one
+      # run tells you about both instead of finding the second one later.
+      #
+      # WHY THERE IS A LIST OF NAMES. The keys on this repository were added
+      # under names of the owner's own choosing, and Actions cannot look a
+      # secret up by a name a script works out — every name a workflow reads
+      # has to be written in the workflow, literally. So the known names are
+      # listed here, and which key is which is decided by what the key IS, not
+      # by what it is called: an Anthropic key begins "sk-ant-", an OpenAI one
+      # does not. Reading the provider off the secret's name would be a guess,
+      # and a wrong guess sends one provider's key to the other's endpoint.
+      #
+      # Lengths only, never the values and never a prefix — a few characters of
+      # a key in a public log is still a few characters of a key.
+      - name: Check the keys are actually here
+        env:
+          CANDIDATE_1: ${{ secrets.OPENAI_API_KEY }}
+          CANDIDATE_2: ${{ secrets.ANTHROPIC_API_KEY }}
+          CANDIDATE_3: ${{ secrets.SHEDPRO_RENDER_PROJECT }}
+          CANDIDATE_4: ${{ secrets.SHEDPRO_RENDER_PROJECT_GPT }}
+        run: |
+          openai=""
+          anthropic=""
+          for name in CANDIDATE_1 CANDIDATE_2 CANDIDATE_3 CANDIDATE_4; do
+            raw="${!name}"
+            # A key pasted into a web form often arrives with a stray newline.
+            v="$(printf '%s' "$raw" | tr -d '[:space:]')"
+            [ -n "$v" ] || continue
+            case "$v" in
+              sk-ant-*) [ -n "$anthropic" ] || anthropic="$v" ;;
+              *)        [ -n "$openai" ]    || openai="$v" ;;
+            esac
+          done
+
+          missing=""
+          [ -n "$openai" ]    || missing="$missing an OpenAI key"
+          [ -n "$anthropic" ] || missing="$missing an Anthropic key (one beginning sk-ant-)"
+          if [ -n "$missing" ]; then
+            {
+              echo "## Missing secrets"
+              echo
+              echo "This workflow could not find:$missing"
+              echo
+              echo "It looks at four repository secrets on \`${{ github.repository }}\`:"
+              echo "\`OPENAI_API_KEY\`, \`ANTHROPIC_API_KEY\`, \`SHEDPRO_RENDER_PROJECT\` and"
+              echo "\`SHEDPRO_RENDER_PROJECT_GPT\`, and sorts them by what the key is —"
+              echo "anything starting \`sk-ant-\` is the Anthropic one."
+              echo
+              echo "Common reasons a key that exists still does not arrive:"
+              echo "- it is under a name not in that list (add it under one of them)"
+              echo "- it was added to a different repository"
+              echo "- it was added as a **Codespaces** or **Dependabot** secret, which Actions cannot read"
+              echo "- it is an organisation secret with no access granted to this repository"
+              echo
+              echo "Nothing was spent and nothing was changed."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Missing secrets:$missing — see the run summary"
+            exit 1
+          fi
+
+          # Trimming produced a value GitHub is not already masking by exact
+          # match, so mask it explicitly before it can reach a log.
+          echo "::add-mask::$openai"
+          echo "::add-mask::$anthropic"
+          {
+            echo "OPENAI_API_KEY=$openai"
+            echo "ANTHROPIC_API_KEY=$anthropic"
+          } >> "$GITHUB_ENV"
+          echo "both keys present (OpenAI ${#openai} chars, Anthropic ${#anthropic} chars)"
+
       - name: Record the starting point
         id: base
         run: |
@@ -91,8 +164,6 @@ jobs:
 
       # ---- 1. OpenAI plans -------------------------------------------------
       - name: Plan (OpenAI)
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: node scripts/ai/plan.mjs --task "$AI_TASK" --out plan.md --model "$OPENAI_MODEL"
 
       - name: Show the plan
@@ -104,8 +175,6 @@ jobs:
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Implement (Claude Code)
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set -o pipefail
           cat > implement-prompt.txt <<'PROMPT'
@@ -173,8 +242,6 @@ jobs:
 
       # ---- 4. OpenAI reviews ----------------------------------------------
       - name: Review (OpenAI)
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           node scripts/ai/review.mjs \
             --base "${{ steps.base.outputs.sha }}" \
@@ -197,8 +264,6 @@ jobs:
       # ---- 5. Claude fixes, ONCE ------------------------------------------
       - name: Fix (Claude Code) — one round only
         if: steps.verdict.outputs.needed == 'true' && inputs.skip_fix_round != true
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set -o pipefail
           cat > fix-prompt.txt <<'PROMPT'
