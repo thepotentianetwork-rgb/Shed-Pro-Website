@@ -63,6 +63,45 @@ jobs:
         with:
           node-version: "22"
 
+      # Before anything is installed or any call is paid for. The first run of
+      # this workflow died four steps in with "OPENAI_API_KEY is not set", which
+      # is true but reads like a bug in the script rather than a secret that is
+      # missing from THIS repository. Both keys are checked together, so one
+      # run tells you about both instead of finding the second one later.
+      #
+      # Lengths only. Never the values, never a prefix — a few characters of a
+      # key in a public log is still a few characters of a key.
+      - name: Check the keys are actually here
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          missing=""
+          [ -n "$OPENAI_API_KEY" ]    || missing="$missing OPENAI_API_KEY"
+          [ -n "$ANTHROPIC_API_KEY" ] || missing="$missing ANTHROPIC_API_KEY"
+          if [ -n "$missing" ]; then
+            {
+              echo "## Missing secrets"
+              echo
+              echo "This workflow could not see:$missing"
+              echo
+              echo "They have to be **repository** secrets on **this** repository"
+              echo "(\`${{ github.repository }}\`), under Settings → Secrets and variables"
+              echo "→ Actions → *Repository secrets*."
+              echo
+              echo "Common reasons a key that exists still does not arrive:"
+              echo "- it was added to a different repository"
+              echo "- it was added as a **Codespaces** or **Dependabot** secret, which Actions cannot read"
+              echo "- it is an organisation secret with no access granted to this repository"
+              echo "- the name differs by a character or in case"
+              echo
+              echo "Nothing was spent and nothing was changed."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Missing secrets:$missing — see the run summary"
+            exit 1
+          fi
+          echo "both keys present (OpenAI ${#OPENAI_API_KEY} chars, Anthropic ${#ANTHROPIC_API_KEY} chars)"
+
       - name: Record the starting point
         id: base
         run: |

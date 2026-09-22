@@ -260,6 +260,25 @@ test('the token permissions are the two it needs', () => {
   assert.deepEqual(perms.sort(), ['contents: write', 'pull-requests: write']);
 });
 
+test('both keys are checked before anything is spent', () => {
+  /* Run #1 died four steps in on "OPENAI_API_KEY is not set" — true, but it
+     reads like a broken script rather than a secret missing from the repo, and
+     it said nothing about the Anthropic key, which would have been the next
+     surprise. The check now happens before the install and the first paid
+     call, and covers both. */
+  const pre = /Check the keys are actually here[\s\S]*?(?=\n      - name:)/.exec(WF);
+  assert.ok(pre, 'there is a preflight step');
+  assert.ok(pre[0].includes('OPENAI_API_KEY') && pre[0].includes('ANTHROPIC_API_KEY'),
+    'it checks both keys, not just the one that failed first');
+  const idx = (n) => WF.indexOf(n);
+  assert.ok(idx('Check the keys are actually here') < idx('Plan (OpenAI)'), 'before the first paid call');
+  assert.ok(idx('Check the keys are actually here') < idx('Install Claude Code'), 'before the install');
+  // Lengths only — a few characters of a key in a public log is still a few
+  // characters of a key.
+  assert.ok(/\$\{#OPENAI_API_KEY\}/.test(WF), 'it reports a length');
+  assert.ok(!/echo[^\n]*\$OPENAI_API_KEY[^{]/.test(WF), 'and never the value itself');
+});
+
 test('secrets reach the steps that need them and are never printed', () => {
   assert.ok(WF.includes('${{ secrets.OPENAI_API_KEY }}'));
   assert.ok(WF.includes('${{ secrets.ANTHROPIC_API_KEY }}'));
