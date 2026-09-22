@@ -5467,10 +5467,31 @@ function buildShed(){
     // needed here is the flat soffit at wall height, a header beam, and posts.
     var fpTrim=paintMat(tc,0.1);
     var fpZ0=l/2, fpZ1=l/2+SIDE_PORCH*0.2;
+    /* THE CEILING HAS TO REACH AS FAR AS THE ROOF DOES.
+
+       The roof carries on past the porch by the gable overhang — zFront is
+       roofEdgeZ + fpD, and roofEdgeZ already includes gableOv — but the
+       ceiling was built to the porch's own footprint: w wide by fpD deep.
+       That left a full-width slot at the porch's leading edge, gableOv deep,
+       with nothing under the roof at all: from outside you looked straight up
+       into the roof cavity, and the slot grew inch for inch with the overhang
+       (4in at a 4in overhang, 24in at 24in). The block's own comment said the
+       porch "carries the shed's overhang on its free edges"; the header and
+       the deck do, the ceiling did not.
+
+       Width goes out to the side wall FACES, not the centrelines it stopped
+       at. It cannot go further: past the wall face the roof underside drops
+       below the wall top (it is on its way down to the eave), so a flat panel
+       at ceiling height would push up through the roof. From the wall face out
+       to the fascia is the shed's own sloped eave soffit, which already covers
+       the porch's full depth — verified by raycast, not assumed. */
+    var fpCeilW  = w + WALL_FACE*2;            // wall face to wall face
+    var fpCeilZ1 = fpZ1 + gableOv;             // out to the roof's leading edge
+    var fpCeilD  = fpCeilZ1 - fpZ0;
     var fpCeilMat;
     if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
       var fpCT=makeCedar(); fpCT.wrapS=fpCT.wrapT=THREE.RepeatWrapping;
-      fpCT.repeat.set(Math.max(2,Math.round(w/0.5)), Math.max(1,Math.round((fpZ1-fpZ0)/0.5)));
+      fpCT.repeat.set(Math.max(2,Math.round(fpCeilW/0.5)), Math.max(1,Math.round(fpCeilD/0.5)));
       fpCeilMat=new THREE.MeshStandardMaterial({map:fpCT, emissiveMap:fpCT,
         emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
     } else {
@@ -5479,8 +5500,8 @@ function buildShed(){
     }
     fpCeilMat.side=THREE.DoubleSide;
     var fpY=porchCeilY();                       // pinned, or the wall top
-    var fpCeil=new THREE.Mesh(new THREE.BoxGeometry(w, 0.014, fpZ1-fpZ0), fpCeilMat);
-    fpCeil.position.set(0, fpY-0.007, (fpZ0+fpZ1)/2);
+    var fpCeil=new THREE.Mesh(new THREE.BoxGeometry(fpCeilW, 0.014, fpCeilD), fpCeilMat);
+    fpCeil.position.set(0, fpY-0.007, (fpZ0+fpCeilZ1)/2);
     shedGroup.add(fpCeil);
     // Deck level with the shed floor, so there's no step out of the door.
     buildPorchDeck(-w/2, w/2, fpZ0, fpZ1, 0.0);
