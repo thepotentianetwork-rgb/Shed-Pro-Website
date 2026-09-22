@@ -396,20 +396,28 @@ textarea.inp{resize:vertical}
    never sit beside a foundation tier, so nothing competes. */
 /* The badge in a style tile's description line. Same orange as .tile-badge,
    sized to sit on the subtitle row rather than in a corner. */
-.tile-price-badge{display:inline-block;background:#F8921E;color:#1a1205;border-radius:4px;
-  padding:1px 6px;font-size:9px;font-weight:900;letter-spacing:.3px;text-transform:uppercase}
+/* The badge needs air. In the description's slot it inherited that line's
+   2px margin and sat almost touching the tile's name, and its own 1px of
+   vertical padding left the letters against the edge of the chip. A badge
+   crammed under a heading reads as part of the heading. */
+.tile-price-badge{display:inline-block;background:#F8921E;color:#1a1205;border-radius:5px;
+  padding:3px 8px;font-size:9px;font-weight:900;letter-spacing:.3px;text-transform:uppercase;
+  line-height:1.25}
+/* Only the badged line gets the extra gap; a plain description keeps the tight
+   2px it always had, so unbadged tiles do not shift. */
+.tile-price.has-badge{margin-top:7px;margin-bottom:1px}
 /* LUXURY. Black with a gold hairline and gold lettering, so the premium shells
    do not shout in the same orange as "Popular". Letter-spacing is wider than
    the orange badge: at 9px that is most of what reads as expensive. */
 .tile-price-badge.tier-luxury{background:linear-gradient(160deg,#25211a 0%,#0d0c0a 100%);
   color:#E8C87A;border:1px solid rgba(232,200,122,.55);letter-spacing:1px;
-  box-shadow:0 1px 4px rgba(0,0,0,.45)}
+  padding:3px 9px;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 /* A section heading in the upgrades list. Quiet - it is a divider, not a
    control, and the checkboxes under it are what the customer is aiming at. */
 .addon-sec{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:var(--mu);margin:14px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--br)}
 .addon-sec:first-child{margin-top:2px}
-.opt-badge{display:inline-block;margin-left:7px;background:#F8921E;color:#1a1205;
+.opt-badge{display:inline-block;margin-left:10px;background:#F8921E;color:#1a1205;
   font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
   text-transform:uppercase;line-height:1.5;vertical-align:middle;white-space:nowrap}
 
@@ -2858,6 +2866,9 @@ function applyRecommendations(){
   for(var r=0;r<caps.length;r++){
     var cp=caps[r], keep=cp.getAttribute('data-desc');
     if(keep!=null){ cp.textContent=keep; }
+    // The badged line carries extra spacing; a restored description must not,
+    // or an unbadged tile keeps a gap with nothing in it.
+    if(cp.classList) cp.classList.remove('has-badge');
   }
   var marked=document.querySelectorAll('#styleGrid .tile[data-badged]');
   for(var q=0;q<marked.length;q++) marked[q].removeAttribute('data-badged');
@@ -2878,6 +2889,7 @@ function applyRecommendations(){
         cap.innerHTML='<span class="tile-price-badge"></span>';
         cap.firstChild.textContent=text;          // text, never markup
         if(tier) cap.firstChild.className='tile-price-badge tier-'+tier;
+        if(cap.classList) cap.classList.add('has-badge');
         if(el.setAttribute) el.setAttribute('data-badged','1');
         continue;
       }
