@@ -1754,6 +1754,30 @@ function autoFrame(force){
   if(typeof updateCamera==='function' && camera) updateCamera();
 }
 
+/* THE DAYLIGHT RIG, IN ONE PLACE.
+
+   These numbers lived twice: once where the lights are created and again in
+   applyLighting's DAY branch, which resets the rig on every rebuild. Two
+   copies of a number nobody can see the effect of is how they drift, and the
+   second copy is the one that wins.
+
+   They were also tuned against a renderer writing LINEAR output, because the
+   sRGB line above had no effect on r128. With the pipeline corrected the old
+   values came out blown: the lit and shaded walls of a white shed read the
+   same value and the building lost its form. Less flat fill, more sun.
+
+     ambient  0.18 -> 0.10   flat light, lifts everything, kills shape
+     hemi     0.40 -> 0.50   sky light, lands hardest on up-facing surfaces
+     sun      1.70 -> 2.00   the one that makes a wall look lit
+     fill     0.95 -> 0.20   was nearly a second sun; that is what flattened it
+     rim      0.40 -> 0.00   a cyan back-light on a product shot tints the
+                             eaves a colour no shed is, and reads as CGI
+     exposure 0.85 -> 1.00
+
+   Starting points from a review, checked against real WebGL captures - they
+   are not gospel, and the exposure was compared at 0.85 / 1.00 / 1.15. */
+var DAY_RIG = { amb:0.10, hemi:0.50, sun:2.00, fill:0.20, rim:0.00, exposure:1.00 };
+
 function init(){
   var canvas=document.getElementById('c');
   var vp=document.querySelector('.vp');
@@ -1767,10 +1791,26 @@ function init(){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   renderer.setSize(vp.clientWidth,vp.clientHeight);
   renderer.setClearColor(0xeef0f2);
-  // Color management + filmic tone mapping for natural highlight/shadow falloff
-  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  /* COLOUR MANAGEMENT - r128 API, not r152's.
+
+     This said `renderer.outputColorSpace = THREE.SRGBColorSpace`, and fourteen
+     textures said `texture.colorSpace = THREE.SRGBColorSpace`. Neither
+     property exists in r128: outputColorSpace and SRGBColorSpace arrived in
+     r152. THREE.SRGBColorSpace evaluates to undefined here, so every one of
+     those assignments set an unknown property to undefined and did nothing.
+
+     The renderer was therefore writing LINEAR output while ACES tone mapping
+     ran into it, and every colour texture was sampled as linear data. The
+     whole pipeline the author intended was switched off, silently, and the
+     exposure and light intensities around it were tuned by eye to compensate.
+
+     r128 spells it outputEncoding / texture.encoding, with THREE.sRGBEncoding.
+     Only COLOUR maps get it - bump, normal, roughness and metalness maps carry
+     data, not colour, and encoding them would corrupt the data. The bump maps
+     here are built separately and deliberately have no encoding set. */
+  renderer.outputEncoding=THREE.sRGBEncoding;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=0.85;
+  renderer.toneMappingExposure=DAY_RIG.exposure;
 
   scene=new THREE.Scene();
   // Sky comes from the gradient dome (added below), so no solid background color.
@@ -1791,7 +1831,7 @@ function init(){
     ectx.fillStyle=eg; ectx.fillRect(0,0,16,128);
     var envTex=new THREE.CanvasTexture(envC);
     envTex.mapping=THREE.EquirectangularReflectionMapping;
-    envTex.colorSpace=THREE.SRGBColorSpace;
+    envTex.encoding=THREE.sRGBEncoding;
     var pmrem=new THREE.PMREMGenerator(renderer);
     pmrem.compileEquirectangularShader();
     var envRT=pmrem.fromEquirectangular(envTex);
@@ -1805,18 +1845,18 @@ function init(){
 
   // Lights — brighter, softer rig. Higher ambient + hemisphere lift the whole
   // scene and fill shadows; the sun is softened so shadows are gentle, not harsh.
-  ambLight=new THREE.AmbientLight(0xffffff,0.18);
+  ambLight=new THREE.AmbientLight(0xffffff,DAY_RIG.amb);
   scene.add(ambLight);
   /* A hemisphere light IS the sky as far as the model is concerned, so this
      tracks whatever is behind the shed. Blue sky, blue sky light.
      These now match the DAY branch of applyLighting() exactly. They did not:
      init built a sunset rig and the first re-light swapped it for a daylight
      one, so the opening frame was lit by a sun that was no longer there. */
-  hemiLight=new THREE.HemisphereLight(0xbcd0e0, 0x3a5030, 0.40);
+  hemiLight=new THREE.HemisphereLight(0xbcd0e0, 0x3a5030, DAY_RIG.hemi);
   scene.add(hemiLight);
 
   // KEY (warm sun) — main directional, casts soft shadows.
-  sunLight=new THREE.DirectionalLight(0xfff4e2,1.7);
+  sunLight=new THREE.DirectionalLight(0xfff4e2,DAY_RIG.sun);
   // SUN ELEVATION — at y=1.0 the sun sat 4.4 degrees above the horizon, almost
   // horizontal, so it grazed the roof and barely lit it (N.L 0.31 on a 6/12
   // slope, 0 on the far slope). y=5.5 puts it at ~23 degrees: N.L 0.57 lit /
@@ -1835,12 +1875,12 @@ function init(){
   scene.add(sunLight);
 
   // FILL (cool, opposite side) — brighter so the shadow side stays well-lit.
-  fillLight=new THREE.DirectionalLight(0xfff0dc,0.95);
+  fillLight=new THREE.DirectionalLight(0xfff0dc,DAY_RIG.fill);
   fillLight.position.set(-7,2.5,-11);   // lifted with the sun so the far slope isn't flat
   scene.add(fillLight);
 
   // RIM (cyan back-light) — subtle edge glow that ties into the brand accent.
-  rimLight=new THREE.DirectionalLight(0x2BB5E8,0.4);
+  rimLight=new THREE.DirectionalLight(0x2BB5E8,DAY_RIG.rim);
   rimLight.position.set(-3,6,-9);
   scene.add(rimLight);
 
@@ -2007,7 +2047,7 @@ function init(){
 
   // Brand logos floating in the background as a subtle, faded backdrop pattern.
   logoTex=new THREE.TextureLoader().load(LOGO_URI);
-  logoTex.colorSpace=THREE.SRGBColorSpace;
+  logoTex.encoding=THREE.sRGBEncoding;
   floatLogos=[];
   // Positions spread across the backdrop (behind/around the shed), varied depth.
   /* v439 — A RING, NOT A BACKDROP. All five sat at negative z, so they only
@@ -2550,7 +2590,7 @@ function texFromCanvas(c, srgb){
   t.minFilter=THREE.LinearMipmapLinearFilter;
   t.magFilter=THREE.LinearFilter;
   t.generateMipmaps=true;
-  if(srgb) t.colorSpace=THREE.SRGBColorSpace;
+  if(srgb) t.encoding=THREE.sRGBEncoding;
   return t;
 }
 
@@ -3393,7 +3433,7 @@ function makeSiding(color, style){
 
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   t.anisotropy=8;
 
   // BUMP MAP — grayscale height encoding the same relief (grooves/laps/battens
@@ -3551,7 +3591,7 @@ function makeCedar(){
   }
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   t.anisotropy=8;
   return t;
 }
@@ -3581,7 +3621,7 @@ function makeOSB(){
   }
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   t.anisotropy=8;
   _canvasCache['osb']=c;
   return t;
@@ -3611,7 +3651,7 @@ function makeOSBFloor(){
   ctx.beginPath(); ctx.moveTo(256,0); ctx.lineTo(256,512); ctx.moveTo(0,256); ctx.lineTo(512,256); ctx.stroke();
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   t.anisotropy=8;
   _canvasCache['osbfloor']=c;
   return t;
@@ -3670,7 +3710,7 @@ function makePlankFloor(key, plankWin, plankLin, base, grainA, grainB, jointHex)
   }
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   t.anisotropy=8;
   _canvasCache[ck]=c;
   return t;
@@ -3803,7 +3843,7 @@ function makeGrass(){
   }
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   t.anisotropy=8;
   return t;
 }
@@ -3821,7 +3861,7 @@ function makeSunsetSky(){
   g.addColorStop(1.00,'#f4b66b');   // glowing horizon
   ctx.fillStyle=g; ctx.fillRect(0,0,16,256);
   var t=new THREE.CanvasTexture(c);
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   return t;
 }
 
@@ -3851,7 +3891,7 @@ function makeDaySky(){
   g.addColorStop(1.00,'#d8e7f2');   // pale horizon line
   ctx.fillStyle=g; ctx.fillRect(0,0,16,256);
   var t=new THREE.CanvasTexture(c);
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   return t;
 }
 
@@ -3878,7 +3918,7 @@ function makeT111(color){
   }
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   t.anisotropy=8;
   // Bump: grooves sit low
   var bc=document.createElement('canvas');bc.width=512;bc.height=512;
@@ -4102,7 +4142,7 @@ function makeShingle(color){
 
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
+  t.encoding=THREE.sRGBEncoding;
   t.repeat.set(3,3); // overridden per-panel below
   t.anisotropy=8;
 
@@ -4169,7 +4209,7 @@ function makeMetal(color){
   for(var yy=0;yy<512;yy+=3){ ctx.fillStyle = (yy%6===0)?shade(20):shade(-20); ctx.fillRect(0,yy,512,1); }
   ctx.globalAlpha=1;
   var t=new THREE.CanvasTexture(c);
-  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; t.colorSpace=THREE.SRGBColorSpace;
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; t.encoding=THREE.sRGBEncoding;
   // bump map: emphasize the vertical seams
   var bc=document.createElement('canvas');bc.width=512;bc.height=512;
   var bx2=bc.getContext('2d'); bx2.fillStyle='#808080'; bx2.fillRect(0,0,512,512);
@@ -13960,18 +14000,18 @@ function applyLighting(){
       mountainFar.forEach(function(m){ m.material.color.setHex(0xffffff); });  // far range — full vertex gradient, no extra tint
       mountainNear.forEach(function(m){ m.material.color.setHex(0xffffff); }); // near range
     }
-    ambLight.intensity=0.18;
+    ambLight.intensity=DAY_RIG.amb;
     // Sky light lifted a touch too — a hemisphere light hits UP-facing surfaces
     // hardest, so it lands mostly on the roof, which is what we want here.
-    hemiLight.intensity=0.40; hemiLight.color.setHex(0xbcd0e0); hemiLight.groundColor.setHex(0x3a5030);
-    sunLight.intensity=1.7; sunLight.color.setHex(0xfff4e2);
+    hemiLight.intensity=DAY_RIG.hemi; hemiLight.color.setHex(0xbcd0e0); hemiLight.groundColor.setHex(0x3a5030);
+    sunLight.intensity=DAY_RIG.sun; sunLight.color.setHex(0xfff4e2);
     /* Back up to 23 degrees. Everything else in this branch was already the
        daylight rig; only the sun's elevation was still the low sunset one, so
        daylight came in raking across the walls with sunset-length shadows.
        Keep in sync with the init rig above. */
     sunLight.position.set(7,5.5,11);
-    fillLight.intensity=0.95; fillLight.color.setHex(0xfff0dc);
-    rimLight.intensity=0.4;  rimLight.color.setHex(0x2BB5E8);
+    fillLight.intensity=DAY_RIG.fill; fillLight.color.setHex(0xfff0dc);
+    rimLight.intensity=DAY_RIG.rim;  rimLight.color.setHex(0x2BB5E8);
   }
   if(skyDome) skyDome.material.needsUpdate=true;
   // Always attach the package's fixtures (interior lights exist in daylight too).
