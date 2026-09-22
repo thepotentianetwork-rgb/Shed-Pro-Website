@@ -10061,6 +10061,42 @@ function ensureEditMode(on){
 }
 
 // ---- STYLE tiles ----
+/* STARTING SIZE PER STYLE.
+   A poolhouse reads wrong as a corridor - hip roofs want a square footprint,
+   so it opens at 10x10. A lean-to is a wide shallow structure leaning on
+   something, so it opens 12 wide by 6 deep. Everything else keeps the 8x12
+   the page loads with. Fernando, 22 Sep 2026.
+   Only w and l. Wall height is not a function of the roof shape, and a
+   poolhouse at 10ft walls is as reasonable as one at 8. */
+var STYLE_START = {
+  hip:    { w: 10, l: 10 },
+  leanto: { w: 12, l: 6  }
+};
+var STYLE_START_DEFAULT = { w: 8, l: 12 };
+
+/* Whether the customer has moved a size slider themselves. A starting point is
+   supposed to start you somewhere, not argue with you: once someone has set a
+   size, going back and tapping a different style must not throw it away.
+   Set by setW/setL, which is why applyStyleStart puts it back afterwards - it
+   goes THROUGH setW/setL so the labels and clampPorch run, and would otherwise
+   mark its own work as the customer's. */
+var SIZE_SET_BY_CUSTOMER = false;
+
+function applyStyleStart(style){
+  var st = STYLE_START[style] || STYLE_START_DEFAULT;
+  if(SIZE_SET_BY_CUSTOMER) return false;
+  var was = SIZE_SET_BY_CUSTOMER;
+  if(typeof setW==='function'){ setW(st.w); setL(st.l); }
+  else { W=st.w; L=st.l; }
+  SIZE_SET_BY_CUSTOMER = was;
+  /* The range inputs read their own value attribute, so the globals moving is
+     not enough - without this the size step shows the old numbers beside a
+     resized shed. data-step="1" is the size panel. */
+  var sl = document.querySelectorAll('.wstep[data-step="1"] input[type=range]');
+  if(sl.length>=2){ sl[0].value=st.w; sl[1].value=st.l; }
+  return true;
+}
+
 function pickStyle(style, el){
   document.querySelectorAll('#styleGrid .tile').forEach(function(t){t.classList.remove('on');});
   if(el) el.classList.add('on');
@@ -10070,6 +10106,9 @@ function pickStyle(style, el){
   // a shell that can't build one.
   if(typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none'){ PORCH_LOC='none'; SIDE_PORCH=0; }
   document.querySelectorAll('.style-btn').forEach(function(b){b.classList.remove('on');});
+  /* Before buildShed, so the size change and the style change land in one
+     rebuild rather than drawing the new roof over the old footprint first. */
+  applyStyleStart(style);
   buildShed();
   if(typeof syncPorchBtn==='function') syncPorchBtn();
   if(typeof syncOverhangUI==='function') syncOverhangUI();
@@ -11204,8 +11243,8 @@ function _sizeLabel(){
   var eat=porchEatFt(), enc=(W-eat.w)*(L-eat.l);
   el.textContent=(W*L)+' sq ft'+((eat.w||eat.l)?(' \u00b7 '+enc+' enclosed'):'');
 }
-function setW(v){W=+v;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);}
-function setL(v){L=+v;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
+function setW(v){W=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);}
+function setL(v){L=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
 function setH(v){
   H=+v;
   var wh = quoteCache.optionPrices && quoteCache.optionPrices.wallHeight;
@@ -13785,6 +13824,11 @@ function applyDesignConfig(c){
   try{
     if(c.use!=null && typeof SHED_USE!=='undefined') SHED_USE=c.use;
     if(c.style)STYLE=c.style; if(c.w)W=+c.w; if(c.l)L=+c.l; if(c.h)H=+c.h;
+    /* A saved design's size was chosen by someone, even though it arrives by
+       assignment rather than through setW/setL. Without this, reopening a link
+       and tapping a style would snap the shed back to that style's starting
+       size and throw the saved footprint away. */
+    if(c.w || c.l) SIZE_SET_BY_CUSTOMER = true;
     if(c.pitch!=null)PITCH=+c.pitch;
     if(c.siding)SIDING=c.siding;
     if(c.pineDir)PINE_DIR=c.pineDir;
