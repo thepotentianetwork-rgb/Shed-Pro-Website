@@ -53,7 +53,13 @@ function matches(el, sel){
   if (m) return m[2] == null ? el.getAttribute('data-'+m[1]) != null : el.getAttribute('data-'+m[1]) === m[2];
   return false;
 }
-const STYLES = [['gable','Most popular'],['barn','Max loft space'],['leanto','Modern look'],['hip','Hip roof']];
+/* The real grid, plus one tile with no badge. Every shipped style carries a
+   badge today, so without this the "keep the description" half of the rule
+   would have nothing to exercise — and that path is still live: it is what
+   puts the words back when a recommendation is withdrawn. */
+const STYLES = [['gable','Most popular'],['barn','Max loft space'],
+                ['leanto','Modern look'],['hip','Hip roof'],
+                ['unbadged','A plain description']];
 let grid, tiles;
 function buildDom(){
   grid = El(''); grid.__id = 'styleGrid';
@@ -79,7 +85,11 @@ function buildDom(){
   };
 }
 const shown = (st) => { const p = tiles[st].price; return p.firstChild ? p.firstChild.textContent : p.textContent; };
-const isBadge = (st) => { const p = tiles[st].price; return !!(p.firstChild && p.firstChild.className === 'tile-price-badge'); };
+const isBadge = (st) => { const p = tiles[st].price; return !!(p.firstChild && /tile-price-badge/.test(p.firstChild.className || '')); };
+const tierOf = (st) => { const p = tiles[st].price; const m = /tier-(\w+)/.exec((p.firstChild && p.firstChild.className) || ''); return m ? m[1] : null; };
+// A badge is a string, or {text, tier} when it needs its own look.
+const badgeText = (st) => { const b = c.STYLE_BADGES[st]; return (b && typeof b === 'object') ? b.text : b; };
+const badgeTier = (st) => { const b = c.STYLE_BADGES[st]; return (b && typeof b === 'object') ? (b.tier || null) : null; };
 
 
 buildDom();
@@ -91,7 +101,7 @@ test('a style with a badge shows it instead of its description', () => {
   for (const [st, desc] of STYLES) {
     if (c.STYLE_BADGES[st]) {
       assert.ok(isBadge(st), `${st} shows a badge`);
-      assert.equal(shown(st), c.STYLE_BADGES[st], `${st} shows "${c.STYLE_BADGES[st]}"`);
+      assert.equal(shown(st), badgeText(st), `${st} shows "${badgeText(st)}"`);
     } else {
       assert.ok(!isBadge(st), `${st} has no badge`);
       assert.equal(shown(st), desc, `${st} keeps "${desc}"`);
@@ -103,20 +113,49 @@ test('running it again changes nothing', () => {
   // It runs on every step change, and a badge that re-badged itself would
   // stack, while one that restored first and then failed would go blank.
   c.applyRecommendations(); c.applyRecommendations(); c.applyRecommendations();
-  assert.equal(shown('barn'), c.STYLE_BADGES['barn']);
+  assert.equal(shown('barn'), badgeText('barn'));
   assert.ok(isBadge('barn'));
-  assert.equal(shown('gable'), 'Most popular');
-  assert.ok(!isBadge('gable'));
+  assert.equal(shown('hip'), badgeText('hip'));
+  assert.ok(isBadge('hip'));
 });
 
-test('a recommendation badges a plain tile, and giving it up restores the words', () => {
+test('a recommendation outranks a standing badge, and is given back after', () => {
+  /* The advice is what the customer needs at that moment, so it takes the line
+     from "Most popular" - and when the advice no longer applies, the standing
+     badge has to come back rather than the tile going blank or keeping the
+     recommendation. */
+  c.SHED_USE = 'custom'; c.applyRecommendations();
+  assert.equal(shown('gable'), badgeText('gable'), 'standing badge to start');
+
   c.SHED_USE = 'golfsim'; c.applyRecommendations();
-  assert.ok(isBadge('gable'), 'the recommended style is badged');
-  assert.equal(shown('gable'), 'Recommended');
+  assert.equal(shown('gable'), 'Recommended', 'the advice wins the line');
 
   c.SHED_USE = 'custom'; c.applyRecommendations();
-  assert.ok(!isBadge('gable'), 'the badge is gone');
-  assert.equal(shown('gable'), 'Most popular', 'and the description came back');
+  assert.equal(shown('gable'), badgeText('gable'), 'and the standing badge returns');
+  assert.ok(isBadge('gable'));
+});
+
+test('the premium shells get the black badge, the rest do not', () => {
+  c.SHED_USE = 'custom'; c.applyRecommendations();
+  for (const [st] of STYLES) {
+    if (!c.STYLE_BADGES[st]) continue;
+    assert.equal(tierOf(st), badgeTier(st),
+      `${st}: ${badgeTier(st) ? 'luxury look' : 'the house look'}`);
+  }
+  assert.equal(badgeTier('hip'), 'luxury', 'the poolhouse is one of them');
+  assert.equal(badgeTier('gable'), null, 'the everyday one is not');
+});
+
+test('an unbadged style still keeps its description', () => {
+  // Not every tile carries a badge, and the ones that do not must read exactly
+  // as they did — this is the "unless there is no badge" half of the ask.
+  c.SHED_USE = 'custom'; c.applyRecommendations();
+  const plain = STYLES.filter(([st]) => !c.STYLE_BADGES[st]);
+  assert.ok(plain.length, 'there is at least one unbadged style to check');
+  for (const [st, desc] of plain) {
+    assert.ok(!isBadge(st), `${st} has no badge`);
+    assert.equal(shown(st), desc, `${st} keeps "${desc}"`);
+  }
 });
 
 test('a recommendation beats a standing badge rather than stacking with it', () => {

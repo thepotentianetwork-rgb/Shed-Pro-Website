@@ -309,6 +309,19 @@ textarea.inp{resize:vertical}
 .scheme-name{font-size:12px;font-weight:800;color:var(--w);line-height:1.2}
 .scheme-sub{font-size:10px;color:var(--mu);line-height:1.3;margin-top:2px}
 @media (max-width:400px){.scheme-strip{grid-template-columns:1fr}}
+/* POPULAR SIZES — the colour-scheme strip's shape, three across because a
+   size tile is a number and a number is narrow. */
+.size-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.size-tile{background:var(--d3);border:1px solid var(--br);border-radius:9px;padding:8px 6px;
+  cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.size-tile:hover{border-color:rgba(43,181,232,.45)}
+.size-tile.on{border-color:#2BB5E8;background:rgba(43,181,232,.1)}
+.size-dim{font-size:13px;font-weight:800;color:var(--w);line-height:1.15}
+.size-sq{font-size:10px;color:var(--mu);margin-top:2px}
+/* Over the permit line. Amber, not red: it is a thing to know, not a refusal,
+   and the sqft box below already carries the full sentence. */
+.size-tile .size-sq.over{color:#FFC078}
+@media (max-width:330px){.size-strip{grid-template-columns:repeat(2,1fr)}}
 /* "Talk to a designer" — deliberately NOT a .cta. It sits directly under the
    Next button and the one thing it must never do is compete with it: someone
    who knows what they want should never have to pick between two buttons of
@@ -385,6 +398,12 @@ textarea.inp{resize:vertical}
    sized to sit on the subtitle row rather than in a corner. */
 .tile-price-badge{display:inline-block;background:#F8921E;color:#1a1205;border-radius:4px;
   padding:1px 6px;font-size:9px;font-weight:900;letter-spacing:.3px;text-transform:uppercase}
+/* LUXURY. Black with a gold hairline and gold lettering, so the premium shells
+   do not shout in the same orange as "Popular". Letter-spacing is wider than
+   the orange badge: at 9px that is most of what reads as expensive. */
+.tile-price-badge.tier-luxury{background:linear-gradient(160deg,#25211a 0%,#0d0c0a 100%);
+  color:#E8C87A;border:1px solid rgba(232,200,122,.55);letter-spacing:1px;
+  box-shadow:0 1px 4px rgba(0,0,0,.45)}
 /* A section heading in the upgrades list. Quiet - it is a divider, not a
    control, and the checkboxes under it are what the customer is aiming at. */
 .addon-sec{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
@@ -510,17 +529,17 @@ textarea.inp{resize:vertical}
         <div class="tgrid" id="styleGrid">
           <div class="tile on" data-style="gable" onclick="pickStyle('gable',this)">
             <div class="tile-img" data-icon="style-gable"></div>
-            <div class="tile-cap"><div class="tile-name">A-Frame / Gable</div><div class="tile-price">Most popular</div></div>
+            <div class="tile-cap"><div class="tile-name">Gable (A-Frame)</div><div class="tile-price">Most popular</div></div>
             <div class="tile-check">&#10003;</div>
           </div>
           <div class="tile" data-style="barn" onclick="pickStyle('barn',this)">
             <div class="tile-img" data-icon="style-barn"></div>
-            <div class="tile-cap"><div class="tile-name">Barn / Gambrel</div><div class="tile-price">Max loft space</div></div>
+            <div class="tile-cap"><div class="tile-name">Barn Style (Gambrel)</div><div class="tile-price">Max loft space</div></div>
             <div class="tile-check">&#10003;</div>
           </div>
           <div class="tile" data-style="leanto" onclick="pickStyle('leanto',this)">
             <div class="tile-img" data-icon="style-leanto"></div>
-            <div class="tile-cap"><div class="tile-name">Lean-To / Slope</div><div class="tile-price">Modern look</div></div>
+            <div class="tile-cap"><div class="tile-name">Lean-To (Single Slope)</div><div class="tile-price">Modern look</div></div>
             <div class="tile-check">&#10003;</div>
           </div>
           <div class="tile" data-style="hip" onclick="pickStyle('hip',this)">
@@ -551,9 +570,9 @@ textarea.inp{resize:vertical}
                Front and Side still call pickPorchStyle, so each keeps quoting
                off its own sheet in the workbook — this changes how the choice
                is presented, not how it prices. -->
-          <div class="tile" id="porchFrontBtn" onclick="pickPorchStyle(PORCH_LOC==='side'?'side':'front',this)">
+          <div class="tile" id="porchFrontBtn" data-styletile="porch" onclick="pickPorchStyle(PORCH_LOC==='side'?'side':'front',this)">
             <div class="tile-img" id="porchFrontIcon"></div>
-            <div class="tile-cap"><div class="tile-name">Cabin / Porch</div>
+            <div class="tile-cap"><div class="tile-name">Cabin Style / Porch Style</div>
               <div class="tile-price" id="porchFrontLabel">Front or side porch</div></div>
             <div class="tile-check">&#10003;</div>
           </div>
@@ -580,6 +599,14 @@ textarea.inp{resize:vertical}
            the footprint; with size first, that cap is always answering a
            real width/length instead of the 8x12 default. -->
       <div class="wstep" data-step="1">
+        <div class="grp">
+          <!-- Popular sizes first, sliders under them. Most customers want a
+               size they have seen on someone else's lot, not a number they
+               have to derive from two sliders; the sliders are still there for
+               everyone else. -->
+          <span class="lbl">Popular Sizes</span>
+          <div id="sizeStrip" class="size-strip"></div>
+        </div>
         <div class="grp">
           <span class="lbl">Dimensions</span>
           <div class="sw">
@@ -2725,21 +2752,32 @@ var SHED_USE_RECS = {
    These are positioning, not advice — 3 and 4 Peak are the premium builds and
    a lean-to is the contemporary one, and that is true of them regardless of
    use. Keyed the same way as SHED_USE_RECS so both feed one renderer. */
+/* A badge is either a string or {text, tier}. The tier picks the look:
+   'luxury' is black with a gold hairline, everything else is the house orange.
+   Premium reads as premium when it stops shouting in the same colour as
+   "Popular" - that is the whole reason the tier exists. */
 var STYLE_BADGES = {
-  /* v486 — 'Most space' on the barn, and it is a measured claim rather than a
+  // The one most people buy, said out loud rather than left as a subtitle.
+  'gable':  'Most popular',
+  /* v486 - 'Most space' on the barn, and it is a measured claim rather than a
      sales one. Comparing the section above the wall top at the same footprint,
      a gambrel beats a gable by 35% at a steep 8/12 and by 166% at a shallow
      4/12, and it wins at every pitch and width we offer. The reason is the
      knee: the walls kick out at 0.365 of the width and carry near-full height
      out to there, where a gable is already closing in.
-     Headroom too — at 10ft wide and 4/12, a barn peaks 3.40ft above the wall
-     against a gable's 1.71ft.
-     Kept to two words because the badge is 8px; the tile's own subtitle
-     already says "Max loft space" underneath it. */
+     Headroom too - at 10ft wide and 4/12, a barn peaks 3.40ft above the wall
+     against a gable's 1.71ft. */
   'barn':   'Most space',
-  '3peak':  'Luxury',
-  '4peak':  'Luxury',
-  'leanto': 'Modern'
+  'leanto': 'Modern',
+  // The hip roof is the dearest shell we build and the one people put beside a
+  // pool, so it carries the same mark as the peaks.
+  'hip':    {text:'Luxury', tier:'luxury'},
+  '3peak':  {text:'Luxury', tier:'luxury'},
+  '4peak':  {text:'Luxury', tier:'luxury'},
+  /* The porch tile is keyed by its own attribute because it has no data-style:
+     picking it sets the A-frame shell AND a porch. The badge says the thing a
+     customer cannot tell from the icon - the deck comes with it. */
+  'porch':  'Includes deck'
 };
 /* Every standing badge on an individual option, in one table so the labels can
    be read and changed together instead of hunted through four renderers.
@@ -2824,7 +2862,7 @@ function applyRecommendations(){
   var marked=document.querySelectorAll('#styleGrid .tile[data-badged]');
   for(var q=0;q<marked.length;q++) marked[q].removeAttribute('data-badged');
 
-  function badge(sel, text){
+  function badge(sel, text, tier){
     var els=document.querySelectorAll(sel);
     for(var j=0;j<els.length;j++){
       var el=els[j];
@@ -2839,6 +2877,7 @@ function applyRecommendations(){
         if(cap.getAttribute('data-desc')==null) cap.setAttribute('data-desc', cap.textContent);
         cap.innerHTML='<span class="tile-price-badge"></span>';
         cap.firstChild.textContent=text;          // text, never markup
+        if(tier) cap.firstChild.className='tile-price-badge tier-'+tier;
         if(el.setAttribute) el.setAttribute('data-badged','1');
         continue;
       }
@@ -2854,7 +2893,13 @@ function applyRecommendations(){
     badge('[data-'+attr+'="'+recs[attr]+'"]', 'Recommended');
   });
   Object.keys(STYLE_BADGES).forEach(function(st){
-    badge('[data-style="'+st+'"]', STYLE_BADGES[st]);
+    var b=STYLE_BADGES[st];
+    var text=(b && typeof b==='object') ? b.text : b;
+    var tier=(b && typeof b==='object') ? b.tier : null;
+    // Most tiles are found by data-style; the porch tile carries its own
+    // attribute because it is not a style, it is a style plus a porch.
+    badge('[data-style="'+st+'"]', text, tier);
+    badge('[data-styletile="'+st+'"]', text, tier);
   });
   stampStaticBadges();
 }
@@ -10630,6 +10675,7 @@ function wizRender(){
   // Any step change ends the wall question — leaving the chip floating over a
   // different step is how it turns into a button nobody knows the target of.
   if(typeof hideWallPick==='function') hideWallPick();
+  if(typeof renderSizeStrip==='function') renderSizeStrip();
   if(typeof closeSubPage==='function') closeSubPage();
   // The slope highlight is NOT tied to the Roof step — it only shows while the
   // person is actually adding or editing a dormer (see setDormerEdit). Leaving
@@ -11967,8 +12013,12 @@ function _sizeLabel(){
   var eat=porchEatFt(), enc=(W-eat.w)*(L-eat.l);
   el.textContent=(W*L)+' sq ft'+((eat.w||eat.l)?(' \u00b7 '+enc+' enclosed'):'');
 }
-function setW(v){W=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);}
-function setL(v){L=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
+// _sizeStripSync: the preset highlight has to follow the sliders too, or
+// dragging off a preset leaves it looking selected. Guarded because setW runs
+// during startup, before the strip exists.
+function _sizeStripSync(){ if(typeof renderSizeStrip==='function') renderSizeStrip(); }
+function setW(v){W=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();_sizeStripSync();buildShed();autoFrame(false);}
+function setL(v){L=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();_sizeStripSync();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
 function setH(v){
   H=+v;
   var wh = quoteCache.optionPrices && quoteCache.optionPrices.wallHeight;
@@ -12343,6 +12393,58 @@ function currentSchemeKey(){
     if(c.s===sc && c.t===tc && c.r===rc) return c.k;
   }
   return null;
+}
+
+/* POPULAR SIZES.
+
+   Both sliders step in 2ft, so every size here has to be even on both counts
+   or tapping a tile would leave a slider showing a number it cannot hold. The
+   widths run 6-20 and the lengths 6-32; anything outside is clamped by setW
+   and setL, which would quietly give the customer a different shed from the
+   one on the tile, so the list is checked against the sliders by a test
+   rather than by eye.
+
+   PERMIT_SQFT is the line the box below the sliders already warns about. The
+   tiles mark it too, because the point of a preset is to decide before you
+   have started, and "this one needs a permit" is most of that decision. */
+var PERMIT_SQFT = 200;
+var POPULAR_SIZES = [
+  {w:8,  l:10},   // the small one: mower, bikes, bins
+  {w:8,  l:12},   // the default shell
+  {w:10, l:12},
+  {w:10, l:16},
+  {w:12, l:16},   // 192 sqft - the biggest that stays under the permit line
+  {w:12, l:20},
+  {w:12, l:24},
+  {w:16, l:24}    // workshop / two-bay
+];
+function currentSizeKey(){
+  for(var i=0;i<POPULAR_SIZES.length;i++){
+    if(POPULAR_SIZES[i].w===W && POPULAR_SIZES[i].l===L) return i;
+  }
+  return -1;      // a size off the presets is not a preset; nothing highlights
+}
+function renderSizeStrip(){
+  var el=document.getElementById('sizeStrip'); if(!el) return;
+  var cur=currentSizeKey();
+  el.innerHTML = POPULAR_SIZES.map(function(sz, i){
+    var sq=sz.w*sz.l, over=(sq>PERMIT_SQFT);
+    return '<div class="size-tile'+(i===cur?' on':'')+'" onclick="applyPopularSize('+sz.w+','+sz.l+')">'+
+      '<div class="size-dim">'+sz.w+' &times; '+sz.l+'</div>'+
+      '<div class="size-sq'+(over?' over':'')+'">'+sq+' sq ft'+(over?' \u00b7 permit':'')+'</div>'+
+    '</div>';
+  }).join('');
+}
+function applyPopularSize(w, l){
+  /* Through setW/setL, not by assigning W and L: those two also mark the size
+     as the customer's (so changing style later does not resize the build),
+     move the sliders, reclamp the porch and rebuild. Setting the globals here
+     would skip all of it. */
+  var ws=document.querySelectorAll('.wstep[data-step="1"] input[type=range]');
+  if(typeof setW==='function') setW(w); else W=w;
+  if(typeof setL==='function') setL(l); else L=l;
+  if(ws.length>=2){ ws[0].value=w; ws[1].value=l; }
+  renderSizeStrip();
 }
 
 function renderSchemeStrip(){
