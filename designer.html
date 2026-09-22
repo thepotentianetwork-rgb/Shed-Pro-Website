@@ -7928,11 +7928,59 @@ function buildDoor(){
       // plain door still gets the perimeter frame (see the catalog icon)
       frameEdge();
     } else if(DOOR==='craftsman'){
-      // three equal panels: perimeter frame + two cross rails
-      var fb2=frameEdge();
-      var span=fb2.y1-fb2.y0;
-      midRail(fb2.y0+span/3);
-      midRail(fb2.y0+span*2/3);
+      /* A CRAFTSMAN DOOR IS A SPECIFIC THING, and this was not it: a perimeter
+         frame with two cross rails, i.e. a plain three-panel door wearing the
+         name. What makes a door read Craftsman, in order of how much work each
+         one does:
+
+           1. A ROW OF SMALL LITES across the top - three narrow ones, not one
+              wide pane. The divisions are the point.
+           2. A DENTIL SHELF under the glass: a shelf that actually projects
+              from the face, with little square blocks beneath it. This is the
+              signature. Without it the door is just a lite-over-panel door.
+           3. Flat panels below, TWO of them side by side, tall and plain.
+
+         Drawn from the top down so each band's edge is the next one's start
+         and the door cannot end up with a gap or an overlap between them. */
+      var fc=frameEdge();
+      var spanC=fc.y1-fc.y0;
+
+      // 1 - the lites. Their height is set by the rail under them so the glass
+      // band and the shelf below it always add up to the same quarter.
+      var railH=EB*0.85;
+      var liteTop=fc.y1;
+      var liteBot=fc.y1-spanC*0.24;
+      glassPane(inW, liteTop-liteBot, x, (liteTop+liteBot)/2);
+      var nLite=3;
+      for(var cl=1;cl<nLite;cl++){
+        bx(EB*0.46, liteTop-liteBot, TD, muntinMat,
+           x-inW/2+inW*(cl/nLite), (liteTop+liteBot)/2, zf);
+      }
+      // the rail that carries the shelf
+      var railY=liteBot-railH/2;
+      bx(inW, railH, TD, muntinMat, x, railY, zf);
+
+      // 2 - the dentil shelf. It PROJECTS: a Craftsman shelf you cannot see
+      // from the side is a line, and a line is what the old door already had.
+      var shelfY=railY-railH/2;
+      var shelfD=TD+0.026;                      // stands proud of the trim face
+      var shelfH=0.016;
+      bx(lwF, shelfH, shelfD, muntinMat, x, shelfY-shelfH/2, zf+(shelfD-TD)/2);
+      // the blocks under it, evenly spaced across the clear width
+      var nDent=5, dentW=inW/(nDent*2+1), dentH=0.014;
+      for(var dq=0;dq<nDent;dq++){
+        bx(dentW, dentH, TD+0.012, muntinMat,
+           x-inW/2+dentW*(1.5+dq*2), shelfY-shelfH-dentH/2, zf+0.006);
+      }
+
+      // 3 - two tall flat panels under it, split by a centre mullion.
+      var panTop=shelfY-shelfH-dentH-0.006;
+      var panBot=fc.y0+railH*0.5;
+      if(panTop-panBot>0.06){
+        bx(EB*0.55, panTop-panBot, TD, muntinMat, x, (panTop+panBot)/2, zf);
+        bx(inW, railH*0.7, TD, muntinMat, x, panTop, zf);      // rail over the panels
+        bx(inW, railH*0.7, TD, muntinMat, x, panBot, zf);      // and under them
+      }
     } else if(DOOR==='xtrim'){
       var fx=frameEdge();
       var midY2=fx.y0+(fx.y1-fx.y0)*0.52;
@@ -11511,7 +11559,23 @@ function doorStyleIcon(style, kind){
   }
   switch(style){
     case 'craftsman':
-      p+=leaves(function(x0,x1){var mx=(x0+x1)/2;return '<line x1="'+mx+'" y1="8" x2="'+mx+'" y2="40"/><line x1="'+x0+'" y1="16" x2="'+x1+'" y2="16"/><line x1="'+x0+'" y1="24" x2="'+x1+'" y2="24"/>';});
+      /* Lites across the top, a shelf line under them with its dentil ticks,
+         then two tall panels. The icon used to be a centre mullion and two
+         cross lines - a six-panel door, which is what the 3D was building. */
+      p+=leaves(function(x0,x1){
+        var w=x1-x0, t=w/3;
+        var o='<rect x="'+x0+'" y="8" width="'+w+'" height="7"/>';       // the glass band
+        o+='<line x1="'+(x0+t)+'" y1="8" x2="'+(x0+t)+'" y2="15"/>';     // two muntins
+        o+='<line x1="'+(x0+2*t)+'" y1="8" x2="'+(x0+2*t)+'" y2="15"/>';
+        o+='<line x1="'+(x0-1)+'" y1="18" x2="'+(x1+1)+'" y2="18"/>';    // the shelf, proud
+        for(var d=0;d<3;d++){                                            // dentil blocks
+          var dx=x0+w*(0.25+d*0.25);
+          o+='<line x1="'+dx+'" y1="18" x2="'+dx+'" y2="20"/>';
+        }
+        o+='<rect x="'+x0+'" y="23" width="'+(w/2-1)+'" height="17"/>';  // two tall panels
+        o+='<rect x="'+(x0+w/2+1)+'" y="23" width="'+(w/2-1)+'" height="17"/>';
+        return o;
+      });
       break;
     case 'xtrim':
       p+=leaves(function(x0,x1){return '<line x1="'+x0+'" y1="26" x2="'+x1+'" y2="40"/><line x1="'+x1+'" y1="26" x2="'+x0+'" y2="40"/><line x1="'+x0+'" y1="26" x2="'+x1+'" y2="26"/>';});
