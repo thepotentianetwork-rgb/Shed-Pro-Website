@@ -188,6 +188,61 @@ test('the muntins sit on the glass, not beside it', () => {
   }
 });
 
+/* NO HARDWARE ACROSS THE GLASS — on any glazed door, not just this one.
+ *
+ * hingeYs already walks the leaf, subtracts the glazed band and spreads the
+ * hinges over what is left. What it cannot do is subtract a band nobody told
+ * it about: while glassRegion returned null for the Craftsman door, the whole
+ * leaf counted as solid and the top hinge landed straight across the lites at
+ * 70in. The cedar door had had exactly this bug before, which is why hingeYs
+ * exists — and it came back the moment a new glazed style was added without a
+ * glassRegion entry.
+ *
+ * So this is written against every glazed style rather than the one that was
+ * reported, because the next new glazed door will be added the same way. */
+for (const [style, w] of [['craftsman',36], ['craftsman',60], ['cedar',36], ['cedar',60],
+                          ['reshalf',36], ['resfull',36]]) {
+  test(`no hinge or handle crosses the glass — ${style}, ${w}in`, () => {
+    const parts = doorParts(build(style, w));
+    const glass = glassOf(parts);
+    assert.ok(glass.length, `${style} is glazed`);
+    // Hardware is the dark metal on the door; the leaf and trim are not.
+    const dark = parts.filter(x => {
+      const mt = x.obj.material;
+      return x.type !== 'PlaneGeometry' && mt && mt.color
+          && mt.color.r < 0.25 && mt.color.g < 0.25 && mt.color.b < 0.25;
+    });
+    const over = dark.filter(h => glass.some(g =>
+      h.max.y > g.min.y && h.min.y < g.max.y && h.max.x > g.min.x && h.min.x < g.max.x));
+    assert.equal(over.length, 0,
+      `${over.length} pieces of hardware sit over a pane: ` +
+      JSON.stringify(over.slice(0,3).map(h => ({
+        y0:+h.min.y.toFixed(3), y1:+h.max.y.toFixed(3),
+        x0:+h.min.x.toFixed(3), x1:+h.max.x.toFixed(3) }))));
+  });
+}
+
+test('every style with a glazed band declares it, so hingeYs can dodge it', () => {
+  /* The root cause, stated directly. A door whose leaf is cut for glass but
+     whose glassRegion says null is the exact shape of the bug: the opening
+     exists, and everything that asks "where is the glass" gets told nothing. */
+  for (const style of ['craftsman', 'cedar', 'reshalf', 'resfull']) {
+    const parts = doorParts(build(style, 36));
+    const glass = glassOf(parts);
+    if (!glass.length) continue;
+    const b = doorBox(parts);
+    const gy0 = Math.min(...glass.map(g => g.min.y));
+    const gy1 = Math.max(...glass.map(g => g.max.y));
+    // The leaf must actually be open there: a slab behind the pane would mean
+    // the glass is decoration and the band is not a band.
+    const slabs = parts.filter(x => x.type === 'BoxGeometry' && (x.max.z - x.min.z) > 0.045);
+    const behind = slabs.filter(sl => sl.min.y < gy1 - 0.01 && sl.max.y > gy0 + 0.01
+      && sl.min.x < 0 && sl.max.x > 0);
+    assert.equal(behind.length, 0,
+      `${style}: nothing solid sits behind the glass (found ${behind.length})`);
+  }
+});
+
 test('it no longer looks like the plain door', () => {
   // The old craftsman was a frame and two rails, which is what 'basic' already
   // is plus lines. If these two ever converge again, something has been undone.
