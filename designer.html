@@ -385,6 +385,11 @@ textarea.inp{resize:vertical}
    sized to sit on the subtitle row rather than in a corner. */
 .tile-price-badge{display:inline-block;background:#F8921E;color:#1a1205;border-radius:4px;
   padding:1px 6px;font-size:9px;font-weight:900;letter-spacing:.3px;text-transform:uppercase}
+/* A section heading in the upgrades list. Quiet - it is a divider, not a
+   control, and the checkboxes under it are what the customer is aiming at. */
+.addon-sec{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mu);margin:14px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--br)}
+.addon-sec:first-child{margin-top:2px}
 .opt-badge{display:inline-block;margin-left:7px;background:#F8921E;color:#1a1205;
   font-size:8px;font-weight:900;letter-spacing:.03em;padding:1px 5px;border-radius:7px;
   text-transform:uppercase;line-height:1.5;vertical-align:middle;white-space:nowrap}
@@ -12487,26 +12492,53 @@ function setFoundation(k){ FOUNDATION=k; if(k!=='pad') FOUNDATION_STAIN='none'; 
 // items (shutters, ridgeVent, skylight, stairs, statLadder, atticLadder) and
 // per-sqft ones (weatherGuard, radiantBarrier, houseWrap, hurricaneTies) both
 // come back as a single number \u2014 the client never sees the $/sqft rate.
+/* THE UPGRADES STEP, IN SECTIONS.
+
+   Fourteen checkboxes in one column made the customer read every line to find
+   the two they came for, and put "Remove Existing Concrete" next to "Flower
+   Boxes" as though they were the same kind of decision. Each item now names
+   the section it belongs to and the renderer groups them, in SECTION order
+   rather than item order, so adding one is still a single line.
+
+   The "shown in 3D" tag is gone from these rows. It told the customer which
+   items the model would draw, which is a fact about the software rather than
+   about the shed, and on a row already carrying a name, a badge and a price it
+   was a fourth thing competing for one line. `visual` went with it: the flag
+   existed only to print that tag and nothing else read it. The foundation list
+   keeps its own tag - different step, and there the choice really is about
+   what you will be looking at. */
+var ADDON_SECTIONS=[
+  {k:'openings', name:'Doors & Windows'},
+  {k:'access',   name:'Access'},
+  /* House wrap, radiant barrier, floor weather guard, ridge vent, hurricane
+     ties. What they have in common is the building envelope: keeping weather
+     and moisture out and air where it belongs. That is what you add if you
+     mean to finish the inside, and it is also just a better-built shed, which
+     is why they sit under one heading instead of being scattered between the
+     flower boxes and the demolition. */
+  {k:'envelope', name:'Insulation & Weatherproofing'},
+  /* Last on purpose: everything above adds to the new shed, these two clear
+     what is already on the site. Flat fees - the job is a crew and a dump run
+     whatever size the old shed was. */
+  {k:'site',     name:'Site Prep'}
+];
 var ADDON_ITEMS=[
-  {k:'flowerboxes', name:'Flower Boxes', perWindow:true, visual:true},
-  {k:'doorAwning',  name:'Door Overhang', price:'price TBD \u00b7 pick which doors on the Doors step', visual:true},
-  {k:'shutters',    name:'Shutters',      visual:true},
-  // needsRidge: hidden on styles with no ridge to vent \u2014 the option is
+  {k:'flowerboxes', name:'Flower Boxes', perWindow:true, sec:'openings'},
+  {k:'doorAwning',  name:'Door Overhang', price:'price TBD \u00b7 pick which doors on the Doors step', sec:'openings'},
+  {k:'shutters',    name:'Shutters',      sec:'openings'},
+  {k:'skylight',    name:'Skylight',      sec:'openings'},
+  {k:'stairs',      name:'Stairs',        sec:'access'},
+  {k:'statLadder',  name:'Stationary Ladder',      sec:'access'},
+  {k:'atticLadder', name:'Attic Pull-Down Ladder', sec:'access'},
+  // needsRidge: hidden on styles with no ridge to vent - the option is
   // otherwise tappable on a Lean-To for something that cannot be built.
-  {k:'ridgeVent',   name:'Roof Ridge Vent', visual:true, needsRidge:true},
-  {k:'skylight',    name:'Skylight'},
-  {k:'stairs',      name:'Stairs'},
-  {k:'statLadder',  name:'Stationary Ladder'},
-  {k:'atticLadder', name:'Attic Pull-Down Ladder'},
-  {k:'weatherGuard',name:'Floor Weather Guard'},
-  {k:'radiantBarrier',name:'Radiant Roof Barrier', visual:true},
-  {k:'houseWrap',   name:'House Wrap',     visual:true},
-  {k:'hurricaneTies',name:'Hurricane Ties'},
-  // Last on the list on purpose: everything above adds to the new shed, these
-  // two clear what is already on the site. Flat fees — the job is a crew and a
-  // dump run whatever size the old shed was.
-  {k:'shedRemoval',    name:'Remove Existing Shed'},
-  {k:'concreteRemoval',name:'Remove Existing Concrete'}
+  {k:'ridgeVent',   name:'Roof Ridge Vent', needsRidge:true, sec:'envelope'},
+  {k:'houseWrap',   name:'House Wrap',             sec:'envelope'},
+  {k:'radiantBarrier',name:'Radiant Roof Barrier', sec:'envelope'},
+  {k:'weatherGuard',name:'Floor Weather Guard',    sec:'envelope'},
+  {k:'hurricaneTies',name:'Hurricane Ties',        sec:'envelope'},
+  {k:'shedRemoval',    name:'Remove Existing Shed',     sec:'site'},
+  {k:'concreteRemoval',name:'Remove Existing Concrete', sec:'site'}
 ];
 function addonPriceText(it){
   if(it.price) return it.price;   // doorAwning's fixed "TBD" note
@@ -12520,18 +12552,47 @@ function renderAddons(){
   var host=document.getElementById('addonList'); if(!host) return;
   var html='';
   // (Cupola moved to the Roof step — it's roof hardware, not a general add-on.)
-  ADDON_ITEMS.forEach(function(it){
+  /* Walk the SECTIONS and pull each one's items, rather than walking the items
+     and printing a heading when the section changes. Same output while the
+     list happens to be sorted, but it cannot silently produce two "Access"
+     headings the day someone adds an item in the wrong place. A section whose
+     items are all hidden on this style prints no heading at all. */
+  function itemHidden(it){
     // Barn and Lean-To: gambrel has its own cap builder and the lean-to has no
     // ridge at all, so the vent geometry (built in the gable roof block) would
     // never appear.
-    if(it.needsRidge && !(STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak')) return;
+    return !!(it.needsRidge && !(STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak'));
+  }
+  var _shown=ADDON_ITEMS.filter(function(it){ return !itemHidden(it); });
+  var _ordered=[];
+  ADDON_SECTIONS.forEach(function(sec){
+    var mine=_shown.filter(function(it){ return it.sec===sec.k; });
+    if(mine.length) _ordered.push({head:sec.name});
+    mine.forEach(function(it){ _ordered.push({item:it}); });
+  });
+  // Anything with no section, or one that is not in the table, still renders —
+  // an unlabelled item is a bug, but hiding it from the customer is worse.
+  var _orphans=_shown.filter(function(it){
+    return !ADDON_SECTIONS.some(function(sec){ return sec.k===it.sec; });
+  });
+  if(_orphans.length){
+    _ordered.push({head:'More'});
+    _orphans.forEach(function(it){ _ordered.push({item:it}); });
+  }
+
+  _ordered.forEach(function(row){
+    if(row.head){
+      html+='<div class="addon-sec">'+row.head+'</div>';
+      return;
+    }
+    var it=row.item;
     var on=ADDONS[it.k];
     // Flower boxes + shutters get a finish picker once they're switched on.
     var colorKey=(it.k==='flowerboxes')?'fbColor':(it.k==='shutters')?'shutterColor':null;
     var showColors=(colorKey && on);
     html+='<div style="margin-bottom:6px">';
     html+='<div onclick="toggleAddon(\''+it.k+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:'+(showColors?'8px 8px 0 0':'8px')+';cursor:pointer;background:'+(on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+'">'+
-      '<div><div style="font-size:12px;font-weight:700;color:var(--w)">'+it.name+itemBadgeHTML('addon:'+it.k)+(it.visual?' <span style="color:var(--blue);font-size:10px">· shown in 3D</span>':'')+'</div><div style="font-size:11px;color:var(--mu)">'+addonPriceText(it)+'</div></div>'+
+      '<div><div style="font-size:12px;font-weight:700;color:var(--w)">'+it.name+itemBadgeHTML('addon:'+it.k)+'</div><div style="font-size:11px;color:var(--mu)">'+addonPriceText(it)+'</div></div>'+
       '<div style="width:22px;height:22px;border-radius:6px;flex-shrink:0;background:'+(on?'#2BB5E8':'transparent')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+';color:#06222e;font-weight:800;text-align:center;line-height:22px">'+(on?'\u2713':'')+'</div>'+
       '</div>';
     if(showColors){

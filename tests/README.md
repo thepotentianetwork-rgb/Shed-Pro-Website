@@ -40,6 +40,9 @@ different library than production.
   centre, a mirror, an even-spacing slot, another window's sill.
 - `ui/badges.test.mjs` — a style tile's badge takes the description's line, and
   the description comes back when the badge goes.
+- `ui/addons.test.mjs` — the upgrades list groups under its section headings,
+  including the cases that only break later: an item added in the wrong place,
+  one with no section at all, and a section whose items are all hidden.
 
 ## Adding a test
 
