@@ -85,6 +85,8 @@ header{background:rgba(12,12,12,.96);border-bottom:1px solid var(--br);padding:0
 .vp{flex:1;position:relative;overflow:hidden}
 canvas{display:block;width:100%;height:100%}
 .hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);border-radius:30px;padding:7px 18px;font-size:11px;color:var(--mu);white-space:nowrap}
+.dup-btn{position:absolute;top:14px;right:14px;display:none;background:rgba(43,181,232,.92);color:#06222e;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);font-family:inherit}
+.dup-btn:hover{background:#2BB5E8}
 .measure-guide{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(43,181,232,.92);color:#06222e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;white-space:nowrap;display:none;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .edit-badge{position:absolute;top:14px;left:14px;background:rgba(43,181,232,.16);border:1px solid rgba(43,181,232,.6);color:#2BB5E8;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;display:none}
 .wallpick.on{background:#2BB5E8 !important;color:#06222e !important;border-color:#2BB5E8 !important}
@@ -446,6 +448,12 @@ textarea.inp{resize:vertical}
     <canvas id="c"></canvas>
     <div class="hint">Drag to rotate &nbsp;&middot;&nbsp; Scroll to zoom</div>
     <div id="measureGuide" class="measure-guide"></div>
+    <!-- DUPLICATE. Floated over the canvas rather than added to the editor
+         panel, because that panel's containers (winSelControls,
+         doorSelControls, ventSelControls) are not in this document - the code
+         has been reading them and getting null. This sits beside the measure
+         readout, which IS real, and shows only while something is selected. -->
+    <button id="dupBtn" class="dup-btn" onclick="duplicateSelected()">&#10697; Duplicate</button>
     <div id="editBadge" class="edit-badge">EDIT MODE &middot; drag a window along the wall or up/down</div>
     <div class="consult-nudge" id="consultNudge">
       <h4>Want a hand with this?</h4>
@@ -465,61 +473,13 @@ textarea.inp{resize:vertical}
          it shows the shape of the remaining work at a glance rather than
          asking anyone to divide. Title and caption only. -->
     <div class="wstep-head">
-      <div class="wstep-title" id="wStepTitle">What's it for?</div>
-      <div class="wstep-sub" id="wStepSub">We'll set a starting point for you.</div>
+      <div class="wstep-title" id="wStepTitle">Choose your style</div>
+      <div class="wstep-sub" id="wStepSub">Every build starts here.</div>
     </div>
 
     <div class="wsteps">
-      <!-- STEP 1 · WHAT IT IS FOR. Asked before size or style because it is the
-           question the customer already has an answer to. Nobody arrives
-           knowing they want a 10x16; they arrive knowing they want a workshop.
-           Each tile presets a sensible starting build, which the following
-           steps then refine — so this replaces a guess with a starting point
-           rather than adding a step. It is also the single most useful thing
-           on the lead: knowing someone wants a golf simulator tells the sales
-           conversation more than any dimension does. -->
-      <div class="wstep on" data-step="0">
-        <div class="grp">
-          <!-- The "What will you use it for?" label that sat here asked the
-               step title's own question a second time, 40px below it. And the
-               note under the grid opened by repeating the caption ("Sets a
-               starting point" / "We'll set a starting point for you."), so it
-               is trimmed to the only part that was new. -->
-          <div class="tgrid" id="useGrid"></div>
-          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:8px;display:block">
-            You can change everything after this.</span>
-        </div>
-      </div>
-
-      <!-- STEP 1 · SIZE — back in front of style. Picking a porch tile on the
-           style step opens the porch page, whose depth ladder is capped by
-           the footprint; with size first, that cap is always answering a
-           real width/length instead of the 8x12 default. -->
-      <div class="wstep on" data-step="1">
-        <div class="grp">
-          <span class="lbl">Dimensions</span>
-          <div class="sw">
-            <div class="sh"><span class="sn">Width</span><span class="sv" id="wv">8 ft</span></div>
-            <input type="range" min="6" max="20" value="8" step="2" oninput="setW(this.value)">
-          </div>
-          <div class="sw">
-            <div class="sh"><span class="sn">Length</span><span class="sv" id="lv">12 ft</span></div>
-            <input type="range" min="6" max="32" value="12" step="2" oninput="setL(this.value)">
-          </div>
-          <div class="sw">
-            <div class="sh"><span class="sn">Wall Height</span><span class="sv" id="hv">8 ft</span></div>
-            <input type="range" min="6" max="12" value="8" step="1" oninput="setH(this.value)">
-          </div>
-        </div>
-        <div class="sqbox">
-          <div class="sqbox-l">Square Footage</div>
-          <div class="sqbox-n" id="sqft">96 sq ft</div>
-          <div class="sqbox-s">&#9888; Permit may be required over 200 sq ft</div>
-        </div>
-      </div>
-
       <!-- STEP 2 · STYLE -->
-      <div class="wstep" data-step="2">
+      <div class="wstep on" data-step="0">
         <div class="tgrid" id="styleGrid">
           <div class="tile on" data-style="gable" onclick="pickStyle('gable',this)">
             <div class="tile-img" data-icon="style-gable"></div>
@@ -588,12 +548,39 @@ textarea.inp{resize:vertical}
         </div>
       </div>
 
+      <!-- STEP 1 · SIZE — back in front of style. Picking a porch tile on the
+           style step opens the porch page, whose depth ladder is capped by
+           the footprint; with size first, that cap is always answering a
+           real width/length instead of the 8x12 default. -->
+      <div class="wstep" data-step="1">
+        <div class="grp">
+          <span class="lbl">Dimensions</span>
+          <div class="sw">
+            <div class="sh"><span class="sn">Width</span><span class="sv" id="wv">8 ft</span></div>
+            <input type="range" min="6" max="20" value="8" step="2" oninput="setW(this.value)">
+          </div>
+          <div class="sw">
+            <div class="sh"><span class="sn">Length</span><span class="sv" id="lv">12 ft</span></div>
+            <input type="range" min="6" max="32" value="12" step="2" oninput="setL(this.value)">
+          </div>
+          <div class="sw">
+            <div class="sh"><span class="sn">Wall Height</span><span class="sv" id="hv">8 ft</span></div>
+            <input type="range" min="6" max="12" value="8" step="1" oninput="setH(this.value)">
+          </div>
+        </div>
+        <div class="sqbox">
+          <div class="sqbox-l">Square Footage</div>
+          <div class="sqbox-n" id="sqft">96 sq ft</div>
+          <div class="sqbox-s">&#9888; Permit may be required over 200 sq ft</div>
+        </div>
+      </div>
+
       <!-- STEP 2 · FOUNDATION — own step again. Folding it in with size and
            style put six tiles, three sliders and the foundation list on one
            phone screen, which is a long scroll for three unrelated decisions.
            Size still leads, so the porch cap is still answering a real
            footprint; only foundation moved back out. -->
-      <div class="wstep" data-step="3">
+      <div class="wstep" data-step="2">
         <div class="grp">
           <span class="lbl">Foundation</span>
           <div class="wstep-sub" style="margin:0 0 8px">What your shed sits on. We can pour a pad or set it level on blocks.</div>
@@ -607,7 +594,75 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 4 · ROOF (type, color, pitch, overhang, soffit, cupola) -->
-      <div class="wstep" data-step="5">
+      <div class="wstep" data-step="3">
+        <div class="grp">
+          <span class="lbl">Siding Style &middot; LP SmartSide</span>
+          <div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px">
+            <div class="pitch-btn sid-btn on" data-sid="vertical" onclick="setSiding('vertical',this)">Vertical<span class="sid-price"></span></div>
+            <div class="pitch-btn sid-btn" data-sid="horizontal" onclick="setSiding('horizontal',this)">Horizontal<span class="sid-price"></span></div>
+            <div class="pitch-btn sid-btn" data-sid="board-batten" onclick="setSiding('board-batten',this)">Board &amp; Batten<span class="sid-price"></span></div>
+            <!-- 1x6 Pine T&G is retired from the menu (Sep 2026). HIDDEN, not
+                 deleted, and none of the pine rendering, stain, width or
+                 direction code is touched: designs already saved with pine are
+                 still out there on ?d= links, and staff still reopen them to
+                 re-quote. syncControlsFromState restores siding with
+                 mark('.sid-btn', SIDING), which matches on this element — drop
+                 it and a reopened pine build loads with no style selected while
+                 the 3D view still shows pine walls. Hidden, it keeps loading
+                 and pricing exactly as before; it just can't be newly chosen.
+                 To bring it back, delete the style attribute below. -->
+            <div class="pitch-btn sid-btn" data-sid="pine" style="display:none" onclick="setSiding('pine',this)">1x6 Pine T&amp;G<span class="sid-price"></span></div>
+          </div>
+          <!-- Direction only matters for the T&G boards — the LP panels have a
+               fixed orientation baked into the product. -->
+          <div id="pineDirWrap" style="display:none;margin-top:10px">
+            <span class="lbl">Board Direction</span>
+            <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+              <div class="pitch-btn pinedir-btn on" onclick="setPineDir('vertical',this)">Vertical</div>
+              <div class="pitch-btn pinedir-btn" onclick="setPineDir('horizontal',this)">Horizontal</div>
+            </div>
+            <span class="lbl" style="margin-top:10px;display:block">Board Width</span>
+            <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+              <div class="pitch-btn pinew-btn" onclick="setPineWidth(4,this)">1x4 &middot; 3&frac12;&quot;</div>
+              <div class="pitch-btn pinew-btn on" onclick="setPineWidth(6,this)">1x6 &middot; 5&frac12;&quot;</div>
+              <div class="pitch-btn pinew-btn" onclick="setPineWidth(8,this)">1x8 &middot; 7&frac14;&quot;</div>
+            </div>
+            <span class="lbl" style="margin-top:10px;display:block">Stain</span>
+            <div id="pineStainList"></div>
+          </div>
+        </div>
+        <div class="grp" style="margin-top:14px">
+          <!-- Schemes first, swatches under them. Someone who knows they want
+               navy will scroll past this; someone who does not wants to be
+               shown what good looks like rather than handed 64 combinations
+               and left to it. -->
+          <span class="lbl">Color Schemes</span>
+          <div id="schemeStrip" class="scheme-strip"></div>
+        </div>
+        <div class="grp" style="margin-top:14px">
+          <span class="lbl">Siding Color</span>
+          <div id="cg-s"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input id="hexInput" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexSiding(this.value)" onchange="applyHexSiding(this.value)"
+              style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
+            <div id="hexSwatch" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#6E7377"></div>
+          </div>
+          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Enter any custom color as a hex code</span>
+        </div>
+        <div class="grp" style="margin-top:14px">
+          <span class="lbl">Trim Color</span>
+          <div id="cg-t"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input id="hexInputTrim" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexTrim(this.value)" onchange="applyHexTrim(this.value)"
+              style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
+            <div id="hexSwatchTrim" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#F2F0EC"></div>
+          </div>
+          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Or enter a custom trim hex code</span>
+        </div>
+                      </div>
+
+      <!-- STEP 7 · UPGRADES -->
+      <div class="wstep" data-step="4">
         <div class="grp">
           <span class="lbl">Roof Type</span>
           <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
@@ -711,7 +766,19 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 5 · WINDOWS -->
-      <div class="wstep" data-step="7">
+      <div class="wstep" data-step="5">
+        <div class="grp">
+          <span class="lbl">Tap a wall in the view to pick it</span>
+          <div id="doorActiveWall" style="font-size:12px;font-weight:700;color:var(--blue);margin:4px 0 10px">Active wall: Front</div>
+          <span class="lbl">Tap a door type</span>
+          <div id="doorGrid"><!-- sections + tiles --></div>
+          <div id="doorOptions" style="display:none;margin-top:10px"></div>
+        </div>
+        <div class="placed-list" id="placedDoors"></div>
+      </div>
+
+      <!-- STEP 3 · SIDING & COLOR -->
+      <div class="wstep" data-step="6">
         <div class="grp">
           <span class="lbl">Tap a wall in the view to pick it</span>
           <div id="winActiveWall" style="font-size:12px;font-weight:700;color:var(--blue);margin:4px 0 10px">Active wall: Front</div>
@@ -729,87 +796,7 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 6 · DOORS -->
-      <div class="wstep" data-step="6">
-        <div class="grp">
-          <span class="lbl">Tap a wall in the view to pick it</span>
-          <div id="doorActiveWall" style="font-size:12px;font-weight:700;color:var(--blue);margin:4px 0 10px">Active wall: Front</div>
-          <span class="lbl">Tap a door type</span>
-          <div id="doorGrid"><!-- sections + tiles --></div>
-          <div id="doorOptions" style="display:none;margin-top:10px"></div>
-        </div>
-        <div class="placed-list" id="placedDoors"></div>
-      </div>
-
-      <!-- STEP 3 · SIDING & COLOR -->
-      <div class="wstep" data-step="4">
-        <div class="grp">
-          <span class="lbl">Siding Style &middot; LP SmartSide</span>
-          <div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px">
-            <div class="pitch-btn sid-btn on" data-sid="vertical" onclick="setSiding('vertical',this)">Vertical<span class="sid-price"></span></div>
-            <div class="pitch-btn sid-btn" data-sid="horizontal" onclick="setSiding('horizontal',this)">Horizontal Lap<span class="sid-price"></span></div>
-            <div class="pitch-btn sid-btn" data-sid="board-batten" onclick="setSiding('board-batten',this)">Board &amp; Batten<span class="sid-price"></span></div>
-            <!-- 1x6 Pine T&G is retired from the menu (Sep 2026). HIDDEN, not
-                 deleted, and none of the pine rendering, stain, width or
-                 direction code is touched: designs already saved with pine are
-                 still out there on ?d= links, and staff still reopen them to
-                 re-quote. syncControlsFromState restores siding with
-                 mark('.sid-btn', SIDING), which matches on this element — drop
-                 it and a reopened pine build loads with no style selected while
-                 the 3D view still shows pine walls. Hidden, it keeps loading
-                 and pricing exactly as before; it just can't be newly chosen.
-                 To bring it back, delete the style attribute below. -->
-            <div class="pitch-btn sid-btn" data-sid="pine" style="display:none" onclick="setSiding('pine',this)">1x6 Pine T&amp;G<span class="sid-price"></span></div>
-          </div>
-          <!-- Direction only matters for the T&G boards — the LP panels have a
-               fixed orientation baked into the product. -->
-          <div id="pineDirWrap" style="display:none;margin-top:10px">
-            <span class="lbl">Board Direction</span>
-            <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
-              <div class="pitch-btn pinedir-btn on" onclick="setPineDir('vertical',this)">Vertical</div>
-              <div class="pitch-btn pinedir-btn" onclick="setPineDir('horizontal',this)">Horizontal</div>
-            </div>
-            <span class="lbl" style="margin-top:10px;display:block">Board Width</span>
-            <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
-              <div class="pitch-btn pinew-btn" onclick="setPineWidth(4,this)">1x4 &middot; 3&frac12;&quot;</div>
-              <div class="pitch-btn pinew-btn on" onclick="setPineWidth(6,this)">1x6 &middot; 5&frac12;&quot;</div>
-              <div class="pitch-btn pinew-btn" onclick="setPineWidth(8,this)">1x8 &middot; 7&frac14;&quot;</div>
-            </div>
-            <span class="lbl" style="margin-top:10px;display:block">Stain</span>
-            <div id="pineStainList"></div>
-          </div>
-        </div>
-        <div class="grp" style="margin-top:14px">
-          <!-- Schemes first, swatches under them. Someone who knows they want
-               navy will scroll past this; someone who does not wants to be
-               shown what good looks like rather than handed 64 combinations
-               and left to it. -->
-          <span class="lbl">Color Schemes</span>
-          <div id="schemeStrip" class="scheme-strip"></div>
-        </div>
-        <div class="grp" style="margin-top:14px">
-          <span class="lbl">Siding Color</span>
-          <div id="cg-s"></div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-            <input id="hexInput" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexSiding(this.value)" onchange="applyHexSiding(this.value)"
-              style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
-            <div id="hexSwatch" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#6E7377"></div>
-          </div>
-          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Enter any custom color as a hex code</span>
-        </div>
-        <div class="grp" style="margin-top:14px">
-          <span class="lbl">Trim Color</span>
-          <div id="cg-t"></div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-            <input id="hexInputTrim" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexTrim(this.value)" onchange="applyHexTrim(this.value)"
-              style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
-            <div id="hexSwatchTrim" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#F2F0EC"></div>
-          </div>
-          <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Or enter a custom trim hex code</span>
-        </div>
-                      </div>
-
-      <!-- STEP 7 · UPGRADES -->
-      <div class="wstep" data-step="8">
+      <div class="wstep" data-step="7">
         <div class="grp">
           <span class="lbl">Interior Finish</span>
           <div class="wstep-sub" style="margin-bottom:6px">Bare studs, or finished walls you can hang things on.</div>
@@ -906,16 +893,7 @@ textarea.inp{resize:vertical}
            vent, door overhangs. Burying outdoor items at the bottom of an
            indoor step meant they were reached last, by someone already
            scrolling, which is the worst place for optional revenue. -->
-      <div class="wstep" data-step="10">
-        <div class="grp">
-          <span class="lbl">Add-Ons</span>
-          <div class="wstep-sub" style="margin:0 0 8px">Optional extras — tap to include.</div>
-          <div id="addonList"></div>
-        </div>
-      </div>
-
-      <!-- STEP 10 · ELECTRICAL (upsell, near the end) -->
-      <div class="wstep" data-step="9">
+      <div class="wstep" data-step="8">
         <div class="grp">
           <span class="lbl">Electrical Package</span>
           <div class="wstep-sub" id="elecBarnNote" style="display:none;margin:0 0 8px;color:#ffb86b">Essential isn't available on Barn / Gambrel yet — Basic and Core are.</div>
@@ -946,7 +924,16 @@ textarea.inp{resize:vertical}
       </div>
 
       <!-- STEP 9 · REVIEW -->
-      <div class="wstep" data-step="11">
+      <div class="wstep" data-step="9">
+        <div class="grp">
+          <span class="lbl">Add-Ons</span>
+          <div class="wstep-sub" style="margin:0 0 8px">Optional extras — tap to include.</div>
+          <div id="addonList"></div>
+        </div>
+      </div>
+
+      <!-- STEP 10 · ELECTRICAL (upsell, near the end) -->
+      <div class="wstep" data-step="10">
         <div class="grp">
           <span class="lbl">Your Build</span>
           <div style="font-size:13px;color:var(--w);line-height:1.7" id="reviewSummary"></div>
@@ -2138,22 +2125,34 @@ function init(){
       // gable above it is the same wall.
       var r=pointerOnWall(wd.wall, wd.w, wd.h, false, true);
       if(!r) return;
-      if(Math.abs(wd.pos-r.pos)<1e-4 && wd.cy===r.cyIn){ showMeasureGuide(wd); return; }
-      wd.pos=r.pos; wd.cy=r.cyIn;
+      var sw=snapDrag(wd.wall,'window',selectedWindow,r.pos,r.cyIn);
+      var gw=snapGuideFor(wd.wall, sw), gwKey=snapGuideKey(gw);
+      /* Rebuild when the GUIDE changes too, not only the position. Snapping
+         means the last few pixels of a drag move nothing, and that is exactly
+         when the line has to appear - gated on position alone it never did. */
+      var movedW=!(Math.abs(wd.pos-sw.pos)<1e-4 && wd.cy===sw.cy);
+      if(!movedW && gwKey===snapGuideKey(SNAP_GUIDE)){ showMeasureGuide(wd); return; }
+      wd.pos=sw.pos; wd.cy=sw.cy; SNAP_GUIDE=gw;
       buildShed(); showMeasureGuide(wd); syncEditorPanel();
     } else if(selectedKind==='door' && selectedDoor>=0 && doorsData[selectedDoor]){
       var dd=doorsData[selectedDoor];
       var r2=pointerOnWall(dd.wall, dd.w, dd.h, true);
       if(!r2) return;
-      if(Math.abs(dd.pos-r2.pos)<1e-4){ showMeasureGuide(dd); return; }
-      dd.pos=r2.pos;
+      var sd2=snapDrag(dd.wall,'door',selectedDoor,r2.pos,null);
+      var gd=snapGuideFor(dd.wall, sd2), gdKey=snapGuideKey(gd);
+      var movedD=!(Math.abs(dd.pos-sd2.pos)<1e-4);
+      if(!movedD && gdKey===snapGuideKey(SNAP_GUIDE)){ showMeasureGuide(dd); return; }
+      dd.pos=sd2.pos; SNAP_GUIDE=gd;
       buildShed(); showMeasureGuide(dd); syncEditorPanel();
     } else if(selectedKind==='vent' && selectedVent>=0 && ventsData[selectedVent]){
       var vd=ventsData[selectedVent];
       var r3=pointerOnWall(vd.wall, 16, 8, false, true);
       if(!r3) return;
-      if(Math.abs(vd.pos-r3.pos)<1e-4 && vd.cy===r3.cyIn){ return; }
-      vd.pos=r3.pos; vd.cy=r3.cyIn;
+      var sv=snapDrag(vd.wall,'vent',selectedVent,r3.pos,r3.cyIn);
+      var gv=snapGuideFor(vd.wall, sv), gvKey=snapGuideKey(gv);
+      var movedV=!(Math.abs(vd.pos-sv.pos)<1e-4 && vd.cy===sv.cy);
+      if(!movedV && gvKey===snapGuideKey(SNAP_GUIDE)){ return; }
+      vd.pos=sv.pos; vd.cy=sv.cy; SNAP_GUIDE=gv;
       buildShed(); syncEditorPanel();
     } else if(selectedKind==='shelf' && selectedShelf>=0 && shelvesData[selectedShelf]){
       var sd=shelvesData[selectedShelf];
@@ -2173,16 +2172,11 @@ function init(){
     }
   }
 
-  // pointer DOWN
-  function onDown(clientX, clientY){
-    autoR=false;
-    pressStart={x:clientX, y:clientY};
-    pressMoved=false;
-    draggingWindow=false;
-    if(EDIT_MODE){
-      setNDC(clientX, clientY);
-      var hit=pickOpening();
-      if(hit){
+  /* SELECT A TAPPED ITEM. Lifted out of onDown so the edit-mode-off tap below
+     can reuse it: both paths have to adopt the item's wall, open its options
+     grid and show its measure guide, and a second copy of that is how one of
+     them quietly stops doing one of the three. */
+  function selectHit(hit){
         selectedKind=hit.kind;
         selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
         if(hit.kind==='window') selectedWindow=hit.index;
@@ -2195,22 +2189,17 @@ function init(){
            could select a door on the LEFT, then add or swap, and the new one
            landed on whatever wall was active from before — usually the front.
            Every placed item already records its own wall, so the selection is
-           the authority: adopt it. One place covers doors, windows, vents,
-           shelves and porch lights, because they all come through this hit. */
+           the authority: adopt it. */
         var _selW = (hit.kind==='window') ? (windowsData[hit.index]||{}).wall
                   : (hit.kind==='door')   ? (doorsData[hit.index]||{}).wall
                   : (hit.kind==='vent')   ? (ventsData[hit.index]||{}).wall
                   : (hit.kind==='shelf')  ? (shelvesData[hit.index]||{}).wall
                   : (hit.kind==='plight') ? (porchLightsData[hit.index]||{}).wall
                   : null;
-        /* Set the vars directly rather than calling setAddWall: that helper ends
-           with its own buildShed(), and this handler rebuilds two lines below —
-           routing through it would rebuild the whole shed twice on every tap. */
         if(_selW && _selW!==ADD_WALL){
           ADD_WALL=_selW; WIZ_ADDWALL_DOOR=_selW;
           if(typeof syncWallUI==='function') syncWallUI();
         }
-        draggingWindow=true;
         buildShed();
         syncEditorPanel();
         // Open the options grid for the selected item so it can be swapped.
@@ -2218,6 +2207,22 @@ function init(){
         else if(hit.kind==='door' && typeof openOptionsForSelectedDoor==='function') openOptionsForSelectedDoor();
         var selObj = hit.kind==='window'?windowsData[hit.index]:hit.kind==='door'?doorsData[hit.index]:null;
         if(selObj) showMeasureGuide(selObj);
+  }
+
+  // pointer DOWN
+  function onDown(clientX, clientY){
+    autoR=false;
+    pressStart={x:clientX, y:clientY};
+    pressMoved=false;
+    draggingWindow=false;
+    if(EDIT_MODE){
+      setNDC(clientX, clientY);
+      var hit=pickOpening();
+      if(hit){
+        selectHit(hit);
+        /* Only the press-to-grab path arms a drag. The jump path below must
+           not: the pointer is already up by then. */
+        draggingWindow=true;
         return;
       }
     }
@@ -2242,7 +2247,41 @@ function init(){
   // pointer UP
   function onUp(){
     drag=false;
-    if(draggingWindow){ draggingWindow=false; hideMeasureGuide(); }
+    if(draggingWindow){
+      draggingWindow=false;
+      /* Read BEFORE hiding: hideMeasureGuide clears SNAP_GUIDE itself, so
+         checking it afterwards is always false and the bars stay on the wall
+         after the drop. The lines are geometry in the scene, so clearing the
+         state is not enough on its own - it takes the rebuild. */
+      var hadGuide=!!SNAP_GUIDE;
+      hideMeasureGuide();
+      if(hadGuide) buildShed();
+    }
+    /* TAP AN ITEM WITH EDIT MODE OFF -> GO TO ITS STEP.
+       Picking used to be gated entirely on EDIT_MODE, which only the Doors,
+       Windows, Interior and Electrical steps turn on. So on the style step, or
+       straight after opening a saved design, tapping the front door of the
+       shed in front of you did nothing at all - the one thing anyone tries
+       first. Now the ray still goes out, and a hit takes you to the step that
+       owns that item with it already selected.
+       Stationary taps only, so this cannot fire at the end of a camera drag.
+       Ordered before the EDIT_MODE branch and returning, because that branch's
+       job is picking a WALL, which is not what was tapped. */
+    else if(!EDIT_MODE && pressStart && !pressMoved){
+      setNDC(pressStart.x, pressStart.y);
+      var jump=pickOpening();
+      if(jump){
+        var dest=ITEM_STEP[jump.kind];
+        /* Select first, then move. wizRender turns edit mode on for the
+           destination step, and toggleEditMode only clears the selection when
+           it goes OFF - so the selection survives the trip and the editor
+           panel opens already pointed at what was tapped. */
+        selectHit(jump);
+        if(dest && typeof wizGoTo==='function') wizGoTo(dest);
+      }
+      pressStart=null;
+      return;
+    }
     else if(EDIT_MODE && pressStart && !pressMoved){
       // stationary tap that didn't grab an item → select the tapped wall
       setNDC(pressStart.x, pressStart.y);
@@ -2507,96 +2546,18 @@ function sidingTileWorld(key){
        9ft wall with a gable is marginal once you allow for the screen.
      DETACHED GARAGE — 12x20 with a garage door; anything smaller will not take
        a vehicle, so quoting one would waste the lead's time. */
+/* Detached Garage and Golf Simulator were retired Sep 2026 along with the step
+   that offered them, which leaves this list with one entry and nothing that
+   reads it: renderUseGrid returns early now that #useGrid is gone, and pickUse
+   only ever fired from a tile in that grid. So applyUse, STOCK_BUILD and
+   captureStockBuild below are all unreachable too.
+   Left in place rather than deleted. It is inert - renderUseGrid guards on the
+   missing element - and tearing ~200 lines out of the middle of this file to
+   remove something that already does nothing is a worse trade than the
+   clutter. SHED_USE itself IS still read: applyDesignConfig restores it from
+   old permalinks, and the flooring recommendation checks it for 'garage'.
+   Worth a proper clean-up as its own change. */
 var SHED_USES = [
-  /* v465 — THREE OPTIONS. Eight tiles turned the opening step into a form to
-     read; three is a decision. The two named ones are the builds worth
-     presetting, because they are the ones with real constraints a customer
-     cannot be expected to know — ceiling height for a swing, door type and
-     length for a vehicle. Everything else is a shed, and "Design my own" is a
-     more honest label for it than six near-identical tiles.
-
-     BOTH NAMED BUILDS ARE 12x16 = 192 SQ FT, deliberately under the 200 permit
-     threshold. They are not the same shed: the garage gets a roll-up door and
-     9ft walls, the simulator gets 10ft walls, a finished interior and a
-     full-lite door. Same footprint, different building. */
-  /* elec was 'standard' until Sep 2026, when that tier was retired from the
-     price sheet and this preset was not updated with it. ELEC_MAP in
-     worker/pricing.js only knows basic/core/essential, so 'standard' matched
-     nothing and the engine priced the garage with NO electrical — $10,840,
-     to the dollar the same as choosing None — while the 3D view happily lit
-     the interior because its own check still listed 'standard'. A customer
-     could have been quoted an unpowered garage and nobody would have seen it
-     until handover. Core is the successor: mid-tier then, mid-tier now, and a
-     garage with a roll-up door wants outlets and an opener. */
-  {k:'garage',   name:'Detached Garage', sub:'Roll-up door, fits a car',
-   w:12, l:16, h:9,  style:'gable', elec:'core', door:'rollup',
-   /* A concrete pad, not blocks. You are driving a car onto this and jacking
-      it up on this; gravel and piers are fine under a shed and wrong under a
-      garage, and quoting it any other way starts a conversation we would only
-      have later anyway. */
-   foundation:'pad',
-   /* Two windows on the long walls. A garage with no glass is a cave the
-      moment the door is down, and these are the cheapest light there is. */
-   /* 36x24 because it is stocked in BOTH White and Black Vinyl. 24x30 is
-      white-only and 24x36 black-only, so either would have forced a resize
-      the moment someone switched to a scheme with the other trim. Wide and
-      low also sits above a workbench rather than behind it. */
-   windows:[ {wall:'left',  pos:0.35, w:36, h:24, cy:60},
-             {wall:'right', pos:0.65, w:36, h:24, cy:60} ],
-   /* No loft at 9ft walls with a vehicle under it — headroom over the bonnet
-      is the point of the 9ft, and a loft gives it straight back. */
-   loft:'none', roofType:'shingle', scheme:'grayblack'},
-
-  /* 10ft walls: 9ft is the stated minimum for a driver swing and 10ft the
-     real-world standard, and ceiling is the one dimension nobody can change
-     after the build. 12x16 gives 11.25 x 15.25 INSIDE once the walls are
-     deducted, which clears the 10ft width and 15ft depth minimums — the
-     largest even size that does so under the permit cap. */
-  {k:'golfsim',  name:'Golf Simulator',  sub:'10 ft walls for a full swing',
-   w:12, l:16, h:10, style:'gable', elec:'core', door:'resfull', finish:'painted',
-   foundation:'pad',
-   /* GLASS ON THE FRONT WALL ONLY, flanking the door.
-      A simulator is a dark room by function and every wall but the front has a
-      job that glass gets in the way of. The back wall carries the screen — a
-      window there lets in no usable light and spills it onto the back of the
-      very surface being projected onto. The side walls are the swing corridor
-      and the projector throw; daylight crossing either is glare on the screen
-      and a distraction mid-swing. An earlier version had a high band on the
-      left wall, which was better than the back but still lit the room from
-      the side.
-      The front wall is the one surface behind the golfer and out of the throw,
-      so light coming in there lands where nobody is looking. Two uprights, one
-      each side of the door, read as sidelights rather than as windows someone
-      forgot to leave out — and they can be shuttered or curtained as a pair
-      when the room needs to go properly dark.
-
-      14x36 uprights, stocked in both White and Black so the scheme can reframe
-      them either way. cy is left to defaultCyFor, which puts an upright at 52
-      — door height, which is the whole point of a sidelight. A band would have
-      been forced up under the plate instead.
-
-      pos: the front wall is W*12 = 144in and the door is 36in centred, so it
-      spans 54-90 and leaves a 54in field each side. 0.11 / 0.89 centres an
-      upright in each field, checked against posToAxis rather than assumed —
-      pos is NOT a plain fraction of the wall, it runs inside a half-window
-      margin at each end, so 0.11 lands at 27in and not at 16in. Symmetric
-      values stay symmetric either way, since 0.5 is the wall centre in both
-      conventions. */
-   windows:[ {wall:'front', pos:0.11, w:14, h:36, type:'Black Transom 14x36'},
-             {wall:'front', pos:0.89, w:14, h:36, type:'Black Transom 14x36'} ],
-   /* No loft, and this one is not a cost decision. The 10ft walls exist so a
-      driver clears the ceiling; hanging a loft in here would undo the single
-      reason this preset is not just a shed. */
-   /* Was charwhite, which is gone now the list is four. Black on Black is the
-      nearest thing in what remains and arguably the better fit anyway: a
-      simulator is a dark room by function, and the white full-lite door gives
-      the contrast the charcoal scheme was providing. */
-   loft:'none', roofType:'shingle', scheme:'blackblack'},
-
-  /* No preset at all. This one only records the choice and leaves the shed on
-     its defaults — applying a "custom" preset would be a contradiction, and
-     silently resizing someone who just said they want to design it themselves
-     is the opposite of what they asked for. */
   {k:'custom',   name:'Design My Own',   sub:'Start from scratch', custom:true}
 ];
 
@@ -6089,6 +6050,42 @@ function buildShed(){
     });
   }
   if(typeof applyLighting==='function') applyLighting();  // re-attach pkg lights & day/night
+  if(typeof buildSnapGuides==='function') buildSnapGuides();
+}
+
+/* THE GUIDELINES. Thin bright bars laid on the wall face at whatever the drag
+   snapped to: a horizontal one at the height it lined up with, a vertical one
+   down the middle of the wall when it centred.
+
+   Built here rather than kept as persistent objects because buildShed clears
+   and rebuilds shedGroup on every change, so anything held across a rebuild is
+   a dangling reference. Cheap enough - two boxes, only while a drag is snapped.
+
+   MeshBasicMaterial, not Standard: a guide is an annotation, not a part of the
+   shed, and it should read the same in daylight and at night. Seated at 0.06,
+   just off the 0.05 wall face, so it is not fighting the wall for the same
+   pixels. */
+function buildSnapGuides(){
+  if(!SNAP_GUIDE || typeof THREE==='undefined' || typeof shedGroup==='undefined') return;
+  if(typeof EDIT_MODE!=='undefined' && !EDIT_MODE) return;
+  var f=(typeof wallFrame==='function') ? wallFrame(SNAP_GUIDE.wall) : null;
+  if(!f) return;
+  var rotY={front:0, back:Math.PI, right:Math.PI/2, left:-Math.PI/2}[SNAP_GUIDE.wall];
+  if(rotY==null) return;
+  var mat=new THREE.MeshBasicMaterial({color:0x2BB5E8});
+  function bar(w,h,y){
+    var g=new THREE.Group();
+    g.rotation.y=rotY;
+    var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.008), mat);
+    m.position.set(0, y, 0.06);
+    g.add(m);
+    if(f.ax==='x') g.position.set(0,0,f.fixed); else g.position.set(f.fixed,0,0);
+    shedGroup.add(g);
+  }
+  // the height it lined up with
+  if(SNAP_GUIDE.cy!=null) bar(f.len, 0.014, SNAP_GUIDE.cy*0.2/12);
+  // and the centre of the wall
+  if(SNAP_GUIDE.centre) bar(0.014, f.height, f.height/2);
 }
 
 // Single-slope (lean-to) roof: HIGH at the FRONT (z=+l/2, where the door is),
@@ -8544,6 +8541,85 @@ function wallFrame(wall){
 }
 // Convert pos (0..1) + size to the world center coordinate ALONG the wall axis.
 // Returns the world coordinate on the wall's length axis (x for front/back, z for sides).
+/* ── SNAPPING WHILE DRAGGING ────────────────────────────────────────────────
+   Dragging used to take the pointer position literally, so centring a window
+   or lining two up meant nudging until the readout looked right. These pull to
+   the places people are actually aiming for.
+
+   Top level rather than inside the canvas closure so it can be exercised on
+   its own - it is pure apart from reading W, L and the placed-item arrays.
+
+   Three targets, in priority order:
+     1. the centre of the wall
+     2. the MIRROR of another opening on the same wall, so a pair flanks the
+        centre evenly without measuring
+     3. the HEIGHT of another opening, so two windows sit on one line
+   Centre wins over mirror because it is the line people ask for by name; the
+   two are within a few inches of each other whenever a single peer is already
+   near the middle, and picking the wrong one there is the difference between
+   "centred" and "nearly centred". */
+var SNAP_TOL_IN = 3;             // how close the pointer has to get, in inches
+var SNAP_GUIDE = null;           // {wall, cy, centre} while a drag is snapped
+
+function snapWallInches(wall){
+  return ((wall==='front'||wall==='back') ? W : L) * 12;
+}
+
+/* Everything else placed on this wall, minus the item being dragged. Doors are
+   included for the mirror but carry cy:null - they stand on the floor, so
+   "line it up with the door" is not a height anyone wants. */
+function snapPeers(wall, kind, idx){
+  var out=[];
+  function add(list, k){
+    if(typeof list==='undefined' || !list) return;
+    list.forEach(function(o,i){
+      if(!o || o.wall!==wall) return;
+      if(k===kind && i===idx) return;
+      out.push({pos:o.pos, cy:(k==='door') ? null : o.cy});
+    });
+  }
+  add(typeof windowsData!=='undefined'?windowsData:null, 'window');
+  add(typeof ventsData!=='undefined'?ventsData:null, 'vent');
+  add(typeof doorsData!=='undefined'?doorsData:null, 'door');
+  return out;
+}
+
+function snapDrag(wall, kind, idx, pos, cy){
+  var res={pos:pos, cy:cy, centre:false, cyAt:null, mirror:false};
+  var lenIn=snapWallInches(wall);
+  /* Tolerance in POS units derived from inches, so the pull feels the same on
+     a 6ft wall and a 32ft one. A flat 0.02 would be 1.4" on one and 7.7" on
+     the other, which is why it is not a flat number. */
+  var tol = (lenIn>0) ? (SNAP_TOL_IN/lenIn) : 0.02;
+  var peers=snapPeers(wall, kind, idx);
+
+  if(Math.abs(pos-0.5)<=tol){ res.pos=0.5; res.centre=true; }
+  else {
+    for(var i=0;i<peers.length;i++){
+      var m=1-peers[i].pos;
+      if(Math.abs(pos-m)<=tol){ res.pos=m; res.mirror=true; break; }
+    }
+  }
+  if(cy!=null){
+    for(var j=0;j<peers.length;j++){
+      if(peers[j].cy==null) continue;
+      if(Math.abs(cy-peers[j].cy)<=SNAP_TOL_IN){ res.cy=peers[j].cy; res.cyAt=peers[j].cy; break; }
+    }
+  }
+  return res;
+}
+
+/* What the guide should show for a snap result, or null for "nothing snapped".
+   Kept separate so the drag handler can compare two states cheaply and only
+   rebuild when the guide actually changes. */
+function snapGuideFor(wall, sn){
+  if(!sn || (!sn.centre && sn.cyAt==null)) return null;
+  return {wall:wall, cy:sn.cyAt, centre:!!sn.centre};
+}
+function snapGuideKey(g){
+  return g ? (g.wall+'|'+(g.cy==null?'-':g.cy)+'|'+(g.centre?'c':'-')) : '';
+}
+
 function posToAxis(wall, pos, sizeW_in){
   var f=wallFrame(wall);
   var sw=sizeW_in*0.2/12;
@@ -10014,9 +10090,18 @@ function animate(){
    Interior finish lives with the loft and shelves rather than as an eleventh
    step: it's the same question — what's the inside like. */
 var WIZ_STEPS = [
-  {title:"What's it for?",    sub:"We'll set a starting point for you."},
-  {title:"Pick your size",     sub:"Width, length, and wall height."},
+  /* No "What's it for?" step. It offered two presets - Detached Garage and
+     Golf Simulator - alongside "Design My Own"; with the presets retired the
+     step had a single tile on it and asked a question nothing acted on, so the
+     designer opens on style instead.
+     Style leads, which reverses the order these sat in. Size led so that a
+     porch tile picked on the style step opened a depth ladder capped by a real
+     footprint rather than the 8x12 default. That cap still corrects itself -
+     setW and setL both call clampPorch - so the cost is a porch picker seeing
+     the 8x12 ladder first and coming back to it, against style being the
+     question a customer actually arrives with. */
   {title:"Choose your style",  sub:"Every build starts here."},
+  {title:"Pick your size",     sub:"Width, length, and wall height."},
   {title:"Foundation",         sub:"What your shed sits on."},
   {title:"Siding & color",     sub:"Pick your look early."},
   {title:"Roof",               sub:"Type, color, pitch, overhang & details."},
@@ -10143,6 +10228,31 @@ function wizNext(){
 }
 function wizPrev(){ if(wizStep>0){ wizStep--; wizRender(); } }
 
+/* Jump to a step BY TITLE, for the same reason wizIs() asks by title: steps get
+   reordered and a hardcoded index does not survive it. Returns false rather
+   than landing somewhere arbitrary if the title is not in the table. */
+function wizGoTo(title){
+  for(var i=0;i<WIZ_STEPS.length;i++){
+    if(WIZ_STEPS[i].title===title){
+      if(wizStep!==i){ wizStep=i; wizRender(); }
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Which step owns each kind of placed item. Tapping one in the 3D view jumps
+   here - see the tap handler, which raycasts even with edit mode off so that
+   opening a saved design and tapping its front door takes you to the doors
+   step instead of doing nothing. */
+var ITEM_STEP = {
+  door:   'Doors',
+  window: 'Windows & Vents',
+  vent:   'Windows & Vents',
+  shelf:  'Interior',
+  plight: 'Electrical'
+};
+
 // Edit mode is used for dragging placed windows/doors. Turn on when on those steps.
 function ensureEditMode(on){
   if(typeof EDIT_MODE==='undefined') return;
@@ -10151,6 +10261,42 @@ function ensureEditMode(on){
 }
 
 // ---- STYLE tiles ----
+/* STARTING SIZE PER STYLE.
+   A poolhouse reads wrong as a corridor - hip roofs want a square footprint,
+   so it opens at 10x10. A lean-to is a wide shallow structure leaning on
+   something, so it opens 12 wide by 6 deep. Everything else keeps the 8x12
+   the page loads with. Fernando, 22 Sep 2026.
+   Only w and l. Wall height is not a function of the roof shape, and a
+   poolhouse at 10ft walls is as reasonable as one at 8. */
+var STYLE_START = {
+  hip:    { w: 10, l: 10 },
+  leanto: { w: 12, l: 6  }
+};
+var STYLE_START_DEFAULT = { w: 8, l: 12 };
+
+/* Whether the customer has moved a size slider themselves. A starting point is
+   supposed to start you somewhere, not argue with you: once someone has set a
+   size, going back and tapping a different style must not throw it away.
+   Set by setW/setL, which is why applyStyleStart puts it back afterwards - it
+   goes THROUGH setW/setL so the labels and clampPorch run, and would otherwise
+   mark its own work as the customer's. */
+var SIZE_SET_BY_CUSTOMER = false;
+
+function applyStyleStart(style){
+  var st = STYLE_START[style] || STYLE_START_DEFAULT;
+  if(SIZE_SET_BY_CUSTOMER) return false;
+  var was = SIZE_SET_BY_CUSTOMER;
+  if(typeof setW==='function'){ setW(st.w); setL(st.l); }
+  else { W=st.w; L=st.l; }
+  SIZE_SET_BY_CUSTOMER = was;
+  /* The range inputs read their own value attribute, so the globals moving is
+     not enough - without this the size step shows the old numbers beside a
+     resized shed. data-step="1" is the size panel. */
+  var sl = document.querySelectorAll('.wstep[data-step="1"] input[type=range]');
+  if(sl.length>=2){ sl[0].value=st.w; sl[1].value=st.l; }
+  return true;
+}
+
 function pickStyle(style, el){
   document.querySelectorAll('#styleGrid .tile').forEach(function(t){t.classList.remove('on');});
   if(el) el.classList.add('on');
@@ -10160,6 +10306,9 @@ function pickStyle(style, el){
   // a shell that can't build one.
   if(typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none'){ PORCH_LOC='none'; SIDE_PORCH=0; }
   document.querySelectorAll('.style-btn').forEach(function(b){b.classList.remove('on');});
+  /* Before buildShed, so the size change and the style change land in one
+     rebuild rather than drawing the new roof over the old footprint first. */
+  applyStyleStart(style);
   buildShed();
   if(typeof syncPorchBtn==='function') syncPorchBtn();
   if(typeof syncOverhangUI==='function') syncOverhangUI();
@@ -11294,8 +11443,8 @@ function _sizeLabel(){
   var eat=porchEatFt(), enc=(W-eat.w)*(L-eat.l);
   el.textContent=(W*L)+' sq ft'+((eat.w||eat.l)?(' \u00b7 '+enc+' enclosed'):'');
 }
-function setW(v){W=+v;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);}
-function setL(v){L=+v;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
+function setW(v){W=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);}
+function setL(v){L=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
 function setH(v){
   H=+v;
   var wh = quoteCache.optionPrices && quoteCache.optionPrices.wallHeight;
@@ -12741,6 +12890,73 @@ function addDoor(){
   selectedKind='door'; selectedDoor=doorsData.length-1; selectedWindow=-1;
   if(!EDIT_MODE) toggleEditMode(); else { buildShed(); syncEditorPanel(); }
 }
+/* ── DUPLICATE THE SELECTED ITEM ────────────────────────────────────────────
+   Copies the selected window, door or vent and drops the copy on the same
+   wall, at the same height, offset along it. Placing two windows by hand meant
+   adding a second from the catalogue and then matching its size, type and sill
+   by eye; this makes a pair one tap, and the snapping above then lines the copy
+   up with the original.
+
+   Mirrored first, offset second. A window at 0.3 has a natural partner at 0.7,
+   which is what someone duplicating a window on the front of a shed almost
+   always wants - and it lands on the mirror snap, so nudging it afterwards
+   holds the symmetry instead of breaking it. Only when the mirror is already
+   occupied does it fall back to stepping along the wall.
+   Everything is copied by value. Pushing the same object twice gives two
+   entries that move together, which reads as the duplicate having failed. */
+function duplicateSelected(){
+  function spotFor(wall, srcPos, taken, minGap){
+    var mirror=1-srcPos;
+    if(Math.abs(mirror-srcPos)>minGap &&
+       !taken.some(function(p){ return Math.abs(p-mirror)<minGap; })){
+      return mirror;
+    }
+    /* Walk outward from the original rather than from the middle: stepping
+       from 0.5 can land the copy on the far side of another opening, which
+       looks like it went somewhere random. */
+    for(var step=minGap; step<=1; step+=minGap){
+      var cands=[srcPos+step, srcPos-step];
+      for(var i=0;i<cands.length;i++){
+        var c=cands[i];
+        if(c<0.05 || c>0.95) continue;
+        if(!taken.some(function(p){ return Math.abs(p-c)<minGap; })) return c;
+      }
+    }
+    return null;
+  }
+
+  if(selectedKind==='window' && selectedWindow>=0 && windowsData[selectedWindow]){
+    var src=windowsData[selectedWindow];
+    var taken=windowsData.filter(function(w){return w.wall===src.wall;}).map(function(w){return w.pos;});
+    var pos=spotFor(src.wall, src.pos, taken, 0.18);
+    if(pos==null) return false;                   // no room; leave it be
+    windowsData.push({wall:src.wall, pos:pos, w:src.w, h:src.h, cy:src.cy, type:src.type});
+    selectedWindow=windowsData.length-1; selectedKind='window';
+  } else if(selectedKind==='door' && selectedDoor>=0 && doorsData[selectedDoor]){
+    var sd=doorsData[selectedDoor];
+    var dtaken=doorsData.filter(function(d){return d.wall===sd.wall;}).map(function(d){return d.pos;});
+    var dpos=spotFor(sd.wall, sd.pos, dtaken, 0.25);
+    if(dpos==null) return false;
+    doorsData.push({wall:sd.wall, pos:dpos, style:sd.style, w:sd.w, h:sd.h});
+    selectedDoor=doorsData.length-1; selectedKind='door';
+  } else if(selectedKind==='vent' && selectedVent>=0 && ventsData[selectedVent]){
+    var sv=ventsData[selectedVent];
+    var vtaken=ventsData.filter(function(v){return v.wall===sv.wall;}).map(function(v){return v.pos;});
+    var vpos=spotFor(sv.wall, sv.pos, vtaken, 0.14);
+    if(vpos==null) return false;
+    ventsData.push({wall:sv.wall, pos:vpos, cy:sv.cy});
+    selectedVent=ventsData.length-1; selectedKind='vent';
+  } else {
+    return false;
+  }
+  buildShed();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(typeof renderPlacedWindows==='function') renderPlacedWindows();
+  if(typeof renderPlacedDoors==='function') renderPlacedDoors();
+  if(typeof updateSum==='function') updateSum();
+  return true;
+}
+
 function removeSelected(){
   if(selectedKind==='window' && selectedWindow>=0){
     windowsData.splice(selectedWindow,1); selectedWindow=-1;
@@ -12808,6 +13024,17 @@ function openingDims(o, isDoor){
 }
 // Keep the editor panel in sync with current state.
 function syncEditorPanel(){
+  /* The Duplicate chip. Driven from here because this already runs on every
+     selection change, and gated on the three kinds duplicateSelected handles -
+     a button that does nothing for shelves and porch lights would be worse
+     than no button. */
+  var dup=document.getElementById('dupBtn');
+  if(dup){
+    var canDup = (selectedKind==='window' && selectedWindow>=0)
+              || (selectedKind==='door'   && selectedDoor>=0)
+              || (selectedKind==='vent'   && selectedVent>=0);
+    dup.style.display = canDup ? 'block' : 'none';
+  }
   var ed=document.getElementById('winEditor');
   var anything=(windowsData.length>0||doorsData.length>0);
   if(ed) ed.style.display='block';
@@ -12870,6 +13097,10 @@ function showMeasureGuide(o){
 function hideMeasureGuide(){
   var g=document.getElementById('measureGuide');
   if(g) g.style.display='none';
+  /* The readout and the guidelines belong to the same gesture, so they go
+     together. The rebuild that actually removes the bars is the caller's - this
+     runs mid-drag too, and rebuilding here would fight the drag. */
+  SNAP_GUIDE=null;
 }
 
 // Toggle day/night and add package-specific lights. Called by setElectrical and
@@ -13875,6 +14106,11 @@ function applyDesignConfig(c){
   try{
     if(c.use!=null && typeof SHED_USE!=='undefined') SHED_USE=c.use;
     if(c.style)STYLE=c.style; if(c.w)W=+c.w; if(c.l)L=+c.l; if(c.h)H=+c.h;
+    /* A saved design's size was chosen by someone, even though it arrives by
+       assignment rather than through setW/setL. Without this, reopening a link
+       and tapping a style would snap the shed back to that style's starting
+       size and throw the saved footprint away. */
+    if(c.w || c.l) SIZE_SET_BY_CUSTOMER = true;
     if(c.pitch!=null)PITCH=+c.pitch;
     if(c.siding)SIDING=c.siding;
     if(c.pineDir)PINE_DIR=c.pineDir;
