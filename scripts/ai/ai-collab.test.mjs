@@ -275,8 +275,33 @@ test('both keys are checked before anything is spent', () => {
   assert.ok(idx('Check the keys are actually here') < idx('Install Claude Code'), 'before the install');
   // Lengths only — a few characters of a key in a public log is still a few
   // characters of a key.
-  assert.ok(/\$\{#OPENAI_API_KEY\}/.test(WF), 'it reports a length');
-  assert.ok(!/echo[^\n]*\$OPENAI_API_KEY[^{]/.test(WF), 'and never the value itself');
+  assert.ok(/\$\{#openai\}/.test(pre[0]) && /\$\{#anthropic\}/.test(pre[0]),
+    'it reports lengths');
+});
+
+test('which key is which is decided by the key, not by the secret name', () => {
+  /* The keys on this repository are stored under names of the owner's
+     choosing, and Actions can only read a secret whose name is written in the
+     workflow — so the workflow lists the names it knows. Choosing the OpenAI
+     key by its NAME would be a guess, and getting it backwards would post an
+     Anthropic key to OpenAI's endpoint. The only reliable signal is the key
+     itself: an Anthropic key begins sk-ant-. */
+  const pre = /Check the keys are actually here[\s\S]*?(?=\n      - name:)/.exec(WF)[0];
+  assert.ok(/sk-ant-\*\)/.test(pre), 'it sorts the candidates by the sk-ant- prefix');
+  for (const name of ['SHEDPRO_RENDER_PROJECT', 'SHEDPRO_RENDER_PROJECT_GPT']) {
+    assert.ok(pre.includes(`secrets.${name}`), `${name} is one of the names it looks under`);
+  }
+  /* Whatever it resolves is exported for the later steps, so those steps must
+     NOT also declare a step-level env of the same name: a step env wins over
+     the job env, and an unset secret there would blank the resolved key. This
+     is exactly what broke the first attempt at this fix. */
+  const after = WF.slice(WF.indexOf('Record the starting point'));
+  assert.ok(!/OPENAI_API_KEY: \$\{\{ secrets\./.test(after),
+    'no later step re-declares OPENAI_API_KEY from a secret');
+  assert.ok(!/ANTHROPIC_API_KEY: \$\{\{ secrets\./.test(after),
+    'no later step re-declares ANTHROPIC_API_KEY from a secret');
+  assert.ok(pre.includes('::add-mask::'),
+    'the trimmed values are masked — GitHub only auto-masks an exact match');
 });
 
 test('secrets reach the steps that need them and are never printed', () => {
@@ -284,6 +309,13 @@ test('secrets reach the steps that need them and are never printed', () => {
   assert.ok(WF.includes('${{ secrets.ANTHROPIC_API_KEY }}'));
   assert.ok(!/echo[^\n]*secrets\./.test(WF), 'no step echoes a secret');
   assert.ok(!/cat[^\n]*secrets\./.test(WF));
+  /* The only lines that write a key value are the two that populate
+     $GITHUB_ENV, and they are inside a group redirected to that file — none
+     of them reaches the run log. */
+  for (const m of WF.matchAll(/^\s*echo "(OPENAI_API_KEY|ANTHROPIC_API_KEY)=/gm)) {
+    const rest = WF.slice(m.index, WF.indexOf('\n', WF.indexOf('}', m.index)));
+    assert.ok(rest.includes('GITHUB_ENV'), 'a key value only ever goes to $GITHUB_ENV');
+  }
 });
 
 test('there is exactly one fix round', () => {

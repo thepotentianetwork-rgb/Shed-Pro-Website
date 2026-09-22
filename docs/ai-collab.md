@@ -124,15 +124,28 @@ doing the edits.
 - **For one run:** cancel it in the Actions tab.
 - **For good:** delete `.github/workflows/ai-collab.yml`. Nothing else in the
   repository depends on it.
-- **Revoke access:** remove `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` from the
-  repository secrets. Every run fails at the first call.
+- **Revoke access:** remove the API keys from the repository secrets (see
+  *Keys* below for the names it reads). Every run then stops at the preflight
+  step, before anything is installed or spent.
 
 ---
 
 ## Keys
 
-They live in GitHub Actions secrets and reach only the step that needs them:
-`OPENAI_API_KEY` for planning and review, `ANTHROPIC_API_KEY` for Claude Code.
+They live in GitHub Actions secrets. The first step of every run finds them
+and hands them on to the steps that need them: an OpenAI key for planning and
+review, an Anthropic key for Claude Code.
+
+**Which secret is which is decided by the key, not by its name.** Actions can
+only read a secret whose name is written in the workflow, so the workflow lists
+the four names these keys have been stored under on this repository —
+`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `SHEDPRO_RENDER_PROJECT` and
+`SHEDPRO_RENDER_PROJECT_GPT` — and then sorts them by what they are: an
+Anthropic key begins `sk-ant-`, an OpenAI one does not. Reading the provider
+off the secret's name would be a guess, and a wrong guess would post one
+provider's key to the other provider's endpoint. Adding a key under a name not
+in that list means the run stops at the preflight step and says so.
+
 Nothing echoes them, nothing writes them to a file, and error text is scrubbed
 of anything key-shaped before it reaches a log — a 401 body can quote enough of
 a key to be worth redacting.
