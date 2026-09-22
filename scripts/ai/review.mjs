@@ -50,18 +50,37 @@ async function main() {
   const task = process.env.AI_TASK || '(task description not provided)';
   if (!base) { console.error('usage: review.mjs --base <ref> [--tests f] [--plan f] [--out f]'); process.exit(2); }
 
-  const stat = sh(`git diff --stat ${base}...HEAD`);
+  /* Working tree against the base, NOT base...HEAD. The implementer does not
+     commit, so the three-dot form was empty every time: this step read an
+     empty diff, reported "nothing was implemented" about a change that was
+     sitting right there on disk, and that false issue triggered a fix round
+     that had nothing to fix. The review had never once looked at any code. */
+  const stat = sh(`git diff --stat ${base}`);
+  /* Untracked files, minus the run's own. The workflow keeps those out of
+     git with .git/info/exclude, but the reviewer should not depend on an
+     ignore file to know that its own plan.md is not part of the change. */
+  const SCRATCH = new Set(['plan.md','review.json','task.txt','pr-body.md','tests.log',
+    'tests-final.log','before.log','guard1.log','implement.log','fix.log',
+    'implement-prompt.txt','fix-prompt.txt']);
+  const newFiles = sh('git ls-files --others --exclude-standard').trim()
+    .split('\n').filter((f) => f && !SCRATCH.has(f)).join('\n');
   /* The full diff of a change to designer.html can be enormous, and most of a
      huge diff tells a reviewer nothing it has not learnt in the first pages.
      Cap it, and say that it was capped so the reviewer knows not to conclude
      anything from the absence of the rest. */
-  const diff = truncate(sh(`git diff ${base}...HEAD`), Number(process.env.REVIEW_DIFF_CHARS || 90000), 'diff');
+  let raw = sh(`git diff ${base}`);
+  // A brand new file is invisible to `git diff`, and is the thing most worth
+  // reading. --no-index against /dev/null renders it as an addition.
+  for (const f of newFiles ? newFiles.split('\n').filter(Boolean) : []) {
+    raw += sh(`git diff --no-index -- /dev/null ${JSON.stringify(f)} || true`);
+  }
+  const diff = truncate(raw, Number(process.env.REVIEW_DIFF_CHARS || 90000), 'diff');
   const tests = testsLog && existsSync(testsLog)
     ? truncate(readFileSync(testsLog, 'utf8'), 20000, 'test output')
     : '(no test output captured)';
   const plan = planPath && existsSync(planPath) ? readFileSync(planPath, 'utf8') : '(no plan)';
 
-  if (!stat.trim()) {
+  if (!stat.trim() && !newFiles) {
     writeFileSync(out, JSON.stringify({
       verdict: 'needs_work',
       summary: 'No files were changed. The implementation step produced an empty diff.',

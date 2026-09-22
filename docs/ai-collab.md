@@ -119,6 +119,52 @@ doing the edits.
 
 ---
 
+## What the first live runs found
+
+Three runs. The first two never reached a model; the third ran the whole
+pipeline and produced a correct change — and exposed three bugs in this
+system, two of them in the part that is supposed to be the protection.
+
+**The guard was inspecting an empty diff.** It compared `base...HEAD`. Claude
+Code edits the working tree and never commits — there is no `git commit` in
+its allowed tools, by design — so at guard time HEAD was still the base and
+the diff was empty. It printed `guard: ok` having looked at nothing. The
+protected-path and deleted-test checks had never run. Only the invariants,
+which read files from disk, and the test count were doing anything.
+
+The tests did not catch it because every one of them committed its change
+before running the guard, which the real workflow never does. There are now
+four that do it the way the real thing does, and they fail against the old
+guard.
+
+**The reviewer had never seen any code,** for the same reason. It read an
+empty diff, correctly reported "nothing was implemented" about a change
+sitting right there on disk, and that false issue triggered a fix round with
+nothing to fix — paid Claude time, every run.
+
+Both now compare the working tree to the base, and add untracked files
+separately, since a diff cannot see a file git has never heard of.
+
+**`git add -A` swept up the run's own files.** The plan, the prompts, the
+review JSON and four test logs — 2,254 lines — were committed alongside a
+three-line change. They are kept out with `.git/info/exclude` (not
+`.gitignore`, which is a tracked file this workflow may not touch), and the
+guard now refuses them if that ever stops working.
+
+**The implementer could not read the task.** It was passed only as `$AI_TASK`,
+and the allowed tools cannot read an environment variable — there is no
+`printenv` in the list and there should not be. It worked from the plan alone
+and said so in its final message, which is the only reason anyone found out.
+The task is written to `task.txt` now and the prompt says to read it first.
+
+**One thing outside this repository.** The run ends at
+`GitHub Actions is not permitted to create or approve pull requests`. That is
+a repository setting: Settings → Actions → General → Workflow permissions →
+*Allow GitHub Actions to create and approve pull requests*. The branch is
+pushed either way, so no work is lost when it fails.
+
+---
+
 ## Turning it off
 
 - **For one run:** cancel it in the Actions tab.
