@@ -1,0 +1,712 @@
+TAP version 13
+# Subtest: the top of the door is glazed
+ok 1 - the top of the door is glazed
+  ---
+  duration_ms: 103.094309
+  type: 'test'
+  ...
+# Subtest: the glass is divided into four lites, not left as one pane
+ok 2 - the glass is divided into four lites, not left as one pane
+  ---
+  duration_ms: 28.471856
+  type: 'test'
+  ...
+# Subtest: the head cap projects from the face, above the glass
+ok 3 - the head cap projects from the face, above the glass
+  ---
+  duration_ms: 21.912145
+  type: 'test'
+  ...
+# Subtest: the rail under the glass is plain, and the bottom rail is the deep one
+ok 4 - the rail under the glass is plain, and the bottom rail is the deep one
+  ---
+  duration_ms: 20.715682
+  type: 'test'
+  ...
+# Subtest: the panels below are split in two
+ok 5 - the panels below are split in two
+  ---
+  duration_ms: 18.22131
+  type: 'test'
+  ...
+# Subtest: you can see INTO the shed through the lites
+ok 6 - you can see INTO the shed through the lites
+  ---
+  duration_ms: 187.400547
+  type: 'test'
+  ...
+# Subtest: the muntins sit on the glass, not beside it
+ok 7 - the muntins sit on the glass, not beside it
+  ---
+  duration_ms: 11.903894
+  type: 'test'
+  ...
+# Subtest: no hinge or handle crosses the glass — craftsman, 36in
+ok 8 - no hinge or handle crosses the glass — craftsman, 36in
+  ---
+  duration_ms: 8.453727
+  type: 'test'
+  ...
+# Subtest: no hinge or handle crosses the glass — craftsman, 60in
+ok 9 - no hinge or handle crosses the glass — craftsman, 60in
+  ---
+  duration_ms: 12.987975
+  type: 'test'
+  ...
+# Subtest: no hinge or handle crosses the glass — cedar, 36in
+ok 10 - no hinge or handle crosses the glass — cedar, 36in
+  ---
+  duration_ms: 23.538062
+  type: 'test'
+  ...
+# Subtest: no hinge or handle crosses the glass — cedar, 60in
+ok 11 - no hinge or handle crosses the glass — cedar, 60in
+  ---
+  duration_ms: 19.738913
+  type: 'test'
+  ...
+# Subtest: no hinge or handle crosses the glass — reshalf, 36in
+ok 12 - no hinge or handle crosses the glass — reshalf, 36in
+  ---
+  duration_ms: 13.14508
+  type: 'test'
+  ...
+# Subtest: no hinge or handle crosses the glass — resfull, 36in
+ok 13 - no hinge or handle crosses the glass — resfull, 36in
+  ---
+  duration_ms: 11.035868
+  type: 'test'
+  ...
+# Subtest: every style with a glazed band declares it, so hingeYs can dodge it
+ok 14 - every style with a glazed band declares it, so hingeYs can dodge it
+  ---
+  duration_ms: 50.979405
+  type: 'test'
+  ...
+# Subtest: the strap hinges are short ones, not barn straps
+ok 15 - the strap hinges are short ones, not barn straps
+  ---
+  duration_ms: 9.764004
+  type: 'test'
+  ...
+# Subtest: the straps are fitted to the rails, not spread down the door
+ok 16 - the straps are fitted to the rails, not spread down the door
+  ---
+  duration_ms: 24.934369
+  type: 'test'
+  ...
+# Subtest: it no longer looks like the plain door
+ok 17 - it no longer looks like the plain door
+  ---
+  duration_ms: 27.128459
+  type: 'test'
+  ...
+# Subtest: it holds together on a wide leaf as well as a narrow one
+ok 18 - it holds together on a wide leaf as well as a narrow one
+  ---
+  duration_ms: 35.513749
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — vertical, 30in
+ok 19 - no daylight around the fairytale door — vertical, 30in
+  ---
+  duration_ms: 2419.293713
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — vertical, 36in
+ok 20 - no daylight around the fairytale door — vertical, 36in
+  ---
+  duration_ms: 1726.985845
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — vertical, 42in
+ok 21 - no daylight around the fairytale door — vertical, 42in
+  ---
+  duration_ms: 1977.755537
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — board-batten, 30in
+ok 22 - no daylight around the fairytale door — board-batten, 30in
+  ---
+  duration_ms: 1837.06271
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — board-batten, 36in
+ok 23 - no daylight around the fairytale door — board-batten, 36in
+  ---
+  duration_ms: 2142.248366
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — board-batten, 42in
+ok 24 - no daylight around the fairytale door — board-batten, 42in
+  ---
+  duration_ms: 2486.983804
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — horizontal, 30in
+ok 25 - no daylight around the fairytale door — horizontal, 30in
+  ---
+  duration_ms: 1433.374666
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — horizontal, 36in
+ok 26 - no daylight around the fairytale door — horizontal, 36in
+  ---
+  duration_ms: 1669.205009
+  type: 'test'
+  ...
+# Subtest: no daylight around the fairytale door — horizontal, 42in
+ok 27 - no daylight around the fairytale door — horizontal, 42in
+  ---
+  duration_ms: 2004.439407
+  type: 'test'
+  ...
+# Subtest: board & batten keeps off the door trim — fairytale
+ok 28 - board & batten keeps off the door trim — fairytale
+  ---
+  duration_ms: 14.441214
+  type: 'test'
+  ...
+# Subtest: board & batten keeps off the door trim — cedar
+ok 29 - board & batten keeps off the door trim — cedar
+  ---
+  duration_ms: 21.89957
+  type: 'test'
+  ...
+# Subtest: board & batten keeps off the door trim — res6
+ok 30 - board & batten keeps off the door trim — res6
+  ---
+  duration_ms: 8.984097
+  type: 'test'
+  ...
+# Subtest: a new gable vent centres on the gable — 12x20, 9ft walls, 6/12
+ok 31 - a new gable vent centres on the gable — 12x20, 9ft walls, 6/12
+  ---
+  duration_ms: 4.6529
+  type: 'test'
+  ...
+# Subtest: a new gable vent centres on the gable — 8x12, 8ft walls, 4/12
+ok 32 - a new gable vent centres on the gable — 8x12, 8ft walls, 4/12
+  ---
+  duration_ms: 3.35631
+  type: 'test'
+  ...
+# Subtest: a new gable vent centres on the gable — 16x24, 10ft walls, 10/12
+ok 33 - a new gable vent centres on the gable — 16x24, 10ft walls, 10/12
+  ---
+  duration_ms: 5.789931
+  type: 'test'
+  ...
+# Subtest: a new gable vent centres on the gable — 10x16, 7ft walls, 8/12
+ok 34 - a new gable vent centres on the gable — 10x16, 7ft walls, 8/12
+  ---
+  duration_ms: 4.475367
+  type: 'test'
+  ...
+# Subtest: the Add Vent button centres it too — 12x20, 9ft, 6/12
+ok 35 - the Add Vent button centres it too — 12x20, 9ft, 6/12
+  ---
+  duration_ms: 12.435434
+  type: 'test'
+  ...
+# Subtest: the Add Vent button centres it too — 16x24, 10ft, 10/12
+ok 36 - the Add Vent button centres it too — 16x24, 10ft, 10/12
+  ---
+  duration_ms: 11.802578
+  type: 'test'
+  ...
+# Subtest: the Add Vent button centres it too — 10x16, 8ft, 5/12
+ok 37 - the Add Vent button centres it too — 10x16, 8ft, 5/12
+  ---
+  duration_ms: 10.705211
+  type: 'test'
+  ...
+# Subtest: a vent the gable has no room for drops into the wall rather than through the rake
+ok 38 - a vent the gable has no room for drops into the wall rather than through the rake
+  ---
+  duration_ms: 3.354848
+  type: 'test'
+  ...
+# Subtest: a vent has a casing the same width as a window casing
+ok 39 - a vent has a casing the same width as a window casing
+  ---
+  duration_ms: 3.757923
+  type: 'test'
+  ...
+# Subtest: nothing on the vent is buried in the siding
+ok 40 - nothing on the vent is buried in the siding
+  ---
+  duration_ms: 4.298345
+  type: 'test'
+  ...
+# Subtest: board & batten keeps off the vent casing — front wall
+ok 41 - board & batten keeps off the vent casing — front wall
+  ---
+  duration_ms: 9.245958
+  type: 'test'
+  ...
+# Subtest: board & batten keeps off the vent casing — left wall
+ok 42 - board & batten keeps off the vent casing — left wall
+  ---
+  duration_ms: 8.138502
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — all4 overhang, 4in
+ok 43 - front porch is closed overhead — all4 overhang, 4in
+  ---
+  duration_ms: 318.023558
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — all4 overhang, 6in
+ok 44 - front porch is closed overhead — all4 overhang, 6in
+  ---
+  duration_ms: 170.555776
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — all4 overhang, 12in
+ok 45 - front porch is closed overhead — all4 overhang, 12in
+  ---
+  duration_ms: 162.888972
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — all4 overhang, 18in
+ok 46 - front porch is closed overhead — all4 overhang, 18in
+  ---
+  duration_ms: 181.078082
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — all4 overhang, 24in
+ok 47 - front porch is closed overhead — all4 overhang, 24in
+  ---
+  duration_ms: 192.192987
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — gable overhang, 4in
+ok 48 - front porch is closed overhead — gable overhang, 4in
+  ---
+  duration_ms: 143.651548
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — gable overhang, 6in
+ok 49 - front porch is closed overhead — gable overhang, 6in
+  ---
+  duration_ms: 141.977872
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — gable overhang, 12in
+ok 50 - front porch is closed overhead — gable overhang, 12in
+  ---
+  duration_ms: 144.382786
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — gable overhang, 18in
+ok 51 - front porch is closed overhead — gable overhang, 18in
+  ---
+  duration_ms: 132.174336
+  type: 'test'
+  ...
+# Subtest: front porch is closed overhead — gable overhang, 24in
+ok 52 - front porch is closed overhead — gable overhang, 24in
+  ---
+  duration_ms: 90.906042
+  type: 'test'
+  ...
+# Subtest: the slot scaled with the overhang, so every overhang is covered equally
+ok 53 - the slot scaled with the overhang, so every overhang is covered equally
+  ---
+  duration_ms: 100.437271
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 4, 4ft porch
+ok 54 - the ceiling tucks under the roof, never through it — pitch 4, 4ft porch
+  ---
+  duration_ms: 133.136168
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 4, 6ft porch
+ok 55 - the ceiling tucks under the roof, never through it — pitch 4, 6ft porch
+  ---
+  duration_ms: 164.322498
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 4, 8ft porch
+ok 56 - the ceiling tucks under the roof, never through it — pitch 4, 8ft porch
+  ---
+  duration_ms: 192.668666
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 6, 4ft porch
+ok 57 - the ceiling tucks under the roof, never through it — pitch 6, 4ft porch
+  ---
+  duration_ms: 117.001638
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 6, 6ft porch
+ok 58 - the ceiling tucks under the roof, never through it — pitch 6, 6ft porch
+  ---
+  duration_ms: 168.114392
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 6, 8ft porch
+ok 59 - the ceiling tucks under the roof, never through it — pitch 6, 8ft porch
+  ---
+  duration_ms: 197.807887
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 10, 4ft porch
+ok 60 - the ceiling tucks under the roof, never through it — pitch 10, 4ft porch
+  ---
+  duration_ms: 117.655462
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 10, 6ft porch
+ok 61 - the ceiling tucks under the roof, never through it — pitch 10, 6ft porch
+  ---
+  duration_ms: 156.190712
+  type: 'test'
+  ...
+# Subtest: the ceiling tucks under the roof, never through it — pitch 10, 8ft porch
+ok 62 - the ceiling tucks under the roof, never through it — pitch 10, 8ft porch
+  ---
+  duration_ms: 194.562406
+  type: 'test'
+  ...
+# Subtest: side porch stays closed too — 4in overhang
+ok 63 - side porch stays closed too — 4in overhang
+  ---
+  duration_ms: 120.57427
+  type: 'test'
+  ...
+# Subtest: side porch stays closed too — 12in overhang
+ok 64 - side porch stays closed too — 12in overhang
+  ---
+  duration_ms: 131.51038
+  type: 'test'
+  ...
+# Subtest: side porch stays closed too — 24in overhang
+ok 65 - side porch stays closed too — 24in overhang
+  ---
+  duration_ms: 154.448818
+  type: 'test'
+  ...
+# Subtest: you can ride up it — blocks foundation
+ok 66 - you can ride up it — blocks foundation
+  ---
+  duration_ms: 92.646015
+  type: 'test'
+  ...
+# Subtest: you can ride up it — gravel foundation
+ok 67 - you can ride up it — gravel foundation
+  ---
+  duration_ms: 208.913173
+  type: 'test'
+  ...
+# Subtest: you can ride up it — pad foundation
+ok 68 - you can ride up it — pad foundation
+  ---
+  duration_ms: 13.777404
+  type: 'test'
+  ...
+# Subtest: you can ride up it — existing foundation
+ok 69 - you can ride up it — existing foundation
+  ---
+  duration_ms: 16.976176
+  type: 'test'
+  ...
+# Subtest: the toe sits on the ground, not above it or buried in it
+ok 70 - the toe sits on the ground, not above it or buried in it
+  ---
+  duration_ms: 13.403664
+  type: 'test'
+  ...
+# Subtest: it runs out from the wall, not into the shed
+ok 71 - it runs out from the wall, not into the shed
+  ---
+  duration_ms: 11.027701
+  type: 'test'
+  ...
+# Subtest: it is about as wide as the door and centred on it
+ok 72 - it is about as wide as the door and centred on it
+  ---
+  duration_ms: 14.21858
+  type: 'test'
+  ...
+# Subtest: it lands outside the front wall
+ok 73 - it lands outside the front wall
+  ---
+  duration_ms: 8.338043
+  type: 'test'
+  ...
+# Subtest: it lands outside the back wall
+ok 74 - it lands outside the back wall
+  ---
+  duration_ms: 8.792223
+  type: 'test'
+  ...
+# Subtest: it lands outside the left wall
+ok 75 - it lands outside the left wall
+  ---
+  duration_ms: 8.990234
+  type: 'test'
+  ...
+# Subtest: it lands outside the right wall
+ok 76 - it lands outside the right wall
+  ---
+  duration_ms: 10.481468
+  type: 'test'
+  ...
+# Subtest: only the drive-in door gets one, not the walk door
+ok 77 - only the drive-in door gets one, not the walk door
+  ---
+  duration_ms: 28.607479
+  type: 'test'
+  ...
+# Subtest: two drive-in doors still means one ramp, because it is one flat price
+ok 78 - two drive-in doors still means one ramp, because it is one flat price
+  ---
+  duration_ms: 8.618298
+  type: 'test'
+  ...
+# Subtest: a shed with only a walk door still shows the ramp it paid for
+ok 79 - a shed with only a walk door still shows the ramp it paid for
+  ---
+  duration_ms: 19.509854
+  type: 'test'
+  ...
+# Subtest: no door, no ramp
+ok 80 - no door, no ramp
+  ---
+  duration_ms: 3.539712
+  type: 'test'
+  ...
+# Subtest: switched off, nothing is built
+ok 81 - switched off, nothing is built
+  ---
+  duration_ms: 5.984142
+  type: 'test'
+  ...
+# Subtest: it does not appear in the dollhouse view
+ok 82 - it does not appear in the dollhouse view
+  ---
+  duration_ms: 9.457279
+  type: 'test'
+  ...
+# Subtest: every upgrade sits under a heading
+ok 83 - every upgrade sits under a heading
+  ---
+  duration_ms: 1.630675
+  type: 'test'
+  ...
+# Subtest: the sections are the ones the list declares, in that order
+ok 84 - the sections are the ones the list declares, in that order
+  ---
+  duration_ms: 0.78997
+  type: 'test'
+  ...
+# Subtest: each item lands in the section it claims
+ok 85 - each item lands in the section it claims
+  ---
+  duration_ms: 0.418404
+  type: 'test'
+  ...
+# Subtest: no heading is printed twice
+ok 86 - no heading is printed twice
+  ---
+  duration_ms: 0.254948
+  type: 'test'
+  ...
+# Subtest: an item added in the wrong place still lands in its own section
+ok 87 - an item added in the wrong place still lands in its own section
+  ---
+  duration_ms: 0.259306
+  type: 'test'
+  ...
+# Subtest: an item with no section is shown rather than swallowed
+ok 88 - an item with no section is shown rather than swallowed
+  ---
+  duration_ms: 0.260368
+  type: 'test'
+  ...
+# Subtest: a lean-to loses the ridge vent but keeps its section
+ok 89 - a lean-to loses the ridge vent but keeps its section
+  ---
+  duration_ms: 0.33084
+  type: 'test'
+  ...
+# Subtest: a section with nothing left to show prints no heading
+ok 90 - a section with nothing left to show prints no heading
+  ---
+  duration_ms: 0.220994
+  type: 'test'
+  ...
+# Subtest: the "shown in 3D" tag is gone from the upgrades
+ok 91 - the "shown in 3D" tag is gone from the upgrades
+  ---
+  duration_ms: 0.558636
+  type: 'test'
+  ...
+# Subtest: a style with a badge shows it instead of its description
+ok 92 - a style with a badge shows it instead of its description
+  ---
+  duration_ms: 2.473945
+  type: 'test'
+  ...
+# Subtest: running it again changes nothing
+ok 93 - running it again changes nothing
+  ---
+  duration_ms: 3.049854
+  type: 'test'
+  ...
+# Subtest: a recommendation outranks a standing badge, and is given back after
+ok 94 - a recommendation outranks a standing badge, and is given back after
+  ---
+  duration_ms: 2.242853
+  type: 'test'
+  ...
+# Subtest: the badged line gets its extra spacing, and gives it back
+ok 95 - the badged line gets its extra spacing, and gives it back
+  ---
+  duration_ms: 2.731828
+  type: 'test'
+  ...
+# Subtest: the sparkle is decoration, not part of the label
+ok 96 - the sparkle is decoration, not part of the label
+  ---
+  duration_ms: 0.998901
+  type: 'test'
+  ...
+# Subtest: the premium shells get the black badge, the rest do not
+ok 97 - the premium shells get the black badge, the rest do not
+  ---
+  duration_ms: 2.59493
+  type: 'test'
+  ...
+# Subtest: an unbadged style still keeps its description
+ok 98 - an unbadged style still keeps its description
+  ---
+  duration_ms: 0.927778
+  type: 'test'
+  ...
+# Subtest: a recommendation beats a standing badge rather than stacking with it
+ok 99 - a recommendation beats a standing badge rather than stacking with it
+  ---
+  duration_ms: 2.311721
+  type: 'test'
+  ...
+# Subtest: the page still has the two sliders these presets have to satisfy
+ok 100 - the page still has the two sliders these presets have to satisfy
+  ---
+  duration_ms: 1.823947
+  type: 'test'
+  ...
+# Subtest: every preset is a size the sliders can actually hold
+ok 101 - every preset is a size the sliders can actually hold
+  ---
+  duration_ms: 1.384654
+  type: 'test'
+  ...
+# Subtest: no preset is listed twice
+ok 102 - no preset is listed twice
+  ---
+  duration_ms: 0.249387
+  type: 'test'
+  ...
+# Subtest: they run smallest to largest, so the strip reads as a ladder
+ok 103 - they run smallest to largest, so the strip reads as a ladder
+  ---
+  duration_ms: 0.364753
+  type: 'test'
+  ...
+# Subtest: the permit line is marked, and marked correctly
+ok 104 - the permit line is marked, and marked correctly
+  ---
+  duration_ms: 0.228428
+  type: 'test'
+  ...
+# Subtest: picking one sets the size, and counts as the customer choosing it
+ok 105 - picking one sets the size, and counts as the customer choosing it
+  ---
+  duration_ms: 0.959478
+  type: 'test'
+  ...
+# Subtest: the highlight follows the size, including off the presets
+ok 106 - the highlight follows the size, including off the presets
+  ---
+  duration_ms: 0.51259
+  type: 'test'
+  ...
+# Subtest: a row already evenly spaced offers the free even slot
+ok 107 - a row already evenly spaced offers the free even slot
+  ---
+  duration_ms: 2.816827
+  type: 'test'
+  ...
+# Subtest: the fourth of four finds its slot even though it is also a mirror
+ok 108 - the fourth of four finds its slot even though it is also a mirror
+  ---
+  duration_ms: 0.406862
+  type: 'test'
+  ...
+# Subtest: windows placed by hand get the halfway offer, not a row that would be a lie
+ok 109 - windows placed by hand get the halfway offer, not a row that would be a lie
+  ---
+  duration_ms: 0.369242
+  type: 'test'
+  ...
+# Subtest: nowhere near an even position, nothing is forced
+ok 110 - nowhere near an even position, nothing is forced
+  ---
+  duration_ms: 0.367489
+  type: 'test'
+  ...
+# Subtest: two windows on a wall cannot produce a row offer
+ok 111 - two windows on a wall cannot produce a row offer
+  ---
+  duration_ms: 0.364834
+  type: 'test'
+  ...
+# Subtest: a wall with no windows levels against another wall
+ok 112 - a wall with no windows levels against another wall
+  ---
+  duration_ms: 0.366787
+  type: 'test'
+  ...
+# Subtest: a sill too far away is left alone
+ok 113 - a sill too far away is left alone
+  ---
+  duration_ms: 0.337242
+  type: 'test'
+  ...
+# Subtest: this wall wins over another wall
+ok 114 - this wall wins over another wall
+  ---
+  duration_ms: 0.231084
+  type: 'test'
+  ...
+# Subtest: the guide changes when the snap changes, so it gets rebuilt
+ok 115 - the guide changes when the snap changes, so it gets rebuilt
+  ---
+  duration_ms: 0.767598
+  type: 'test'
+  ...
+# Subtest: no snap means no guide at all
+ok 116 - no snap means no guide at all
+  ---
+  duration_ms: 0.614972
+  type: 'test'
+  ...
+# Subtest: the pull is the same few inches on a short wall and a long one
+ok 117 - the pull is the same few inches on a short wall and a long one
+  ---
+  duration_ms: 0.505407
+  type: 'test'
+  ...
+1..117
+# tests 117
+# suites 0
+# pass 117
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 17981.856447

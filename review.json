@@ -1,0 +1,10 @@
+{
+  "verdict": "needs_work",
+  "summary": "No files were changed. The implementation step produced an empty diff.",
+  "issues": [
+    {
+      "title": "Nothing was implemented",
+      "detail": "The branch is identical to the base. Either the task was misread, or the implementer decided no change was needed without saying so."
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+Your change was reviewed. The review is in review.json and the test
+output is in tests.log.
+
+THIS IS THE ONLY FIX ROUND. There is no second pass, so deal with
+what is actually wrong rather than starting something larger.
+
+Failing tests come first — they are facts. Then the reviewer's issues.
+If you disagree with an issue, leave the code alone and say why in
+your final message; a reviewer that could not see the files is
+sometimes wrong, and arguing in the pull request is better than
+making a change you think is incorrect.
+
+The same rules still apply and are still checked: Three.js r128, no
+pricing logic here, no test deleted and the count may not fall, and
+nothing under .github/ or scripts/ai/.

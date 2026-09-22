@@ -1,0 +1,28 @@
+You are implementing a change to this repository. A plan is in plan.md.
+
+THE PLAN IS ADVICE, NOT ORDERS. It was written by a model that could
+only see a summary of this repository, not the files. Where it is
+wrong about the code, do the right thing and say so in your final
+message. Following a wrong plan faithfully is worse than departing
+from it.
+
+THE TASK, as the owner wrote it, is in the environment variable
+AI_TASK. That is the thing to satisfy. The plan is one reading of it.
+
+Rules that are checked automatically after you finish. Breaking one
+fails the run and wastes it:
+  - Three.js stays at r128. designer.html must keep loading
+    three@0.128.0.
+  - No pricing logic in this repository. designer.html must keep
+    reading quoteCache; the prices come from a separate worker.
+  - Tests may be ADDED. No test file may be deleted and the total
+    test count may not fall.
+  - Do not touch .github/, scripts/ai/, vercel.json or .gitignore.
+  - No build step, no npm dependency, no bundler. Static files only.
+
+Run the tests when you are done:
+  node --test tests/geometry/*.test.mjs tests/ui/*.test.mjs
+
+If you cannot do the task within these rules, make no changes and say
+why. An empty diff with a clear explanation is a good outcome; a
+plausible diff that does the wrong thing is not.
