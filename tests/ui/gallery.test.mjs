@@ -104,7 +104,36 @@ document.getElementById('f').onload = function(){
 
     setTimeout(function(){
      try {
-      // --- the page fade-in: visible by default, hidden only while JS says so ---
+      // --- nothing is cropped: every photo renders at its own shape ---
+    function shapeCheck(sel, label){
+      var imgs = d.querySelectorAll(sel);
+      var bad = [], unloaded = 0;
+      for (var k = 0; k < imgs.length; k++){
+        var im = imgs[k];
+        if (!im.naturalWidth || !im.naturalHeight){ unloaded++; continue; }
+        var natural = im.naturalWidth / im.naturalHeight;
+        var drawn = im.clientWidth / im.clientHeight;
+        // more than 2% off means the box is a different shape than the photo,
+        // so object-fit is either cutting it or letterboxing it
+        if (Math.abs(drawn - natural) / natural > 0.02)
+          bad.push(im.getAttribute('src') + ' ' + natural.toFixed(2) + '->' + drawn.toFixed(2));
+        var fit = w.getComputedStyle(im).objectFit;
+        if (fit === 'cover') bad.push(im.getAttribute('src') + ' object-fit:cover');
+      }
+      t(label, bad.length === 0 && imgs.length > 0 && unloaded === 0,
+        imgs.length + ' photos, ' + unloaded + ' unloaded' +
+        (bad.length ? ', cropped: ' + bad.slice(0,4).join('; ') : ''));
+    }
+    shapeCheck('.gallery-item img', 'no gallery photo is cropped');
+    shapeCheck('.style-card .style-img', 'no style card photo is cropped');
+
+    // a masonry column layout is what lets them keep their own heights
+    var grid = w.getComputedStyle(d.querySelector('.gallery-grid'));
+    t('the gallery lays out as columns', grid.columnCount === '3', grid.columnCount);
+    var sgrid = w.getComputedStyle(d.querySelector('.styles-grid'));
+    t('the style cards lay out as columns', sgrid.columnCount === '3', sgrid.columnCount);
+
+    // --- the page fade-in: visible by default, hidden only while JS says so ---
       var cs = w.getComputedStyle(d.body);
       t('the fade is an opacity transition', /opacity/.test(cs.transitionProperty), cs.transitionProperty);
       t('the fade is brief', parseFloat(cs.transitionDuration) <= 0.35, cs.transitionDuration);
