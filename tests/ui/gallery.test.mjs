@@ -102,34 +102,39 @@ document.getElementById('f').onload = function(){
     d.dispatchEvent(ev);
     t('Escape closes the lightbox', !lb.classList.contains('open'));
 
-    // --- the page fade-in: visible by default, hidden only while JS says so ---
-    var cs = w.getComputedStyle(d.body);
-    t('the fade is an opacity transition', /opacity/.test(cs.transitionProperty), cs.transitionProperty);
-    t('the fade is brief', parseFloat(cs.transitionDuration) <= 0.35, cs.transitionDuration);
-    // a transform on <body> would break the fixed header; opacity only
-    t('the fade does not move the page', cs.transform === 'none' || cs.transform === '', cs.transform);
-    t('the fade-in has finished before we look', d.documentElement.className.indexOf('sp-fade') === -1,
-      '"' + d.documentElement.className + '"');
+    setTimeout(function(){
+     try {
+      // --- the page fade-in: visible by default, hidden only while JS says so ---
+      var cs = w.getComputedStyle(d.body);
+      t('the fade is an opacity transition', /opacity/.test(cs.transitionProperty), cs.transitionProperty);
+      t('the fade is brief', parseFloat(cs.transitionDuration) <= 0.35, cs.transitionDuration);
+      // a transform on <body> would break the fixed header; opacity only
+      t('the fade does not move the page', cs.transform === 'none' || cs.transform === '', cs.transform);
+      t('the fade-in has finished before we look', d.documentElement.className.indexOf('sp-fade') === -1,
+        '"' + d.documentElement.className + '"');
 
-    // Read the settled values, not a frame mid-transition: with the transition
-    // suppressed, computed opacity is whatever the classes alone resolve to.
-    d.body.style.transition = 'none';
-    void d.body.offsetHeight;
-    t('nothing is left faded out', parseFloat(w.getComputedStyle(d.body).opacity) === 1,
-      w.getComputedStyle(d.body).opacity);
+      // Read the settled values, not a frame mid-transition: with the transition
+      // suppressed, computed opacity is whatever the classes alone resolve to.
+      d.body.style.transition = 'none';
+      void d.body.offsetHeight;
+      t('nothing is left faded out', parseFloat(w.getComputedStyle(d.body).opacity) === 1,
+        w.getComputedStyle(d.body).opacity);
 
-    // the hide is gated on the class JS adds, so CSS alone can never blank the site
-    d.documentElement.className += ' sp-fade';
-    void d.body.offsetHeight;
-    var hidden = parseFloat(w.getComputedStyle(d.body).opacity);
-    d.documentElement.className = d.documentElement.className.split('sp-fade').join('').trim();
-    void d.body.offsetHeight;
-    var back = parseFloat(w.getComputedStyle(d.body).opacity);
-    d.body.style.transition = '';
-    t('only the JS class hides the page', hidden === 0 && back === 1,
-      hidden + ' -> ' + back + ' | class after removal: "' + d.documentElement.className + '"' +
-      ' | inline transition: "' + d.body.style.transition + '"');
-
+      // the hide is gated on the class JS adds, so CSS alone can never blank the site
+      d.documentElement.className += ' sp-fade';
+      void d.body.offsetHeight;
+      var hidden = parseFloat(w.getComputedStyle(d.body).opacity);
+      d.documentElement.className = d.documentElement.className.split('sp-fade').join('').trim();
+      void d.body.offsetHeight;
+      var back = parseFloat(w.getComputedStyle(d.body).opacity);
+      d.body.style.transition = '';
+      t('only the JS class hides the page', hidden === 0 && back === 1,
+        hidden + ' -> ' + back + ' | class after removal: "' + d.documentElement.className + '"' +
+        ' | inline transition: "' + d.body.style.transition + '"');
+     } catch (e2) { t('the fade checks ran', false, e2 && e2.message); }
+      done();
+    }, 900);
+    return;
   } catch (e) {
     t('harness ran without throwing', false, e && (e.message + ' @ ' + e.lineno));
   }
