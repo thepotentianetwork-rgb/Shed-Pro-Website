@@ -44,6 +44,11 @@ different library than production.
   rather than swinging as one slab: three separate pivot angles, a stack that
   does not pass through itself, an opening that is filled shut and clear open,
   and a bar ledge the panels swing over rather than through.
+- `geometry/liftup.test.mjs` — the Lift-Up Bar Window lifts to a canopy rather
+  than cracking ajar like an awning: the sash angle, the pivot on the TOP edge
+  (measured against the fixed frame, not against its own hinge), the clear
+  opening underneath, and two gas struts that change angle with the sash
+  instead of being carried by it.
 - `ui/premiumwindows.test.mjs` — the Premium tier: every catalog group has a
   tab (a new group used to land in with the plain windows), the Luxury stamp is
   the gold one, a tapped bi-fold reaches its fold controls, and a serving

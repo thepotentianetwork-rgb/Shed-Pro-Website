@@ -33,6 +33,7 @@ import { loadDesigner } from '../harness.mjs';
 
 const { c } = loadDesigner();
 const BIFOLD = 'Black Bi-Fold Bar 72x40';
+const LIFTUP = 'Black Lift-Up Bar 60x42';
 
 test('every catalog group has a tab, and every entry lands in exactly one', () => {
   const tabs = c.WINDOW_CATS.map((t) => t.cat).filter((t) => t !== 'vent');
@@ -221,4 +222,118 @@ test('a bi-fold hangs at bar height, not up under the eave', () => {
   assert.ok(bandSill > c.BAR_SILL_IN() + 12,
     `the wide-window rule should mount well above bar height (${bandSill}")`);
   assert.ok(sill < bandSill, 'the bi-fold is being mounted by the wide-window rule');
+});
+
+/* ── THE TWO PREMIUM PRODUCTS ARE NOT VARIANTS OF EACH OTHER ──────────────
+   One folds sideways on three vertical hinges; one lifts overhead on a top
+   hinge and two gas struts. They share a tier, a sill height and a counter,
+   and nothing else. The brief says to keep them completely separate, so these
+   tests are about the ways they could quietly merge. */
+
+test('the two bar windows are told apart, and neither answers for the other', () => {
+  assert.ok(c.isBifold({ type: BIFOLD }) && !c.isLiftUp({ type: BIFOLD }));
+  assert.ok(c.isLiftUp({ type: LIFTUP }) && !c.isBifold({ type: LIFTUP }));
+  // Both are bar windows, which is what the shared parts key off.
+  assert.ok(c.isBarWindow({ type: BIFOLD }) && c.isBarWindow({ type: LIFTUP }));
+  assert.ok(c.isPremiumWin({ type: LIFTUP }));
+  // And nothing else in the catalog is either.
+  for (const e of c.WINDOW_CATALOG) {
+    if (e.grp === 'Premium') continue;
+    assert.ok(!c.isBarWindow({ type: e.key }), `${e.key} counts as a bar window`);
+  }
+  assert.ok(!c.isBarWindow({}));
+});
+
+test('every lift-up size the brief asked for is in the catalog', () => {
+  const want = [[48, 36], [60, 42], [72, 42], [96, 48]];
+  const got = c.WINDOW_CATALOG.filter((e) => /Lift-Up Bar/.test(e.key)).map((e) => [e.w, e.h]);
+  assert.equal(got.map((g) => g.join('x')).join(','), want.map((g) => g.join('x')).join(','));
+  // Its sill lands at bar height too — the rule belongs to bar windows, not
+  // to the bi-fold that happened to need it first.
+  c.H = 9;
+  const e = c.WINDOW_CATALOG.find((x) => x.key === LIFTUP);
+  assert.equal(c.defaultCyFor(e.h, e.key, e.w) - e.h / 2, c.BAR_SILL_IN());
+});
+
+test('the two products get different tiles, and the lift-up tile shows it open', () => {
+  assert.notEqual(c.premiumIcon(BIFOLD), c.premiumIcon(LIFTUP),
+    'both premium windows draw the same tile — a customer choosing between them sees one shape');
+  /* The brief asks for the lift-up preview in the OPEN position with the
+     ledge: shut it is one big rectangle, which says nothing about what the
+     upgrade does. The icon is checked for the two marks only the open form
+     has — a sash lifted clear above the opening, and the counter under it. */
+  const svg = c.itemIcon(c.premiumIcon(LIFTUP));
+  assert.ok(/stroke-dasharray/.test(svg), 'the lift-up tile does not show the opening standing clear');
+  assert.ok(/stroke-width="2.6"/.test(svg), 'the lift-up tile has no bar ledge on it');
+});
+
+test('a lift-up is placed OPEN, matching its own tile', () => {
+  c.ADD_WALL = 'front'; c.W = 12; c.L = 20; c.H = 9;
+  c.windowsData = []; c.selectedKind = ''; c.selectedWindow = -1;
+  const saved = { buildShed: c.buildShed, renderPlacedWindows: c.renderPlacedWindows,
+                  closeSubPage: c.closeSubPage };
+  c.buildShed = () => {}; c.renderPlacedWindows = () => {}; c.closeSubPage = () => {};
+  let toast = '';
+  const savedToast = c.showToast; c.showToast = (m) => { toast = m; };
+  try {
+    // One per wall. A 5ft and a 6ft bar window will not both fit on a 12ft
+    // front wall with their casings, and the placer says so rather than
+    // stacking them — which left the second one unplaced and this test
+    // reading a field off undefined.
+    c.ADD_WALL = 'front'; c.addWindowByKey(LIFTUP);
+    c.ADD_WALL = 'back';  c.addWindowByKey(BIFOLD);
+  } finally { Object.assign(c, saved); c.showToast = savedToast; }
+  assert.equal(c.windowsData.length, 2, `only ${c.windowsData.length} placed: ${toast}`);
+  const lift = c.windowsData.find((w) => w.type === LIFTUP);
+  const fold = c.windowsData.find((w) => w.type === BIFOLD);
+  assert.ok(lift, 'the lift-up was not placed');
+  assert.equal(lift.open, true, 'a lift-up should arrive open, as its tile draws it');
+  assert.equal(lift.ledge, true);
+  assert.equal(lift.fold, undefined, 'a lift-up has no fold direction');
+  // The bi-fold still arrives closed — its own tile shows it part-folded.
+  assert.equal(fold.open, false);
+  assert.equal(fold.fold, 'left');
+});
+
+test('the lift-up controls drop Fold and keep the rest', () => {
+  c.windowsData = [{ wall:'front', pos:0.5, w:60, h:42, cy:63, type:LIFTUP, open:true, ledge:true }];
+  c.selectedKind = 'window'; c.selectedWindow = 0;
+  const html = c.barWindowControlsHTML(0);
+  assert.ok(html.includes('Sash'), 'the lift-up has no open/close control');
+  assert.ok(html.includes('Exterior bar ledge'), 'the lift-up has no ledge control');
+  assert.ok(html.includes('matte black'), 'the frame finish is not stated');
+  assert.ok(!html.includes('Fold toward'),
+    'a lift-up is being offered a fold direction — it has no side to fold to');
+  // The bi-fold still has it, so the absence above is a choice.
+  c.windowsData = [{ wall:'front', pos:0.5, w:72, h:40, cy:62, type:BIFOLD, ledge:true }];
+  assert.ok(c.barWindowControlsHTML(0).includes('Fold toward'));
+
+  // And the fold setter refuses to write one onto a lift-up.
+  c.windowsData = [{ wall:'front', pos:0.5, w:60, h:42, cy:63, type:LIFTUP, open:true }];
+  const saved = { buildShed: c.buildShed, renderPlacedWindows: c.renderPlacedWindows,
+                  syncEditorPanel: c.syncEditorPanel,
+                  openOptionsForSelectedWindow: c.openOptionsForSelectedWindow };
+  c.buildShed = () => {}; c.renderPlacedWindows = () => {}; c.syncEditorPanel = () => {};
+  c.openOptionsForSelectedWindow = () => {};
+  try { c.setBifoldFold(0, 'right'); } finally { Object.assign(c, saved); }
+  assert.equal(c.windowsData[0].fold, undefined,
+    'a fold direction was written onto a lift-up, into a field nothing reads');
+});
+
+test('the ledge control says what the ledge costs', () => {
+  /* It is a priced option now, so a customer switching it on should see the
+     number on the control rather than find it later on the quote. The figure
+     is a dollar amount the server computed per placed window — the page never
+     holds the $/ft rate. */
+  c.windowsData = [{ wall:'front', pos:0.5, w:60, h:42, cy:63, type:LIFTUP, open:true, ledge:true }];
+  c.selectedKind = 'window'; c.selectedWindow = 0;
+  const savedCache = c.quoteCache;
+  c.quoteCache = { optionPrices: { barLedge: [475] } };
+  c.PRICE_LOCKED = false;
+  try {
+    assert.ok(/\$475/.test(c.barWindowControlsHTML(0)), 'the ledge price is not on its control');
+    // With no price served the control still renders, rather than blanking.
+    c.quoteCache = { optionPrices: {} };
+    assert.ok(c.barWindowControlsHTML(0).includes('Exterior bar ledge'));
+  } finally { c.quoteCache = savedCache; }
 });
