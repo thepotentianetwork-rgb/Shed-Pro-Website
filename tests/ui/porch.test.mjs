@@ -7,6 +7,13 @@
  * shed is resized. If those two disagree, the designer offers a depth and
  * then silently takes it away, which reads as the tap not registering.
  *
+ * They used to carry a literal each, and this file compared them. They share
+ * one function now, and that function prefers the list the SERVER sends —
+ * because the server is the side that computes a price per depth, and a depth
+ * it has not priced shows the customer a blank tile. That is what happened
+ * when the ladder here reached 10ft and the server's stayed at [4,6,8]. So
+ * what is guarded here is that neither place has grown a literal back.
+ *
  * Run: node --test tests/ui/porch.test.mjs
  */
 import { test } from 'node:test';
@@ -19,21 +26,25 @@ import { loadDesigner } from '../harness.mjs';
 const { c } = loadDesigner();
 const HTML = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'designer.html'), 'utf8');
 
-/* Both ladders, read out of the page rather than written here — a test that
-   carried its own copy would pass while the two in the file drifted. */
+/* The one ladder, asked of the page rather than written here — a test that
+   carried its own copy would pass while the file drifted. */
 function ladders() {
-  const picker = /var depthOptions=\[([\d,\s]+)\]/.exec(HTML);
-  const clamp = /var fits=\[([\d,\s]+)\]\.filter/.exec(HTML);
-  assert.ok(picker, 'depthOptions has moved or been renamed');
-  assert.ok(clamp, 'the clampPorch ladder has moved or been renamed');
-  const nums = (m) => m[1].split(',').map((n) => Number(n.trim()));
-  return { picker: nums(picker), clamp: nums(clamp) };
+  const picker = c.porchDepthOptions();
+  assert.ok(Array.isArray(picker) && picker.length, 'porchDepthOptions returned nothing');
+  return { picker, clamp: picker };
 }
 
-test('the two depth ladders agree', () => {
+test('neither the picker nor the clamp carries a ladder of its own', () => {
+  /* The two agreeing is now structural rather than checked — both call
+     porchDepthOptions(). What can still go wrong is someone writing a literal
+     back into one of them, which is exactly how they drifted apart from the
+     server's copy before. */
+  assert.match(HTML, /var depthOptions=porchDepthOptions\(\)/,
+    'the porch picker has its own depth list again');
+  assert.match(HTML, /var fits=porchDepthOptions\(\)\.filter/,
+    'clampPorch has its own depth list again');
   const { picker, clamp } = ladders();
-  assert.deepEqual(picker, clamp,
-    'the picker offers ' + picker.join(',') + ' but the clamp keeps ' + clamp.join(','));
+  assert.deepEqual(picker, clamp);
 });
 
 test('the ladder runs shallow to deep, in even feet', () => {
