@@ -1548,12 +1548,12 @@ var WINDOW_CATALOG = [
   {grp:"Black Aluminum", key:"Black Aluminum 12x12", w:12,h:12},
   {grp:"Black Aluminum", key:"Black Aluminum 18x27", w:18,h:27},
   {grp:"Black Aluminum", key:"Black Aluminum 24x36", w:24,h:36},
-  {grp:"Transom", key:"White Transom 3x10", label:"Horizontal Transom 3x10 · White", w:36,h:10},
-  {grp:"Transom", key:"White Transom 5x10", label:"Horizontal Transom 5x10 · White", w:60,h:10},
-  {grp:"Transom", key:"Brown Transom 3x10", label:"Horizontal Transom 3x10 · Brown", w:36,h:10},
-  {grp:"Transom", key:"Brown Transom 5x10", label:"Horizontal Transom 5x10 · Brown", w:60,h:10},
-  {grp:"Transom", key:"Black Transom 3x10", label:"Horizontal Transom 3x10 · Black", w:36,h:10},
-  {grp:"Transom", key:"Black Transom 5x10", label:"Horizontal Transom 5x10 · Black", w:60,h:10},
+  {grp:"Transom", key:"White Transom 3x10", label:"Horizontal Transom 36x10 · White", w:36,h:10},
+  {grp:"Transom", key:"White Transom 5x10", label:"Horizontal Transom 60x10 · White", w:60,h:10},
+  {grp:"Transom", key:"Brown Transom 3x10", label:"Horizontal Transom 36x10 · Brown", w:36,h:10},
+  {grp:"Transom", key:"Brown Transom 5x10", label:"Horizontal Transom 60x10 · Brown", w:60,h:10},
+  {grp:"Transom", key:"Black Transom 3x10", label:"Horizontal Transom 36x10 · Black", w:36,h:10},
+  {grp:"Transom", key:"Black Transom 5x10", label:"Horizontal Transom 60x10 · Black", w:60,h:10},
   /* PREMIUM — bought-in architectural units, their own group so a $4,000
      window is not sitting in the same list as a $155 one. The BI-FOLD BAR
      WINDOW is three panels on vertical hinges that accordion back against one
@@ -1561,19 +1561,19 @@ var WINDOW_CATALOG = [
      (16"/20"/24"/32" panels) so the closed window reads as three equal lights.
      Both premium products are offered at the SAME four sizes, so choosing
      between them is choosing a mechanism, not a size chart. */
-  {grp:"Premium", key:"Black Bi-Fold Bar 48x36", label:"Bi-Fold Bar Window 4' · Black", w:48,h:36},
-  {grp:"Premium", key:"Black Bi-Fold Bar 60x42", label:"Bi-Fold Bar Window 5' · Black", w:60,h:42},
-  {grp:"Premium", key:"Black Bi-Fold Bar 72x42", label:"Bi-Fold Bar Window 6' · Black", w:72,h:42},
-  {grp:"Premium", key:"Black Bi-Fold Bar 96x48", label:"Bi-Fold Bar Window 8' · Black", w:96,h:48},
+  {grp:"Premium", key:"Black Bi-Fold Bar 48x36", label:"Bi-Fold Bar Window 48x36 · Black", w:48,h:36},
+  {grp:"Premium", key:"Black Bi-Fold Bar 60x42", label:"Bi-Fold Bar Window 60x42 · Black", w:60,h:42},
+  {grp:"Premium", key:"Black Bi-Fold Bar 72x42", label:"Bi-Fold Bar Window 72x42 · Black", w:72,h:42},
+  {grp:"Premium", key:"Black Bi-Fold Bar 96x48", label:"Bi-Fold Bar Window 96x48 · Black", w:96,h:48},
   /* The LIFT-UP is the other premium bar window and a different product, not a
      variant: ONE large sash hinged along its TOP edge, lifting to nearly
      horizontal on two gas struts to make a canopy over the counter. The
      bi-fold is three vertically hinged panels folding to one side. Nothing is
      shared but the serving ledge. */
-  {grp:"Premium", key:"Black Lift-Up Bar 48x36", label:"Lift-Up Bar Window 4' · Black", w:48,h:36},
-  {grp:"Premium", key:"Black Lift-Up Bar 60x42", label:"Lift-Up Bar Window 5' · Black", w:60,h:42},
-  {grp:"Premium", key:"Black Lift-Up Bar 72x42", label:"Lift-Up Bar Window 6' · Black", w:72,h:42},
-  {grp:"Premium", key:"Black Lift-Up Bar 96x48", label:"Lift-Up Bar Window 8' · Black", w:96,h:48}
+  {grp:"Premium", key:"Black Lift-Up Bar 48x36", label:"Lift-Up Bar Window 48x36 · Black", w:48,h:36},
+  {grp:"Premium", key:"Black Lift-Up Bar 60x42", label:"Lift-Up Bar Window 60x42 · Black", w:60,h:42},
+  {grp:"Premium", key:"Black Lift-Up Bar 72x42", label:"Lift-Up Bar Window 72x42 · Black", w:72,h:42},
+  {grp:"Premium", key:"Black Lift-Up Bar 96x48", label:"Lift-Up Bar Window 96x48 · Black", w:96,h:48}
 ];
 /* Is this placed window a bi-fold? Asked by key rather than by group, because
    the 3D builder, the controls panel and the shutter test all have to agree on
@@ -10071,7 +10071,12 @@ var ventMeshes=[];
    sum below — and when only the builder knew them the battens were cut to the
    bare louvre and ran across the casing, standing proud of it into the
    bargain. */
-var VENT_W = 16*0.2/12, VENT_H = 8*0.2/12;
+/* The louvre, in INCHES, stated once and converted from there. The price key
+   in pricing.js is spelled "8x16 Gable/Wall Vent" — height by width, the
+   opposite order to every window — so nothing reads the size off that name. */
+var VENT_W_IN = 16, VENT_H_IN = 8;
+var VENT_SIZE_LABEL = VENT_W_IN + 'x' + VENT_H_IN;
+var VENT_W = VENT_W_IN*0.2/12, VENT_H = VENT_H_IN*0.2/12;
 var VENT_CASE = 0.055;                       // matches cB on windows, cB on doors
 function ventHalfW(){ return VENT_W/2 + VENT_CASE; }
 function ventHalfH(){ return VENT_H/2 + VENT_CASE; }
@@ -11503,7 +11508,7 @@ var WINDOW_CATS=[
      the same reason: a tier only reads as a tier when it stops shouting in the
      house orange that "Popular" uses. */
   {cat:'premium', name:'Premium', badge:{text:'Luxury', tier:'luxury'}},
-  {cat:'vent',    name:'Vent'}
+  {cat:'vent',    name:'Vent',    sub:'16x8'}
 ];
 /* Which catalog group a window category shows. 'window' is everything that is
    not one of the named groups, so a new group added to WINDOW_CATALOG shows up
@@ -11583,7 +11588,7 @@ function buildWindowGrid(){
     var cap = c.badge
       ? '<div class="tile-price has-badge"><span class="tile-price-badge'+
         (c.badge.tier?' tier-'+c.badge.tier:'')+'">'+c.badge.text+'</span></div>'
-      : '<div class="tile-price">Tap to choose</div>';
+      : '<div class="tile-price">'+(c.sub||'Tap to choose')+'</div>';
     html+='<div class="tile'+on+'" onclick="openWindowOptions(\''+c.cat+'\')">'+
       '<div class="tile-img">'+itemIcon(c.cat)+'</div>'+
       '<div class="tile-cap"><div class="tile-name">'+c.name+'</div>'+cap+'</div>'+
@@ -12018,7 +12023,7 @@ function renderPlacedWindows(){
   ventsData.forEach(function(vd,i){
     var selV=(selectedKind==='vent' && selectedVent===i);
     html+='<div class="placed-row" onclick="editVentIdx('+i+')" style="cursor:pointer'+(selV?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>Vent &middot; '+vd.wall+'</span>'+
+      '<span>Vent '+VENT_SIZE_LABEL+' &middot; '+vd.wall+'</span>'+
       '<span class="placed-x" onclick="event.stopPropagation();removeVentIdx('+i+')">&times;</span></div>';
   });
   host.innerHTML = html
