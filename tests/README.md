@@ -36,6 +36,23 @@ different library than production.
   roof rather than through it.
 - `geometry/openings.test.mjs` — no daylight around the arched door, battens
   keep off door and vent trim, and a gable vent sits dead centre.
+- `geometry/cedarsingle.test.mjs` — the cedar single is the cedar double with
+  one leaf: leaf count, leaf colour and the transom checked against the
+  double's own, plus the catalogue round-trip that two `kind:'cedar'` entries
+  put at risk.
+- `geometry/bifold.test.mjs` — the Bi-Fold Bar Window folds like an accordion
+  rather than swinging as one slab: three separate pivot angles, a stack that
+  does not pass through itself, an opening that is filled shut and clear open,
+  and a bar ledge the panels swing over rather than through.
+- `geometry/liftup.test.mjs` — the Lift-Up Bar Window lifts to a canopy rather
+  than cracking ajar like an awning: the sash angle, the pivot on the TOP edge
+  (measured against the fixed frame, not against its own hinge), the clear
+  opening underneath, and two gas struts that change angle with the sash
+  instead of being carried by it.
+- `ui/premiumwindows.test.mjs` — the Premium tier: every catalog group has a
+  tab (a new group used to land in with the plain windows), the Luxury stamp is
+  the gold one, a tapped bi-fold reaches its fold controls, and a serving
+  window hangs at bar height instead of up under the eave.
 - `ui/snapping.test.mjs` — where a dragged window actually lands: the wall's
   centre, a mirror, an even-spacing slot, another window's sill.
 - `ui/badges.test.mjs` — a style tile's badge takes the description's line, and

@@ -1548,13 +1548,52 @@ var WINDOW_CATALOG = [
   {grp:"Black Aluminum", key:"Black Aluminum 12x12", w:12,h:12},
   {grp:"Black Aluminum", key:"Black Aluminum 18x27", w:18,h:27},
   {grp:"Black Aluminum", key:"Black Aluminum 24x36", w:24,h:36},
-  {grp:"Transom", key:"White Transom 3x10", label:"Horizontal Transom 3x10 · White", w:36,h:10},
-  {grp:"Transom", key:"White Transom 5x10", label:"Horizontal Transom 5x10 · White", w:60,h:10},
-  {grp:"Transom", key:"Brown Transom 3x10", label:"Horizontal Transom 3x10 · Brown", w:36,h:10},
-  {grp:"Transom", key:"Brown Transom 5x10", label:"Horizontal Transom 5x10 · Brown", w:60,h:10},
-  {grp:"Transom", key:"Black Transom 3x10", label:"Horizontal Transom 3x10 · Black", w:36,h:10},
-  {grp:"Transom", key:"Black Transom 5x10", label:"Horizontal Transom 5x10 · Black", w:60,h:10}
+  {grp:"Transom", key:"White Transom 3x10", label:"Horizontal Transom 36x10 · White", w:36,h:10},
+  {grp:"Transom", key:"White Transom 5x10", label:"Horizontal Transom 60x10 · White", w:60,h:10},
+  {grp:"Transom", key:"Brown Transom 3x10", label:"Horizontal Transom 36x10 · Brown", w:36,h:10},
+  {grp:"Transom", key:"Brown Transom 5x10", label:"Horizontal Transom 60x10 · Brown", w:60,h:10},
+  {grp:"Transom", key:"Black Transom 3x10", label:"Horizontal Transom 36x10 · Black", w:36,h:10},
+  {grp:"Transom", key:"Black Transom 5x10", label:"Horizontal Transom 60x10 · Black", w:60,h:10},
+  /* PREMIUM — bought-in architectural units, their own group so a $4,000
+     window is not sitting in the same list as a $155 one. The BI-FOLD BAR
+     WINDOW is three panels on vertical hinges that accordion back against one
+     jamb over an exterior serving ledge. Every width divides by three exactly
+     (16"/20"/24"/32" panels) so the closed window reads as three equal lights.
+     Both premium products are offered at the SAME four sizes, so choosing
+     between them is choosing a mechanism, not a size chart. */
+  {grp:"Premium", key:"Black Bi-Fold Bar 48x36", label:"Bi-Fold Bar Window 48x36 · Black", w:48,h:36},
+  {grp:"Premium", key:"Black Bi-Fold Bar 60x42", label:"Bi-Fold Bar Window 60x42 · Black", w:60,h:42},
+  {grp:"Premium", key:"Black Bi-Fold Bar 72x42", label:"Bi-Fold Bar Window 72x42 · Black", w:72,h:42},
+  {grp:"Premium", key:"Black Bi-Fold Bar 96x48", label:"Bi-Fold Bar Window 96x48 · Black", w:96,h:48},
+  /* The LIFT-UP is the other premium bar window and a different product, not a
+     variant: ONE large sash hinged along its TOP edge, lifting to nearly
+     horizontal on two gas struts to make a canopy over the counter. The
+     bi-fold is three vertically hinged panels folding to one side. Nothing is
+     shared but the serving ledge. */
+  {grp:"Premium", key:"Black Lift-Up Bar 48x36", label:"Lift-Up Bar Window 48x36 · Black", w:48,h:36},
+  {grp:"Premium", key:"Black Lift-Up Bar 60x42", label:"Lift-Up Bar Window 60x42 · Black", w:60,h:42},
+  {grp:"Premium", key:"Black Lift-Up Bar 72x42", label:"Lift-Up Bar Window 72x42 · Black", w:72,h:42},
+  {grp:"Premium", key:"Black Lift-Up Bar 96x48", label:"Lift-Up Bar Window 96x48 · Black", w:96,h:48}
 ];
+/* Is this placed window a bi-fold? Asked by key rather than by group, because
+   the 3D builder, the controls panel and the shutter test all have to agree on
+   it and only one of them has the catalog entry to hand. A future premium
+   window that is NOT a bi-fold (the gas-strut, which is one panel hinging
+   upward) must not answer yes to this, so it tests the product, not the tier. */
+function isBifold(wd){ return /Bi-Fold Bar/.test(String((wd && wd.type) || '')); }
+function isLiftUp(wd){ return /Lift-Up Bar/.test(String((wd && wd.type) || '')); }
+/* A BAR WINDOW is either of them: premium, and opening onto a counter. The
+   ledge, the 42in sill and the no-shutters rule belong to this, not to
+   either product — so a third one added later inherits all three by naming
+   itself, and neither of the opening mechanisms has to know it exists. */
+function isBarWindow(wd){ return isBifold(wd) || isLiftUp(wd); }
+function isPremiumWin(wd){
+  var t=String((wd && wd.type) || '');
+  for(var i=0;i<WINDOW_CATALOG.length;i++){
+    if(WINDOW_CATALOG[i].key===t) return WINDOW_CATALOG[i].grp==='Premium';
+  }
+  return false;
+}
 var windowsData=[];
 var selectedWindow=-1;
 var doorsData=[];        // {wall, pos, style, w:inches, h:inches}
@@ -7755,7 +7794,7 @@ function buildDoor(){
     }
 
   // Leaf material by style decides the casing too, so resolve it FIRST.
-  var isCedar=(DOOR==='cedar');
+  var isCedar=(DOOR==='cedar'||DOOR==='cedarSingle');
   // Outer trim casing — a FRAME (4 boards) around the opening on the wall's outer
   // face, NOT a solid panel (a solid panel would cover the door with trim color).
   // The CEDAR door is cased in cedar like the reference photo — the surround is
@@ -9506,6 +9545,9 @@ function buildWindows(){
     if(!wd) return false;
     var t=String(wd.type||'');
     if(/transom/i.test(t) || /vent/i.test(t) || /louv/i.test(t)) return false;
+    // Board-and-batten shutters flanking a matte-black architectural bi-fold,
+    // with a flower box hanging off the bar ledge, is not a thing anyone sells.
+    if(isPremiumWin(wd)) return false;
     var cat=WINDOW_CATALOG;
     for(var ci=0; ci<cat.length; ci++){
       if(cat[ci].key===t) return !/transom|vent/i.test(String(cat[ci].grp||''));
@@ -9654,15 +9696,18 @@ function buildWindows(){
     cboard(cB, winH, -winW/2-cB/2, 0);         // left leg
     cboard(cB, winH,  winW/2+cB/2, 0);         // right leg
     cboard(winW+cB*2, cB, 0, -winH/2-cB/2);   // apron
-    // sill — a slightly wider, thicker cap projecting past the casing
-    var sill=new THREE.Mesh(new THREE.BoxGeometry(winW+cB*2+0.016, 0.020, cD+0.012), trimMat2);
-    sill.position.set(0, winCY-winH/2-cB+0.010, cZ+(cD+0.012)/2); sill.castShadow=true; grp.add(sill);
+    // sill — a slightly wider, thicker cap projecting past the casing.
+    // A bi-fold with its bar ledge on does NOT get one: the counter IS the
+    // sill there, and stacking a 2in trim cap on top of a 14in stone bar
+    // reads as a mistake rather than as trim.
+    if(!(isBifold(wd) && bifoldHasLedge(wd))){
+      var sill=new THREE.Mesh(new THREE.BoxGeometry(winW+cB*2+0.016, 0.020, cD+0.012), trimMat2);
+      sill.position.set(0, winCY-winH/2-cB+0.010, cZ+(cD+0.012)/2); sill.castShadow=true; grp.add(sill);
+    }
     // glass — a SINGLE thin plane (a box has 4 transparent layers that stack into
     // milkiness). depthWrite off so it never fogs what's behind it.
     var glassMatW=mkGlass();
     glassMatW.depthWrite=false;
-    var glass=new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), glassMatW);
-    glass.position.set(0, winCY, outZ); grp.add(glass);
     // frame bars: boxgeo (x-width, y-height, z-depth)
     function vbar(xw, yh, dx, dy){
       var m=new THREE.Mesh(new THREE.BoxGeometry(xw, yh, 0.022), frameMat);
@@ -9670,11 +9715,19 @@ function buildWindows(){
       return m;
     }
     var fT=fW;
-    grp.add(vbar(winW+fT, fT, 0, winH/2));    // top
-    grp.add(vbar(winW+fT, fT, 0, -winH/2));   // bottom
-    grp.add(vbar(fT, winH+fT, winW/2, 0));    // right
-    grp.add(vbar(fT, winH+fT, -winW/2, 0));   // left
-    grp.add(vbar(winW, fT*0.7, 0, 0));        // center divider
+    if(isBifold(wd)){
+      buildBifold(grp, wd, winW, winH, winCY, outZ, glassMatW);
+    } else if(isLiftUp(wd)){
+      buildLiftUp(grp, wd, winW, winH, winCY, outZ, glassMatW);
+    } else {
+      var glass=new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), glassMatW);
+      glass.position.set(0, winCY, outZ); grp.add(glass);
+      grp.add(vbar(winW+fT, fT, 0, winH/2));    // top
+      grp.add(vbar(winW+fT, fT, 0, -winH/2));   // bottom
+      grp.add(vbar(fT, winH+fT, winW/2, 0));    // right
+      grp.add(vbar(fT, winH+fT, -winW/2, 0));   // left
+      grp.add(vbar(winW, fT*0.7, 0, 0));        // center divider
+    }
     if(EDIT_MODE && selectedKind==='window' && selectedWindow===idx){
       var ring=new THREE.Mesh(
         new THREE.BoxGeometry(winW+0.16, winH+0.16, 0.006),
@@ -9696,6 +9749,310 @@ function buildWindows(){
   });
 }
 
+/* ── THE BI-FOLD BAR WINDOW ──────────────────────────────────────────────────
+   Three panels on vertical hinges that accordion back against one jamb, over
+   an exterior serving ledge. NOT a gas strut: nothing here lifts.
+
+   THE FOLD IS A CHAIN, NOT A ROTATION. Each panel hangs off the far edge of
+   the one before it, so a panel's pivot is carried by its parent's rotation —
+   that is what makes it accordion instead of swinging open as one slab. The
+   angles are, relative to the parent:
+
+       panel 0   -dir * 90deg     swings the whole chain out of the opening
+       panel 1   +dir * 180deg    folds back against panel 0
+       panel 2   -dir * 180deg    folds back against panel 1
+
+   times t, which is 0 closed and 1 open. At t=0 every angle is 0 and the three
+   panels sit flat side by side filling the opening; at t=1 they are stacked
+   face to face, perpendicular to the wall at one jamb, and the opening is
+   clear across almost its whole width. Every value between is a real
+   half-folded zig-zag, which is what an animation would need.
+
+   THE PANELS MUST NOT STACK INSIDE ONE ANOTHER. Folded, all three pivot
+   origins collapse onto the same point and the three panels land in the same
+   plane — coincident geometry, which renders as one flickering panel. Real
+   ones sit face to face, a panel thickness apart, because the hinges alternate
+   sides. That separation is done here by offsetting each panel along its OWN
+   local z, which the fold has turned to face along world x:
+
+       panel 0 local +z  ->  away from the stack     offset -0.5 T
+       panel 1 local +z  ->  into the stack          offset +1.5 T
+       panel 2 local +z  ->  away from the stack     offset -2.5 T
+
+   The signs come out the same for either fold direction, because the stack
+   direction and the local-z mapping mirror together. Scaled by t so the
+   panels are perfectly coplanar when closed — an offset that survived to t=0
+   would make a shut window read as three panels at three different depths. */
+var BIFOLD_PANELS = 3;
+var BIFOLD_FRAME_IN = 1.25;        // slim aluminum face width
+var BIFOLD_PANEL_IN = 1.75;        // panel thickness
+var BIFOLD_LEDGE_DEEP_IN = 14;     // serving ledge projection (spec: 12-16)
+var BIFOLD_LEDGE_THICK_IN = 1.6;
+/* How far the counter runs past the window UNIT on each side — past the trim,
+   not past the hole in the wall. The casing is a 3.3in board, so measuring
+   from the opening would put the slab's edge inside the trim and it would
+   read as a sill that came up short rather than as a bar top. */
+var BAR_LEDGE_OVERHANG_IN = 3;
+/* How far each folded panel sits off the jamb, in panel thicknesses. See the
+   note above — these are the numbers that keep the stack from self-intersecting,
+   and a test reads them from here rather than copying them.
+
+   The gaps are more than 1.0 thickness, not exactly 1.0. At exactly 1.0 the
+   panels abut face to face, which is what the real thing does and what the
+   renderer cannot draw: each panel carries its glass on one face, so panel 1's
+   glass and panel 2's glass both land on the plane where the two touch, 2mm
+   apart, and the stack shimmers.
+   The LAST gap is wider still (1.6 against 1.4), because the lead panel is the
+   one carrying the pull handle and the handle stands proud of the very face
+   that ends up against the panel behind it. At an even 1.4 the handle reached
+   straight into panel 1 — found by a test measuring panel separation against
+   panel thickness, not by looking at it. Total stack: about 7in for three
+   panels, which is about right for the real thing. */
+var BIFOLD_STACK_OFFSETS = [-0.6, 2.0, -3.6];
+function bifoldFoldDir(wd){ return ((wd && wd.fold)==='right') ? -1 : 1; }
+function bifoldAngles(dir, t){
+  return [ -dir*Math.PI/2*t, dir*Math.PI*t, -dir*Math.PI*t ];
+}
+function buildBifold(grp, wd, winW, winH, winCY, outZ, glassMat){
+  var IN=0.2/12;
+  var fT=BIFOLD_FRAME_IN*IN, pT=BIFOLD_PANEL_IN*IN;
+  var dir=bifoldFoldDir(wd), t=wd.open?1:0;
+  var pw=winW/BIFOLD_PANELS;
+  var alum=new THREE.MeshStandardMaterial({color:0x1A1A1A, roughness:0.38, metalness:0.55});
+  var pin =new THREE.MeshStandardMaterial({color:0x2A2C2E, roughness:0.30, metalness:0.75});
+
+  /* THE OUTER FRAME STAYS PUT. Head, jambs and sill are the fixed part of the
+     unit — they do not fold — so they hang off grp, outside the chain. Without
+     them an open bi-fold is a hole in a wall with three panels beside it. */
+  function fixedBar(xw, yh, dx, dy){
+    var m=new THREE.Mesh(new THREE.BoxGeometry(xw, yh, 0.020), alum);
+    m.position.set(dx, winCY+dy, outZ+0.004); m.castShadow=true; grp.add(m);
+  }
+  fixedBar(winW+fT*2, fT, 0,  winH/2+fT/2);
+  fixedBar(winW+fT*2, fT, 0, -winH/2-fT/2);
+  fixedBar(fT, winH+fT*2, -winW/2-fT/2, 0);
+  fixedBar(fT, winH+fT*2,  winW/2+fT/2, 0);
+
+  // The chain's root, at the hinge jamb, on the outer face of the wall.
+  var anchor=new THREE.Group();
+  anchor.position.set(-dir*winW/2, winCY, outZ+pT/2);
+  grp.add(anchor);
+
+  var ang=bifoldAngles(dir, t);
+  var node=anchor, panels=[];
+  for(var i=0;i<BIFOLD_PANELS;i++){
+    var piv=new THREE.Group();
+    // Panel 0 pivots on the jamb itself; every other panel pivots on the far
+    // edge of the one before it. That single line is the accordion.
+    piv.position.set(i===0 ? 0 : dir*pw, 0, 0);
+    piv.rotation.y=ang[i];
+    // Tagged so the fold can be inspected as a hinge chain rather than
+    // reverse-engineered from a pile of boxes — the panels are the only part
+    // of this window that moves, and a test has to be able to find them.
+    piv.userData={bifoldPivot:i};
+    node.add(piv);
+
+    var pz=BIFOLD_STACK_OFFSETS[i]*pT*t;
+    var leaf=new THREE.Group();
+    leaf.position.set(dir*pw/2, 0, pz);
+    leaf.userData={bifoldPanel:i};
+    piv.add(leaf);
+
+    // glass, inset inside this panel's own frame
+    var gw=pw-fT*2, gh=winH-fT*2;
+    if(gw>0.004 && gh>0.004){
+      var gl=new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), glassMat);
+      gl.position.set(0,0,pT/2+0.001); leaf.add(gl);
+    }
+    // the panel's own four-sided frame — this is what reads as three separate
+    // lights when the window is shut
+    function leafBar(xw, yh, dx, dy){
+      var m=new THREE.Mesh(new THREE.BoxGeometry(xw, yh, pT), alum);
+      m.position.set(dx, dy, 0); m.castShadow=true; leaf.add(m);
+    }
+    leafBar(pw, fT, 0,  winH/2-fT/2);          // top rail
+    leafBar(pw, fT, 0, -winH/2+fT/2);          // bottom rail
+    leafBar(fT, winH-fT*2, -pw/2+fT/2, 0);     // left stile
+    leafBar(fT, winH-fT*2,  pw/2-fT/2, 0);     // right stile
+
+    // HINGES on this panel's pivot line: three knuckles, top, middle, bottom.
+    // Children of the pivot, so they travel with the fold instead of staying
+    // behind on the wall.
+    [-winH/2+0.06, 0, winH/2-0.06].forEach(function(hy){
+      var kn=new THREE.Mesh(new THREE.CylinderGeometry(0.011,0.011,0.055,8), pin);
+      kn.position.set(0, hy, pz); piv.add(kn);
+    });
+    panels.push(leaf);
+    node=piv;
+  }
+  /* PULL HANDLE on the lead panel's free edge — the one you actually grab. A
+     slim flush pull rather than a lever: it stands on the face that folds into
+     the stack, so every millimetre of it is a millimetre the stack has to be
+     spread to clear (see BIFOLD_STACK_OFFSETS). */
+  var lead=panels[BIFOLD_PANELS-1];
+  var pull=new THREE.Mesh(new THREE.BoxGeometry(0.014, winH*0.26, 0.010), pin);
+  pull.position.set(dir*(pw/2-fT*1.6), 0, pT/2+0.006); lead.add(pull);
+
+  if(bifoldHasLedge(wd)) buildBarLedge(grp, winW, winH, winCY);
+}
+/* Default ON: the ledge is what makes it a BAR window, so a design saved
+   before the field existed gets one. Only an explicit false turns it off. */
+function bifoldHasLedge(wd){ return !!wd && wd.ledge!==false; }
+
+/* ── THE LIFT-UP BAR WINDOW ─────────────────────────────────────────────────
+   ONE large sash hinged along its TOP edge, lifting on two gas struts until
+   it is nearly horizontal — a canopy over the counter with the whole opening
+   clear underneath. Not an awning window, which cracks open a few degrees and
+   stays in the way; not the bi-fold, which folds sideways.
+
+   THE PIVOT IS THE TOP EDGE, so the sash is a child of a group sitting on that
+   edge and everything about it is one rotation. Rotating about x by phi maps
+   local (0,-1,0) to (0,-cos phi,-sin phi), so the BOTTOM edge swings out to
+   +z (away from the shed) only for a NEGATIVE angle. Getting that sign wrong
+   swings the sash into the shed, through the wall, where from outside it
+   looks shut.
+
+   THE STRUTS ARE NOT CHILDREN OF THE SASH. A strut runs between a point on
+   the fixed jamb and a point on the moving sash; parented to either one it
+   would swing rigidly with it and stay at the same angle, which is exactly
+   what the brief says not to do. So both ends are computed in the window's
+   own frame and the strut is built between them — its angle falls out of
+   where the sash actually is, and it cannot drift out of step.
+
+   A gas strut really does change length: a rod slides out of a body. So it is
+   modelled as two pieces, a fat body of fixed length from the fixed anchor and
+   a thin rod spanning the whole distance. Closed, the rod is swallowed by the
+   body; open, it stands out of it. That is the real mechanism, and it is also
+   the only honest way to join two points that move apart. */
+var LIFTUP_OPEN_DEG = 87;          // "85-90 from closed", nearly horizontal
+var LIFTUP_FRAME_IN = 1.25;        // slim aluminum face width, as the bi-fold
+var LIFTUP_SASH_IN = 1.75;         // sash thickness
+var LIFTUP_STRUT_ALONG = 0.45;     // where on the sash the strut lands, from the hinge
+var LIFTUP_STRUT_FOOT = 0.16;      // how far up the jamb its fixed end sits
+function liftUpAngle(wd){ return (wd && wd.open) ? -LIFTUP_OPEN_DEG*Math.PI/180 : 0; }
+/* Where the strut meets the sash, in the window's own frame. Derived from the
+   hinge and the angle rather than read off the built mesh, so the test can ask
+   for it independently of how the sash was assembled. */
+function liftUpStrutHead(winW, winH, winCY, outZ, ang, side){
+  var d=winH*LIFTUP_STRUT_ALONG;                 // distance down the sash from the hinge
+  var IN=0.2/12;
+  return { x: side*(winW/2 - LIFTUP_FRAME_IN*IN*2),
+           y: winCY + winH/2 - d*Math.cos(ang),
+           z: outZ - d*Math.sin(ang) };          // ang is negative when open -> +z
+}
+function buildLiftUp(grp, wd, winW, winH, winCY, outZ, glassMat){
+  var IN=0.2/12;
+  var fT=LIFTUP_FRAME_IN*IN, sT=LIFTUP_SASH_IN*IN;
+  var ang=liftUpAngle(wd);
+  var alum=new THREE.MeshStandardMaterial({color:0x1A1A1A, roughness:0.38, metalness:0.55});
+  var pin =new THREE.MeshStandardMaterial({color:0x202224, roughness:0.28, metalness:0.80});
+  var chrome=new THREE.MeshStandardMaterial({color:0x9AA0A6, roughness:0.18, metalness:0.90});
+
+  /* FIXED outer frame — head, jambs and sill stay with the wall. Tagged
+     because it is the only part of this window that cannot move: it is what a
+     test measures the sash AGAINST, and measuring the sash against its own
+     hinge instead proves nothing (a sash hung off the bottom edge is still
+     "hanging from its hinge"). */
+  function fixedBar(xw, yh, dx, dy){
+    var m=new THREE.Mesh(new THREE.BoxGeometry(xw, yh, 0.020), alum);
+    m.position.set(dx, winCY+dy, outZ+0.004); m.castShadow=true;
+    m.userData={liftUpFrame:true}; grp.add(m);
+  }
+  fixedBar(winW+fT*2, fT, 0,  winH/2+fT/2);
+  fixedBar(winW+fT*2, fT, 0, -winH/2-fT/2);
+  fixedBar(fT, winH+fT*2, -winW/2-fT/2, 0);
+  fixedBar(fT, winH+fT*2,  winW/2+fT/2, 0);
+
+  // THE SASH, on its top-edge hinge.
+  var hinge=new THREE.Group();
+  hinge.position.set(0, winCY+winH/2, outZ);
+  hinge.rotation.x=ang;
+  hinge.userData={liftUpHinge:true};
+  grp.add(hinge);
+  var sash=new THREE.Group();
+  sash.position.set(0, -winH/2, 0);              // sash centre, half a height below the hinge
+  sash.userData={liftUpSash:true};
+  hinge.add(sash);
+
+  var gw=winW-fT*2, gh=winH-fT*2;
+  if(gw>0.004 && gh>0.004){
+    var gl=new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), glassMat);
+    gl.position.set(0,0,sT/2+0.001); sash.add(gl);
+  }
+  function sashBar(xw, yh, dx, dy){
+    var m=new THREE.Mesh(new THREE.BoxGeometry(xw, yh, sT), alum);
+    m.position.set(dx, dy, 0); m.castShadow=true; sash.add(m);
+  }
+  sashBar(winW, fT, 0,  winH/2-fT/2);            // top rail (the hinged edge)
+  sashBar(winW, fT, 0, -winH/2+fT/2);            // bottom rail
+  sashBar(fT, winH-fT*2, -winW/2+fT/2, 0);
+  sashBar(fT, winH-fT*2,  winW/2-fT/2, 0);
+  // Hinge knuckles along the top edge, on the hinge line itself.
+  [-winW*0.34, 0, winW*0.34].forEach(function(hx){
+    var kn=new THREE.Mesh(new THREE.CylinderGeometry(0.011,0.011,0.05,8), pin);
+    kn.rotation.z=Math.PI/2;                      // lie the pin along the top edge
+    kn.position.set(hx, 0, 0); hinge.add(kn);
+  });
+  // A pull handle on the bottom rail — what you lift it by.
+  var pull=new THREE.Mesh(new THREE.BoxGeometry(winW*0.22, 0.014, 0.012), pin);
+  pull.position.set(0, -winH/2+fT*1.4, sT/2+0.010); sash.add(pull);
+
+  // TWO GAS STRUTS, one per side, each spanning jamb to sash.
+  [-1, 1].forEach(function(side){
+    var foot={ x: side*(winW/2 - fT), y: winCY - winH/2 + winH*LIFTUP_STRUT_FOOT, z: outZ+0.012 };
+    var head=liftUpStrutHead(winW, winH, winCY, outZ, ang, side);
+    strutBetween(grp, foot, head, pin, chrome);
+  });
+
+  if(bifoldHasLedge(wd)) buildBarLedge(grp, winW, winH, winCY);
+}
+/* A telescoping strut drawn between two points. The body is a fixed length off
+   the foot; the rod runs the whole way, so it is hidden inside the body when
+   the two ends are close and stands out of it as they separate. */
+function strutBetween(grp, a, b, bodyMat, rodMat){
+  var A=new THREE.Vector3(a.x,a.y,a.z), B=new THREE.Vector3(b.x,b.y,b.z);
+  var span=A.distanceTo(B);
+  if(!(span>0.01)) return;
+  var dir=B.clone().sub(A).normalize();
+  var up=new THREE.Vector3(0,1,0);
+  function seg(len, fromStart, r, mat, tag){
+    var m=new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 10), mat);
+    m.quaternion.setFromUnitVectors(up, dir);
+    m.position.copy(A).add(dir.clone().multiplyScalar(fromStart + len/2));
+    m.castShadow=true; if(tag) m.userData={strut:tag};
+    grp.add(m);
+  }
+  var bodyLen=Math.min(span*0.55, 0.30);
+  seg(span, 0, 0.0065, rodMat, 'rod');            // the piston rod, end to end
+  seg(bodyLen, 0, 0.012, bodyMat, 'body');        // the body, over the foot end
+  // Ball-joint fittings at both ends.
+  [A, B].forEach(function(P){
+    var j=new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), bodyMat);
+    j.position.copy(P); grp.add(j);
+  });
+}
+/* THE EXTERIOR SERVING LEDGE — a stone counter under the opening, projecting
+   from the wall face, slightly wider than the opening and its casing so it
+   reads as a bar top rather than a windowsill. It sits BELOW the panels'
+   swing, so a window folded open passes over it rather than through it. */
+function buildBarLedge(grp, winW, winH, winCY){
+  var IN=0.2/12;
+  var deep=BIFOLD_LEDGE_DEEP_IN*IN, thick=BIFOLD_LEDGE_THICK_IN*IN;
+  var cB=0.055;                                  // the window casing board
+  var lw=winW+cB*2+BAR_LEDGE_OVERHANG_IN*IN*2;   // past the casing on both sides
+  var topY=winCY-winH/2-cB;                      // just under the apron
+  var slab=new THREE.Mesh(new THREE.BoxGeometry(lw, thick, deep),
+    new THREE.MeshStandardMaterial({color:0xEDEAE3, roughness:0.30, metalness:0.0}));
+  slab.position.set(0, topY-thick/2, 0.020+deep/2);
+  slab.castShadow=true; slab.receiveShadow=true; grp.add(slab);
+  // Two brackets, so a 14in counter is not floating off a wall unsupported.
+  var brk=new THREE.MeshStandardMaterial({color:0x1A1A1A, roughness:0.45, metalness:0.4});
+  [-1,1].forEach(function(sd){
+    var b=new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.075, deep*0.62), brk);
+    b.position.set(sd*(lw/2-0.10), topY-thick-0.038, 0.020+deep*0.36); grp.add(b);
+  });
+}
+
 // VENTS — 8"x16" louvered gable vents. Movable along the wall; default centered
 // high on the gable. Built in a local group (facing +z) and transformed onto wall.
 var ventMeshes=[];
@@ -9714,7 +10071,12 @@ var ventMeshes=[];
    sum below — and when only the builder knew them the battens were cut to the
    bare louvre and ran across the casing, standing proud of it into the
    bargain. */
-var VENT_W = 16*0.2/12, VENT_H = 8*0.2/12;
+/* The louvre, in INCHES, stated once and converted from there. The price key
+   in pricing.js is spelled "8x16 Gable/Wall Vent" — height by width, the
+   opposite order to every window — so nothing reads the size off that name. */
+var VENT_W_IN = 16, VENT_H_IN = 8;
+var VENT_SIZE_LABEL = VENT_W_IN + 'x' + VENT_H_IN;
+var VENT_W = VENT_W_IN*0.2/12, VENT_H = VENT_H_IN*0.2/12;
 var VENT_CASE = 0.055;                       // matches cB on windows, cB on doors
 function ventHalfW(){ return VENT_W/2 + VENT_CASE; }
 function ventHalfH(){ return VENT_H/2 + VENT_CASE; }
@@ -10209,7 +10571,7 @@ function buildInterior(){
      and steps studs at 16" OC — so this is only about whether it gets built. */
   var GLAZED_DOOR=/^(resfull|reshalf|resDoubleFull|slideglass)B?$/;
   var hasGlassDoor = (typeof doorsData!=='undefined') && doorsData.some(function(d){
-    return GLAZED_DOOR.test(String(d.style)) || String(d.style)==='cedar';
+    return GLAZED_DOOR.test(String(d.style)) || /^cedar/.test(String(d.style));
   });
   // Always build it when the finish is being shown or we're inside — otherwise
   // a bare shed with no windows renders an empty shell.
@@ -11142,8 +11504,28 @@ function pickPorchStyle(loc, el){
 var WINDOW_CATS=[
   {cat:'window',  name:'Window'},
   {cat:'transom', name:'Transom'},
-  {cat:'vent',    name:'Vent'}
+  /* Premium carries the same gold Luxury mark the hip and peak shells do, for
+     the same reason: a tier only reads as a tier when it stops shouting in the
+     house orange that "Popular" uses. */
+  {cat:'premium', name:'Premium', badge:{text:'Luxury', tier:'luxury'}},
+  {cat:'vent',    name:'Vent',    sub:'16x8'}
 ];
+/* Which catalog group a window category shows. 'window' is everything that is
+   not one of the named groups, so a new group added to WINDOW_CATALOG shows up
+   under its own tab rather than quietly joining the plain windows — which is
+   exactly what a `wantTransom` boolean did to Premium the first time. */
+var WIN_CAT_GRP={ transom:'Transom', premium:'Premium' };
+/* Which icon a premium catalog entry draws. Keyed off the product in the key
+   rather than a field on the catalog entry, because that array is kept
+   identical to the server's copy and an icon name is a designer concern. */
+function premiumIcon(key){
+  return /Lift-Up/.test(String(key||'')) ? 'premium-lift' : 'premium';
+}
+function winCatOf(e){
+  var g=String((e&&e.grp)||'');
+  for(var k in WIN_CAT_GRP){ if(WIN_CAT_GRP[k]===g) return k; }
+  return 'window';
+}
 var openWinCat=null;
 // Simple line-art SVG icons used as tile placeholders until real photos are added.
 function itemIcon(kind){
@@ -11158,6 +11540,25 @@ function itemIcon(kind){
     // which one it actually was. This is that icon rotated 90°: a tall rect
     // with horizontal dividers instead of a wide one with vertical dividers.
     case 'transom-v': p='<rect x="18" y="6" width="13" height="36" rx="1"/><line x1="18" y1="18" x2="31" y2="18"/><line x1="18" y1="30" x2="31" y2="30"/>'; break;
+    /* The LIFT-UP, drawn OPEN with its ledge, which the brief asks for by name:
+       shut it is one big rectangle, indistinguishable from a picture window,
+       and the open shape is the entire point of the upgrade. Sash lifted to
+       near horizontal, a strut under it, the opening clear, counter below. */
+    case 'premium-lift':
+      p='<rect x="8" y="6" width="32" height="7" rx="1"/>'+           // the lifted sash
+        '<line x1="8" y1="13" x2="13" y2="27"/>'+                    // gas strut
+        '<path d="M10 20 L38 20 L38 38 L10 38 Z" stroke-dasharray="3 3"/>'+  // clear opening
+        '<line x1="5" y1="41" x2="43" y2="41" stroke-width="2.6"/>';  // bar ledge
+      break;
+    /* The bi-fold, drawn HALF OPEN. Closed it is three rectangles in a row,
+       which is the plain window icon with an extra line — nothing on the tile
+       would say what the product does. Two panels folded out at the left, one
+       still in the opening, and the bar ledge under it, says it at a glance. */
+    case 'premium':
+      p='<path d="M6 10 L14 14 L14 38 L6 42 Z"/><path d="M14 14 L22 10 L22 42 L14 38 Z"/>'+
+        '<rect x="24" y="10" width="14" height="32" rx="1"/>'+
+        '<line x1="4" y1="44" x2="42" y2="44" stroke-width="2.6"/>';
+      break;
     case 'vent':    p='<rect x="12" y="12" width="24" height="24" rx="1"/><line x1="15" y1="19" x2="33" y2="19"/><line x1="15" y1="24" x2="33" y2="24"/><line x1="15" y1="29" x2="33" y2="29"/>'; break;
     case 'single':  p='<rect x="16" y="6" width="16" height="36" rx="1"/><circle cx="28" cy="24" r="1.5" fill="#2BB5E8"/>'; break;
     case 'double':  p='<rect x="9" y="6" width="14" height="36" rx="1"/><rect x="25" y="6" width="14" height="36" rx="1"/><circle cx="20" cy="24" r="1.4" fill="#2BB5E8"/><circle cx="28" cy="24" r="1.4" fill="#2BB5E8"/>'; break;
@@ -11180,9 +11581,17 @@ function buildWindowGrid(){
   var html='';
   WINDOW_CATS.forEach(function(c){
     var on = (openWinCat===c.cat)?' on':'';
+    /* The badge REPLACES "Tap to choose" in the price slot rather than sitting
+       beside it, the same swap applyRecommendations makes on the style grid —
+       two labels in one line is what made that slot unreadable there. The text
+       is a literal from WINDOW_CATS, never anything a customer typed. */
+    var cap = c.badge
+      ? '<div class="tile-price has-badge"><span class="tile-price-badge'+
+        (c.badge.tier?' tier-'+c.badge.tier:'')+'">'+c.badge.text+'</span></div>'
+      : '<div class="tile-price">'+(c.sub||'Tap to choose')+'</div>';
     html+='<div class="tile'+on+'" onclick="openWindowOptions(\''+c.cat+'\')">'+
       '<div class="tile-img">'+itemIcon(c.cat)+'</div>'+
-      '<div class="tile-cap"><div class="tile-name">'+c.name+'</div><div class="tile-price">Tap to choose</div></div>'+
+      '<div class="tile-cap"><div class="tile-name">'+c.name+'</div>'+cap+'</div>'+
       '<div class="tile-check">&#10003;</div></div>';
   });
   host.innerHTML=html;
@@ -11190,7 +11599,7 @@ function buildWindowGrid(){
 function openWindowOptions(cat){
   if(cat==='vent'){ addVent(); renderPlacedWindows(); return; }
   var cat_=WINDOW_CATALOG, prices=(quoteCache.optionPrices && quoteCache.optionPrices.windows) || {};
-  var wantTransom = (cat==='transom');
+  var wantCat = (cat==='premium'||cat==='transom') ? cat : 'window';
   // Tapping a tile below SWAPS the selected window in place (see addWindowByKey)
   // whenever a window is selected on the wall this panel is acting on — the exact
   // same condition that decides swap-vs-add there. This panel is the ONLY place
@@ -11205,26 +11614,109 @@ function openWindowOptions(cat){
     (editing?'Tap one to swap it, or remove it below.':'Tap one to add it to the active wall.')+
     '</div><div class="tgrid">';
   cat_.forEach(function(e){
-    var isTransom = (e.grp==='Transom');
-    if(wantTransom!==isTransom) return;
+    if(winCatOf(e)!==wantCat) return;
     var pr=priceTag(prices[e.key],'');
     // Pick the icon by the entry's OWN actual shape (w<h stands on end),
     // not by which category tab it's under — that's what had every transom
     // showing the wide/short icon even when it was really the tall/narrow one.
-    var icon=wantTransom?(e.w<e.h?'transom-v':'transom'):'window';
+    // Each premium product gets its own icon: they are different mechanisms,
+    // and one shared "premium" tile would make the two indistinguishable on
+    // the only screen where a customer chooses between them.
+    var icon=(wantCat==='premium')?premiumIcon(e.key)
+            :(wantCat==='transom')?(e.w<e.h?'transom-v':'transom'):'window';
     html+='<div class="tile" onclick="addWindowByKey(\''+e.key.replace(/'/g,"\\'")+'\')">'+
       '<div class="tile-img">'+itemIcon(icon)+'</div>'+
       '<div class="tile-cap"><div class="tile-name">'+(e.label||e.key)+'</div><div class="tile-price">'+pr+'</div></div></div>';
   });
   html+='</div>';
+  /* The bi-fold's own controls, shown only when one is actually selected on
+     this wall. They live here rather than in the editor panel because this is
+     the page a tap on the window in the 3D view opens — the editor panel is
+     behind it, and a customer who has just opened their new window has no way
+     to know there is a second surface with the fold direction on it. */
+  if(editing && isBarWindow(windowsData[selectedWindow])) html+=barWindowControlsHTML(selectedWindow);
   if(editing){
     html+='<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--br)">'+
        '<div onclick="removeSelectedWindow()" style="cursor:pointer;text-align:center;padding:13px;'+
        'border-radius:9px;border:1px solid rgba(255,107,107,.45);background:rgba(255,107,107,.08);'+
        'color:#ff6b6b;font-weight:800;font-size:13px">Remove this window</div></div>';
   }
-  openSubPage(wantTransom?'Transom Windows':'Windows', html);
+  openSubPage(wantCat==='premium'?'Premium Windows':wantCat==='transom'?'Transom Windows':'Windows', html);
 }
+/* THE BI-FOLD'S OWN CONTROLS.
+
+   Three two-way strips: Open/Closed, Fold Left/Right, Bar Ledge On/Off. Each
+   writes one field on the placed window and rebuilds, so the state lives with
+   the window and travels with a saved design rather than in a global — two
+   bi-folds on one shed fold independently, which is the whole point of putting
+   them on the item.
+
+   Defaults are applied here as well as at placement (`??` style fallbacks), so
+   a design saved before these fields existed opens closed, folding left, with
+   the ledge on, instead of rendering a window with no panels. */
+function _bfStrip(label, opts){
+  var h='<span class="lbl">'+label+'</span>'+
+        '<div style="display:flex;gap:8px;margin-bottom:16px">';
+  opts.forEach(function(o){
+    h+='<div onclick="'+o.fn+'" style="flex:1;cursor:pointer;text-align:center;'+
+       'padding:11px 6px;border-radius:9px;font-size:12px;font-weight:800;background:'+
+       (o.on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+
+       (o.on?'#2BB5E8':'var(--br)')+';color:var(--w)">'+o.text+'</div>';
+  });
+  return h+'</div>';
+}
+/* THE CONTROLS FOR EITHER BAR WINDOW. The ledge strip is shared because the
+   ledge is shared; how the window opens is not, so each product contributes
+   its own strips. The bi-fold folds to a side and the lift-up does not, and
+   offering a dead Fold control on a lift-up is worse than offering none. */
+function barWindowControlsHTML(i){
+  var wd=windowsData[i]; if(!wd || !isBarWindow(wd)) return '';
+  var open=!!wd.open, ledge=(wd.ledge!==false), lift=isLiftUp(wd);
+  var blurb = lift
+    ? 'One sash hinged along its top edge. Open, it lifts to nearly horizontal on '
+      + 'two gas struts \u2014 a canopy over the bar with the opening clear underneath.'
+    : 'Three panels on vertical hinges. Open, they fold back against one jamb and '
+      + 'leave the whole opening clear.';
+  var h='<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--br)">'+
+    '<div style="font-size:12px;color:var(--mu);margin-bottom:12px">'+blurb+'</div>'+
+    _bfStrip(lift?'Sash':'Panels', [
+      {text:'Closed', on:!open, fn:"setBifoldOpen("+i+",false)"},
+      {text:'Open',   on:open,  fn:"setBifoldOpen("+i+",true)"}]);
+  if(!lift) h+=_bfStrip('Fold toward', [
+      {text:'Left',  on:wd.fold!=='right', fn:"setBifoldFold("+i+",'left')"},
+      {text:'Right', on:wd.fold==='right', fn:"setBifoldFold("+i+",'right')"}]);
+  /* The ledge costs money, so the control says how much rather than leaving a
+     customer to find it on the quote. The figure is a dollar amount computed
+     server-side per placed window (optionPrices.barLedge), not a rate the page
+     multiplies out \u2014 the $/ft stays ours. */
+  var lp=(quoteCache.optionPrices && quoteCache.optionPrices.barLedge) || [];
+  var tag=priceTag(lp[i], '');
+  h+=_bfStrip('Exterior bar ledge'+(tag?(' \u2014 '+tag):''), [
+      {text:'On',  on:ledge,  fn:"setBifoldLedge("+i+",true)"},
+      {text:'Off', on:!ledge, fn:"setBifoldLedge("+i+",false)"}]);
+  // The frame is matte black and there is no other option, so it is stated
+  // rather than offered as a picker with one choice in it.
+  h+='<div style="font-size:11px;color:var(--mu);margin-top:-6px">Frame: matte black aluminum.</div>';
+  return h+'</div>';
+}
+// The old name, kept because it says what it does for the bi-fold.
+function bifoldControlsHTML(i){ return barWindowControlsHTML(i); }
+/* One writer per field. Each re-opens the panel afterwards so the strip it was
+   tapped on redraws with the new state — without that the 3D changes and the
+   button the customer just pressed still looks unselected. */
+function _bfSet(i, fn){
+  var wd=windowsData[i]; if(!wd || !isBarWindow(wd)) return;
+  fn(wd);
+  buildShed(); renderPlacedWindows();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  openOptionsForSelectedWindow();
+}
+function setBifoldOpen(i, v){  _bfSet(i, function(wd){ wd.open = !!v; }); }
+// Fold direction is the bi-fold's alone — a lift-up has no side to fold to,
+// and writing one onto it would put a field in a saved design that nothing reads.
+function setBifoldFold(i, v){  _bfSet(i, function(wd){ if(isBifold(wd)) wd.fold = (v==='right')?'right':'left'; }); }
+function setBifoldLedge(i, v){ _bfSet(i, function(wd){ wd.ledge = !!v; }); }
+
 function removeSelectedWindow(){
   if(selectedWindow<0||!windowsData[selectedWindow]) return;
   var wall=windowsData[selectedWindow].wall;
@@ -11358,10 +11850,17 @@ function vOverlap(a,b){
    upright and a 36x10 band; only the band belongs up under the plate. An
    upright light flanks a door at normal height, the way it does in the
    reference builds. */
+function BAR_SILL_IN(){ return 42; }             // standard bar-counter height
 function defaultCyFor(hIn, key, wIn){
   var wallIn=H*12, k=String(key||'').toLowerCase();
   var band=(wIn && hIn && wIn >= hIn*1.8);       // clearly wider than tall
   if(/vent|louv/.test(k)) return Math.max(hIn/2+4, wallIn - hIn/2 - 8);
+  /* A BAR WINDOW's sill IS the bar, so it is set from the bottom up at counter
+     height rather than centred like a window you look through. Both of them
+     are also wider than tall, so without this they would be caught by the
+     `band` rule below and mounted up under the eave — a pass-through bar at
+     seven feet. Tested before the height rule, for that reason. */
+  if(/(bi-fold|lift-up) bar/.test(k)) return BAR_SILL_IN() + hIn/2;
   if(band)                return Math.max(hIn/2+4, wallIn - hIn/2 - 10);
   return 52;                                     // uprights and normal windows
 }
@@ -11497,7 +11996,15 @@ function addWindowByKey(key, el){
     showToast(noRoomMessage(ADD_WALL, e.w, probe));
     return;
   }
-  windowsData.push({wall:ADD_WALL, pos:slot, w:e.w, h:e.h, cy:newCy, type:e.key});
+  var nw={wall:ADD_WALL, pos:slot, w:e.w, h:e.h, cy:newCy, type:e.key};
+  /* Each bar window arrives in the state its own catalog tile draws, so the 3D
+     matches what was tapped. The bi-fold's tile shows it part-folded and it
+     lands closed; the lift-up's tile shows it OPEN, because a sash standing
+     in its opening looks like a picture window and says nothing about what
+     the upgrade is for. */
+  if(isBifold({type:e.key})){ nw.open=false; nw.fold='left'; nw.ledge=true; }
+  if(isLiftUp({type:e.key})){ nw.open=true;  nw.ledge=true; }
+  windowsData.push(nw);
   if(respaced) showToast('Re-spaced the '+ADD_WALL+' wall to fit. Drag any of them to move.');
   buildShed(); renderPlacedWindows(); closeSubPage();
 }
@@ -11508,13 +12015,15 @@ function renderPlacedWindows(){
     var sel=(selectedKind==='window' && selectedWindow===i);
     html+='<div class="placed-row" onclick="editWindowIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
       '<span>'+(wd.type||'Window')+' &middot; '+wd.wall+
+      (isBifold(wd) ? (' &middot; '+(wd.open?'open':'closed')+', folds '+((wd.fold==='right')?'right':'left'))
+       : isLiftUp(wd) ? (' &middot; '+(wd.open?'open':'closed')) : '')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
       '<span class="placed-x" onclick="event.stopPropagation();removeWindowIdx('+i+')">&times;</span></div>';
   });
   ventsData.forEach(function(vd,i){
     var selV=(selectedKind==='vent' && selectedVent===i);
     html+='<div class="placed-row" onclick="editVentIdx('+i+')" style="cursor:pointer'+(selV?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>Vent &middot; '+vd.wall+'</span>'+
+      '<span>Vent '+VENT_SIZE_LABEL+' &middot; '+vd.wall+'</span>'+
       '<span class="placed-x" onclick="event.stopPropagation();removeVentIdx('+i+')">&times;</span></div>';
   });
   host.innerHTML = html
@@ -11600,9 +12109,12 @@ function removeWindowIdx(i){
 // Open the window options grid for whatever window is selected (for swapping).
 function openOptionsForSelectedWindow(){
   if(selectedWindow<0||!windowsData[selectedWindow]) return;
-  var t=windowsData[selectedWindow].type||'';
+  var wd=windowsData[selectedWindow], t=wd.type||'';
   openWinCat=null;                                   // force open (openWindowOptions toggles)
-  openWindowOptions(/Transom/.test(t) ? 'transom' : 'window');
+  // Routed through the catalog, not a regex on the key: a premium window whose
+  // name happens to contain no keyword still has to land on its own tab, or
+  // its fold controls are unreachable the moment it is tapped in 3D.
+  openWindowOptions(isPremiumWin(wd) ? 'premium' : /Transom/.test(t) ? 'transom' : 'window');
 }
 function removeVentIdx(i){
   ventsData.splice(i,1);
@@ -11646,6 +12158,14 @@ var DOOR_SIZES=[
     styles:[['rollup',"6' Roll-Up",84,72],['rollup',"7' Roll-Up",84,84],['rollup',"8' Roll-Up",84,96]]},
   {cat:'cedar',    section:'custom', name:'Cedar Double', w:60, kind:'cedar',
     styles:[['cedar','5\' Cedar',76,60],['cedar','6\' Cedar',76,72],['cedar','7\' Cedar',84,84],['cedar','8\' Cedar',84,96]]},
+  /* Same product as the Cedar Double, one leaf instead of two: the same cedar
+     rails and stiles, the same transom lites, the same cedar casing. Its own
+     style id rather than a narrow 'cedar' so the price ladder, the icon and
+     doorCatFor all have something to test that can't drift with width. Head
+     height 76 matches the 5'/6' doubles, so a cedar single beside a cedar
+     double lines up on the same wall. */
+  {cat:'cedarSingle',section:'custom', name:'Cedar Single', w:36, kind:'cedar',
+    styles:[['cedarSingle','3\' Cedar',76,36],['cedarSingle','3\'6" Cedar',76,42]]},
   {cat:'fairytale',section:'custom', name:'Fairytale Entry', w:36, kind:'fairytale',
     /* 3'0" x 6'4" = 36 x 76. The height was a guessed 80 for a long time and it
        matters: the arch springs one radius below the top, so a wrong height
@@ -11805,6 +12325,13 @@ function doorStyleIcon(style, kind){
       p='<rect x="9" y="5" width="30" height="38" rx="1" stroke="#b07a3c"/><line x1="24" y1="12" x2="24" y2="43" stroke="#b07a3c"/>';
       p+='<rect x="11" y="8" width="26" height="5" stroke="#2BB5E8"/><line x1="17.5" y1="8" x2="17.5" y2="13"/><line x1="24" y1="8" x2="24" y2="13"/><line x1="30.5" y1="8" x2="30.5" y2="13"/>';
       break;
+    case 'cedarSingle':
+      // The cedar case above both REPLACES p and draws its own centre mullion,
+      // so it can't be shared by passing a different `kind` — dbl never reaches
+      // it. One narrower leaf, no mullion, two transom lites instead of three.
+      p='<rect x="14" y="5" width="20" height="38" rx="1" stroke="#b07a3c"/>';
+      p+='<rect x="16" y="8" width="16" height="5" stroke="#2BB5E8"/><line x1="21.3" y1="8" x2="21.3" y2="13"/><line x1="26.7" y1="8" x2="26.7" y2="13"/>';
+      break;
     case 'res6B':
     case 'reshalfB':
     case 'resfullB':
@@ -11866,7 +12393,7 @@ function openDoorSection(sec){
   var html='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">Pick a size.</div><div class="tgrid">';
   items.forEach(function(it){
     var c=it.c, i=it.i;
-    var ic=(c.kind==='cedar')?doorStyleIcon('cedar','cedar')
+    var ic=(c.kind==='cedar')?doorStyleIcon(c.styles[0][0],'cedar')
           :(c.kind==='fairytale')?doorStyleIcon('fairytale','single')
           :doorStyleIcon('basic', c.kind);
     html+='<div class="tile" onclick="openDoorOptions('+i+')">'+
@@ -12033,7 +12560,8 @@ function doorCatFor(dd){
   // editing an existing 36" Residential single door already had this same
   // bug, jumping to "3' Single" instead of "Residential".
   for(var k=0;k<DOOR_SIZES.length;k++){
-    if(dd.style==='cedar' && DOOR_SIZES[k].kind==='cedar') return k;
+    if(dd.style==='cedar' && DOOR_SIZES[k].cat==='cedar') return k;
+    if(dd.style==='cedarSingle' && DOOR_SIZES[k].cat==='cedarSingle') return k;
     if(/^res(6|half|full)B?$/.test(dd.style) && DOOR_SIZES[k].cat==='resid') return k;
     if(/^resDouble/.test(dd.style) && DOOR_SIZES[k].cat==='residDouble') return k;
     if(/^slideglass/.test(dd.style) && DOOR_SIZES[k].cat==='sliding') return k;
@@ -12117,7 +12645,7 @@ function doorEditHTML(i){
   var dd=doorsData[i], ci=doorCatFor(dd);
   var c=DOOR_SIZES[ci];
   var names={basic:'Standard',craftsman:'Craftsman',xtrim:'X-Trim',arch:'Arch',panel4:'4-Panel',
-             cedar:'Cedar',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
+             cedar:'Cedar',cedarSingle:'Cedar Single',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
              resDouble:'Residential Double (6-Panel)',resDoubleFull:'Residential Double (Full Lite · White)',resDoubleFullB:'Residential Double (Full Lite · Black)',
              /* rollup was missing from this map entirely, so both places that
                 read it fell through to the raw key and showed the word
@@ -12215,7 +12743,7 @@ function removeSelectedDoor(){
 function renderPlacedDoors(){
   var host=document.getElementById('placedDoors'); if(!host) return;
   var names={basic:'Standard',craftsman:'Craftsman',xtrim:'X-Trim',arch:'Arch',panel4:'4-Panel',
-             cedar:'Cedar',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
+             cedar:'Cedar',cedarSingle:'Cedar Single',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
              resDouble:'Residential Double (6-Panel)',resDoubleFull:'Residential Double (Full Lite · White)',resDoubleFullB:'Residential Double (Full Lite · Black)',
              /* rollup was missing from this map entirely, so both places that
                 read it fell through to the raw key and showed the word
