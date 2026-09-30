@@ -36,6 +36,10 @@ different library than production.
   roof rather than through it.
 - `geometry/openings.test.mjs` — no daylight around the arched door, battens
   keep off door and vent trim, and a gable vent sits dead centre.
+- `geometry/cedarsingle.test.mjs` — the cedar single is the cedar double with
+  one leaf: leaf count, leaf colour and the transom checked against the
+  double's own, plus the catalogue round-trip that two `kind:'cedar'` entries
+  put at risk.
 - `ui/snapping.test.mjs` — where a dragged window actually lands: the wall's
   centre, a mirror, an even-spacing slot, another window's sill.
 - `ui/badges.test.mjs` — a style tile's badge takes the description's line, and

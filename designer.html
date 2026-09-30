@@ -7755,7 +7755,7 @@ function buildDoor(){
     }
 
   // Leaf material by style decides the casing too, so resolve it FIRST.
-  var isCedar=(DOOR==='cedar');
+  var isCedar=(DOOR==='cedar'||DOOR==='cedarSingle');
   // Outer trim casing — a FRAME (4 boards) around the opening on the wall's outer
   // face, NOT a solid panel (a solid panel would cover the door with trim color).
   // The CEDAR door is cased in cedar like the reference photo — the surround is
@@ -10209,7 +10209,7 @@ function buildInterior(){
      and steps studs at 16" OC — so this is only about whether it gets built. */
   var GLAZED_DOOR=/^(resfull|reshalf|resDoubleFull|slideglass)B?$/;
   var hasGlassDoor = (typeof doorsData!=='undefined') && doorsData.some(function(d){
-    return GLAZED_DOOR.test(String(d.style)) || String(d.style)==='cedar';
+    return GLAZED_DOOR.test(String(d.style)) || /^cedar/.test(String(d.style));
   });
   // Always build it when the finish is being shown or we're inside — otherwise
   // a bare shed with no windows renders an empty shell.
@@ -11646,6 +11646,14 @@ var DOOR_SIZES=[
     styles:[['rollup',"6' Roll-Up",84,72],['rollup',"7' Roll-Up",84,84],['rollup',"8' Roll-Up",84,96]]},
   {cat:'cedar',    section:'custom', name:'Cedar Double', w:60, kind:'cedar',
     styles:[['cedar','5\' Cedar',76,60],['cedar','6\' Cedar',76,72],['cedar','7\' Cedar',84,84],['cedar','8\' Cedar',84,96]]},
+  /* Same product as the Cedar Double, one leaf instead of two: the same cedar
+     rails and stiles, the same transom lites, the same cedar casing. Its own
+     style id rather than a narrow 'cedar' so the price ladder, the icon and
+     doorCatFor all have something to test that can't drift with width. Head
+     height 76 matches the 5'/6' doubles, so a cedar single beside a cedar
+     double lines up on the same wall. */
+  {cat:'cedarSingle',section:'custom', name:'Cedar Single', w:36, kind:'cedar',
+    styles:[['cedarSingle','3\' Cedar',76,36],['cedarSingle','3\'6" Cedar',76,42]]},
   {cat:'fairytale',section:'custom', name:'Fairytale Entry', w:36, kind:'fairytale',
     /* 3'0" x 6'4" = 36 x 76. The height was a guessed 80 for a long time and it
        matters: the arch springs one radius below the top, so a wrong height
@@ -11805,6 +11813,13 @@ function doorStyleIcon(style, kind){
       p='<rect x="9" y="5" width="30" height="38" rx="1" stroke="#b07a3c"/><line x1="24" y1="12" x2="24" y2="43" stroke="#b07a3c"/>';
       p+='<rect x="11" y="8" width="26" height="5" stroke="#2BB5E8"/><line x1="17.5" y1="8" x2="17.5" y2="13"/><line x1="24" y1="8" x2="24" y2="13"/><line x1="30.5" y1="8" x2="30.5" y2="13"/>';
       break;
+    case 'cedarSingle':
+      // The cedar case above both REPLACES p and draws its own centre mullion,
+      // so it can't be shared by passing a different `kind` — dbl never reaches
+      // it. One narrower leaf, no mullion, two transom lites instead of three.
+      p='<rect x="14" y="5" width="20" height="38" rx="1" stroke="#b07a3c"/>';
+      p+='<rect x="16" y="8" width="16" height="5" stroke="#2BB5E8"/><line x1="21.3" y1="8" x2="21.3" y2="13"/><line x1="26.7" y1="8" x2="26.7" y2="13"/>';
+      break;
     case 'res6B':
     case 'reshalfB':
     case 'resfullB':
@@ -11866,7 +11881,7 @@ function openDoorSection(sec){
   var html='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">Pick a size.</div><div class="tgrid">';
   items.forEach(function(it){
     var c=it.c, i=it.i;
-    var ic=(c.kind==='cedar')?doorStyleIcon('cedar','cedar')
+    var ic=(c.kind==='cedar')?doorStyleIcon(c.styles[0][0],'cedar')
           :(c.kind==='fairytale')?doorStyleIcon('fairytale','single')
           :doorStyleIcon('basic', c.kind);
     html+='<div class="tile" onclick="openDoorOptions('+i+')">'+
@@ -12033,7 +12048,8 @@ function doorCatFor(dd){
   // editing an existing 36" Residential single door already had this same
   // bug, jumping to "3' Single" instead of "Residential".
   for(var k=0;k<DOOR_SIZES.length;k++){
-    if(dd.style==='cedar' && DOOR_SIZES[k].kind==='cedar') return k;
+    if(dd.style==='cedar' && DOOR_SIZES[k].cat==='cedar') return k;
+    if(dd.style==='cedarSingle' && DOOR_SIZES[k].cat==='cedarSingle') return k;
     if(/^res(6|half|full)B?$/.test(dd.style) && DOOR_SIZES[k].cat==='resid') return k;
     if(/^resDouble/.test(dd.style) && DOOR_SIZES[k].cat==='residDouble') return k;
     if(/^slideglass/.test(dd.style) && DOOR_SIZES[k].cat==='sliding') return k;
@@ -12117,7 +12133,7 @@ function doorEditHTML(i){
   var dd=doorsData[i], ci=doorCatFor(dd);
   var c=DOOR_SIZES[ci];
   var names={basic:'Standard',craftsman:'Craftsman',xtrim:'X-Trim',arch:'Arch',panel4:'4-Panel',
-             cedar:'Cedar',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
+             cedar:'Cedar',cedarSingle:'Cedar Single',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
              resDouble:'Residential Double (6-Panel)',resDoubleFull:'Residential Double (Full Lite · White)',resDoubleFullB:'Residential Double (Full Lite · Black)',
              /* rollup was missing from this map entirely, so both places that
                 read it fell through to the raw key and showed the word
@@ -12215,7 +12231,7 @@ function removeSelectedDoor(){
 function renderPlacedDoors(){
   var host=document.getElementById('placedDoors'); if(!host) return;
   var names={basic:'Standard',craftsman:'Craftsman',xtrim:'X-Trim',arch:'Arch',panel4:'4-Panel',
-             cedar:'Cedar',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
+             cedar:'Cedar',cedarSingle:'Cedar Single',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
              resDouble:'Residential Double (6-Panel)',resDoubleFull:'Residential Double (Full Lite · White)',resDoubleFullB:'Residential Double (Full Lite · Black)',
              /* rollup was missing from this map entirely, so both places that
                 read it fell through to the raw key and showed the word
