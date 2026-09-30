@@ -629,7 +629,7 @@ textarea.inp{resize:vertical}
           <span class="lbl">Dimensions</span>
           <div class="sw">
             <div class="sh"><span class="sn">Width</span><span class="sv" id="wv">8 ft</span></div>
-            <input type="range" min="6" max="22" value="8" step="2" oninput="setW(this.value)">
+            <input type="range" min="6" max="26" value="8" step="2" oninput="setW(this.value)">
           </div>
           <div class="sw">
             <div class="sh"><span class="sn">Length</span><span class="sv" id="lv">12 ft</span></div>
@@ -12848,6 +12848,28 @@ function _sizeLabel(){
 // dragging off a preset leaves it looking selected. Guarded because setW runs
 // during startup, before the strip exists.
 function _sizeStripSync(){ if(typeof renderSizeStrip==='function') renderSizeStrip(); }
+/* Point the size sliders at the server's limits. Only ever narrows or widens
+   the RANGE — it never moves the customer's current value, except where that
+   value is now out of bounds, in which case it is pulled in and the shed
+   rebuilt so the 3D matches what will be priced. */
+var SHED_LIMITS_APPLIED = null;
+function applyShedLimits(lim){
+  if(!lim || typeof lim!=='object') return;
+  SHED_LIMITS_APPLIED = lim;
+  var rows = document.querySelectorAll('.wstep[data-step="1"] input[type=range]');
+  var keys = ['w','l','h'], setters = { w:setW, l:setL, h:setH };
+  var cur  = { w:W, l:L, h:H };
+  for(var i=0;i<keys.length && i<rows.length;i++){
+    var k=keys[i], b=lim[k];
+    if(!b || !(b.max>b.min)) continue;
+    rows[i].min = b.min; rows[i].max = b.max;
+    if(b.step>0) rows[i].step = b.step;
+    var v = Math.max(b.min, Math.min(b.max, cur[k]));
+    rows[i].value = v;
+    // Only touch the build if the value actually had to move.
+    if(v !== cur[k]) setters[k](v);
+  }
+}
 function setW(v){W=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();_sizeStripSync();buildShed();autoFrame(false);}
 function setL(v){L=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();_sizeStripSync();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
 function setH(v){
@@ -16177,6 +16199,16 @@ function fetchQuote(){
     quoteCache.failed = false;
     quoteCache.total = d.total;
     if(d.optionPrices) quoteCache.optionPrices = d.optionPrices;
+    /* THE SERVER OWNS THE SIZE LIMITS. The sliders' own min/max sit in this
+       page's markup and the clamp that actually decides what gets PRICED sits
+       in worker/index.js, in another repo. Raising one without the other does
+       not fail anywhere: the server silently shrinks the request and quotes
+       the smaller shed, so a customer configuring a 22x34 was shown the price
+       of a 20x32. That shipped.
+       So whenever a quote comes back carrying limits, they are applied here.
+       The markup keeps sensible numbers for the first paint, and the server
+       corrects them the moment it answers. */
+    if(d.optionPrices && d.optionPrices.limits) applyShedLimits(d.optionPrices.limits);
     if(d.redline) quoteCache.redline = d.redline;
     paintPrice();
     if(redlineUnlocked) paintRedline();

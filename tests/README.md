@@ -53,6 +53,10 @@ different library than production.
   tab (a new group used to land in with the plain windows), the Luxury stamp is
   the gold one, a tapped bi-fold reaches its fold controls, and a serving
   window hangs at bar height instead of up under the eave.
+- `ui/shedlimits.test.mjs` — the sliders never offer a size the server will not
+  price. They did once: raised to 22x34 while the clamp stayed at 20x32, so a
+  customer saw the price of a shed two feet smaller each way. The server sends
+  its limits with every quote now and the page applies them.
 - `ui/snapping.test.mjs` — where a dragged window actually lands: the wall's
   centre, a mirror, an even-spacing slot, another window's sill.
 - `ui/badges.test.mjs` — a style tile's badge takes the description's line, and
