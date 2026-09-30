@@ -629,11 +629,11 @@ textarea.inp{resize:vertical}
           <span class="lbl">Dimensions</span>
           <div class="sw">
             <div class="sh"><span class="sn">Width</span><span class="sv" id="wv">8 ft</span></div>
-            <input type="range" min="6" max="20" value="8" step="2" oninput="setW(this.value)">
+            <input type="range" min="6" max="22" value="8" step="2" oninput="setW(this.value)">
           </div>
           <div class="sw">
             <div class="sh"><span class="sn">Length</span><span class="sv" id="lv">12 ft</span></div>
-            <input type="range" min="6" max="32" value="12" step="2" oninput="setL(this.value)">
+            <input type="range" min="6" max="34" value="12" step="2" oninput="setL(this.value)">
           </div>
           <div class="sw">
             <div class="sh"><span class="sn">Wall Height</span><span class="sv" id="hv">8 ft</span></div>
@@ -12304,7 +12304,10 @@ function clampPorch(){
      removed a porch the customer had chosen, with no message and no way to see
      why. Only drop it when the footprint genuinely cannot carry the shallowest
      porch at all, and let the porch page explain that case. */
-  var fits=[4,6,8].filter(function(d){ return d<=cap; });
+  /* 10ft added with the size bump. Kept in step with depthOptions in the
+     porch picker — two ladders that disagree would offer a depth the
+     clamp then takes away, which reads as the designer ignoring the tap. */
+  var fits=[4,6,8,10].filter(function(d){ return d<=cap; });
   if(!fits.length){ PORCH_LOC='none'; SIDE_PORCH=0; return; }
   if(SIDE_PORCH>cap) SIDE_PORCH=fits[fits.length-1];
 }
@@ -13447,7 +13450,7 @@ function porchPageHTML(){
        say what a depth COSTS, not whether it EXISTS. Unpriced ones now show
        'TBD' and flag on the redline, exactly like every other unpriced option
        in this file. */
-    var depthOptions=[4,6,8];
+    var depthOptions=[4,6,8,10];
     /* The porch now comes OUT of the footprint, so a depth is only offered if
        what is left is still a room. 8ft off a 12ft shed leaves 4ft; off a 10ft
        shed, 2ft. Hiding them beats letting someone pick a depth the geometry
