@@ -12832,12 +12832,18 @@ function clampPorch(){
      removed a porch the customer had chosen, with no message and no way to see
      why. Only drop it when the footprint genuinely cannot carry the shallowest
      porch at all, and let the porch page explain that case. */
-  /* 10ft added with the size bump. Kept in step with depthOptions in the
-     porch picker — two ladders that disagree would offer a depth the
-     clamp then takes away, which reads as the designer ignoring the tap. */
-  var fits=[4,6,8,10].filter(function(d){ return d<=cap; });
+  /* The same ladder the porch picker offers, from the same place — two that
+     disagree would offer a depth the clamp then takes away, which reads as
+     the designer ignoring the tap. */
+  var fits=porchDepthOptions().filter(function(d){ return d<=cap; });
   if(!fits.length){ PORCH_LOC='none'; SIDE_PORCH=0; return; }
-  if(SIDE_PORCH>cap) SIDE_PORCH=fits[fits.length-1];
+  /* Snap to a depth that is actually ON THE LADDER, not merely one the
+     footprint could carry. Those are different questions and only the first
+     was being asked: a build could sit on a depth the picker no longer
+     offers — after the server narrows the list, or on an old saved design —
+     and it would stay there, selected by nothing, priced by the per-sqft
+     rule and invisible on the porch page. Deepest that fits, as before. */
+  if(SIDE_PORCH>cap || fits.indexOf(SIDE_PORCH)<0) SIDE_PORCH=fits[fits.length-1];
 }
 function _sizeLabel(){
   var el=document.getElementById('sqft'); if(!el) return;
@@ -12853,6 +12859,22 @@ function _sizeStripSync(){ if(typeof renderSizeStrip==='function') renderSizeStr
    value is now out of bounds, in which case it is pulled in and the shed
    rebuilt so the 3D matches what will be priced. */
 var SHED_LIMITS_APPLIED = null;
+/* WHICH PORCH DEPTHS TO OFFER. The server decides: it is the side that
+   computes a price for each one, and a depth it has not priced shows the
+   customer a tile with nothing on it. That is what happened when the ladder
+   here went to 10ft and the server's stayed at [4,6,8] — the total was right,
+   because porch is priced per square foot, but the 10ft tile was blank.
+   The literal below is only a first paint, before any quote has come back. */
+var PORCH_DEPTHS_FALLBACK = [4,6,8,10];
+function porchDepthOptions(){
+  var served = quoteCache.optionPrices && quoteCache.optionPrices.limits
+            && quoteCache.optionPrices.limits.porchDepths;
+  if(Array.isArray(served) && served.length){
+    var ok = served.filter(function(d){ return typeof d==='number' && d>0; });
+    if(ok.length) return ok.slice();
+  }
+  return PORCH_DEPTHS_FALLBACK.slice();
+}
 function applyShedLimits(lim){
   if(!lim || typeof lim!=='object') return;
   SHED_LIMITS_APPLIED = lim;
@@ -14000,7 +14022,7 @@ function porchPageHTML(){
        say what a depth COSTS, not whether it EXISTS. Unpriced ones now show
        'TBD' and flag on the redline, exactly like every other unpriced option
        in this file. */
-    var depthOptions=[4,6,8,10];
+    var depthOptions=porchDepthOptions();
     /* The porch now comes OUT of the footprint, so a depth is only offered if
        what is left is still a room. 8ft off a 12ft shed leaves 4ft; off a 10ft
        shed, 2ft. Hiding them beats letting someone pick a depth the geometry

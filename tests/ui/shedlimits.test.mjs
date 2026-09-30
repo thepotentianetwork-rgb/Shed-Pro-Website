@@ -134,3 +134,54 @@ test('junk limits are ignored rather than blanking the sliders', () => {
     assert.equal(built.length, 0);
   });
 });
+
+/* ── THE PORCH DEPTHS, THE SAME WAY ──────────────────────────────────────────
+   The ladder lived in two places here — the porch picker and clampPorch — and
+   a third and fourth on the server. When it went to 10ft here and stayed at
+   [4,6,8] there, the total was right (porch is priced per square foot) and the
+   10ft tile was blank, because nothing had computed a price for a depth the
+   server did not know was offered. Both ladders read the served list now. */
+
+test('both porch ladders read one list', () => {
+  const saved = c.quoteCache;
+  try {
+    c.quoteCache = { optionPrices: { limits: { porchDepths: [4, 6, 8, 10, 12] } } };
+    assert.deepEqual(c.porchDepthOptions(), [4, 6, 8, 10, 12]);
+    /* clampPorch filters the SAME list by what the footprint carries. Given a
+       shed long enough for all of them, the deepest it will settle on has to
+       be the deepest offered — if it were still reading its own [4,6,8] it
+       would quietly take a 10ft porch back down to 8. */
+    Object.assign(c, { STYLE: 'gable', W: 26, L: 34, PORCH_LOC: 'front', SIDE_PORCH: 12 });
+    c.clampPorch();
+    assert.equal(c.SIDE_PORCH, 12, 'clampPorch is using a ladder of its own');
+  } finally { c.quoteCache = saved; }
+});
+
+test('the served list wins over the built-in one', () => {
+  const saved = c.quoteCache;
+  try {
+    // The server drops 10ft back off the menu; the page must stop offering it.
+    c.quoteCache = { optionPrices: { limits: { porchDepths: [4, 6] } } };
+    assert.deepEqual(c.porchDepthOptions(), [4, 6]);
+    Object.assign(c, { STYLE: 'gable', W: 26, L: 34, PORCH_LOC: 'front', SIDE_PORCH: 10 });
+    c.clampPorch();
+    assert.equal(c.SIDE_PORCH, 6, 'a depth the server no longer prices is still selectable');
+  } finally { c.quoteCache = saved; }
+});
+
+test('with no quote yet, the built-in ladder still reaches 10ft', () => {
+  const saved = c.quoteCache;
+  try {
+    // First paint, before anything has come back. It must not be empty, and
+    // it must not have quietly lost the depth this whole change was about.
+    for (const junk of [{}, { optionPrices: {} }, { optionPrices: { limits: {} } },
+                        { optionPrices: { limits: { porchDepths: [] } } },
+                        { optionPrices: { limits: { porchDepths: 'nope' } } },
+                        { optionPrices: { limits: { porchDepths: [null, 'x'] } } }]) {
+      c.quoteCache = junk;
+      const got = c.porchDepthOptions();
+      assert.ok(got.length > 0, 'the porch picker has no depths at all');
+      assert.ok(got.includes(10), `the fallback ladder lost 10ft: ${got}`);
+    }
+  } finally { c.quoteCache = saved; }
+});
