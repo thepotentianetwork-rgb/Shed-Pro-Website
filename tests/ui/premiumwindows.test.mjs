@@ -32,7 +32,7 @@ import assert from 'node:assert/strict';
 import { loadDesigner } from '../harness.mjs';
 
 const { c } = loadDesigner();
-const BIFOLD = 'Black Bi-Fold Bar 72x40';
+const BIFOLD = 'Black Bi-Fold Bar 72x42';
 const LIFTUP = 'Black Lift-Up Bar 60x42';
 
 test('every catalog group has a tab, and every entry lands in exactly one', () => {
@@ -93,7 +93,7 @@ test('a placed bi-fold is recognised, and a premium window is not mistaken for o
 });
 
 test('the fold controls are all three, and read the window they are on', () => {
-  c.windowsData = [{ wall:'front', pos:0.5, w:72, h:40, cy:62, type:BIFOLD,
+  c.windowsData = [{ wall:'front', pos:0.5, w:72, h:42, cy:63, type:BIFOLD,
                      open:false, fold:'left', ledge:true }];
   c.selectedKind = 'window'; c.selectedWindow = 0;
   const shut = c.bifoldControlsHTML(0);
@@ -188,7 +188,7 @@ test('tapping a placed bi-fold reaches its fold controls', () => {
      the editor panel is behind it — so if openWindowOptions does not put them
      in, the fold direction is unreachable and nothing else would say so. */
   c.ADD_WALL = 'front';
-  c.windowsData = [{ wall:'front', pos:0.5, w:72, h:40, cy:62, type:BIFOLD,
+  c.windowsData = [{ wall:'front', pos:0.5, w:72, h:42, cy:63, type:BIFOLD,
                      open:false, fold:'left', ledge:true }];
   c.selectedKind = 'window'; c.selectedWindow = 0;
   const { title, html } = panelFromTap();
@@ -206,29 +206,30 @@ test('tapping a placed bi-fold reaches its fold controls', () => {
   assert.ok(!plain.html.includes('setBifoldFold'), 'a vinyl window is being offered fold controls');
 });
 
-test('a bi-fold hangs at bar height, not up under the eave', () => {
+test('every bar window hangs at bar height, whatever rule it would have hit', () => {
   c.H = 9;
-  const e = c.WINDOW_CATALOG.find((x) => x.key === BIFOLD);
-  const cy = c.defaultCyFor(e.h, e.key, e.w);
-  const sill = cy - e.h / 2;
-  assert.equal(sill, c.BAR_SILL_IN(), `sill lands at ${sill}" instead of bar height`);
-
-  /* The rule this has to beat. A 72x40 is "clearly wider than tall", and that
-     rule mounts a window just under the wall top — a 4'10" sill on a 9ft wall,
-     more than a foot above the counter it is supposed to serve over. Asserted
-     rather than assumed, because without it this test passes on a build where
-     the ordering is wrong and the fallback happens to be close enough. */
-  const bandSill = c.defaultCyFor(e.h, 'Black Vinyl 72x40', e.w) - e.h / 2;
-  assert.ok(bandSill > c.BAR_SILL_IN() + 12,
-    `the wide-window rule should mount well above bar height (${bandSill}")`);
-  assert.ok(sill < bandSill, 'the bi-fold is being mounted by the wide-window rule');
+  /* There is no ONE rule to beat. defaultCyFor sends a window somewhere by
+     shape: a 96x48 is "clearly wider than tall" and gets mounted just under
+     the wall top, while a 72x42 is not quite wide enough for that and falls
+     to the generic 52" centre. Both are wrong for a serving hatch and they
+     are wrong in opposite directions, so this checks the outcome for EVERY
+     premium size and shows what each one would otherwise have got.
+     Written against 72x40 first, which was the only bi-fold size then and did
+     trip the wide-window rule. It stopped tripping it at 72x42 and the test
+     failed on a claim about the rule rather than about the sill. */
+  const premium = c.WINDOW_CATALOG.filter((e) => e.grp === 'Premium');
+  assert.ok(premium.length >= 8, `only ${premium.length} premium sizes to check`);
+  for (const e of premium) {
+    const sill = c.defaultCyFor(e.h, e.key, e.w) - e.h / 2;
+    assert.equal(sill, c.BAR_SILL_IN(),
+      `${e.key} sits at a ${sill}" sill instead of bar height`);
+    // What it would have got without the rule: the same size under a plain
+    // vinyl name. It must differ, or the rule is doing nothing here.
+    const plain = c.defaultCyFor(e.h, 'Black Vinyl ' + e.w + 'x' + e.h, e.w) - e.h / 2;
+    assert.notEqual(plain, c.BAR_SILL_IN(),
+      `${e.w}x${e.h} would land at bar height anyway — this size proves nothing`);
+  }
 });
-
-/* ── THE TWO PREMIUM PRODUCTS ARE NOT VARIANTS OF EACH OTHER ──────────────
-   One folds sideways on three vertical hinges; one lifts overhead on a top
-   hinge and two gas struts. They share a tier, a sill height and a counter,
-   and nothing else. The brief says to keep them completely separate, so these
-   tests are about the ways they could quietly merge. */
 
 test('the two bar windows are told apart, and neither answers for the other', () => {
   assert.ok(c.isBifold({ type: BIFOLD }) && !c.isLiftUp({ type: BIFOLD }));
@@ -305,7 +306,7 @@ test('the lift-up controls drop Fold and keep the rest', () => {
   assert.ok(!html.includes('Fold toward'),
     'a lift-up is being offered a fold direction — it has no side to fold to');
   // The bi-fold still has it, so the absence above is a choice.
-  c.windowsData = [{ wall:'front', pos:0.5, w:72, h:40, cy:62, type:BIFOLD, ledge:true }];
+  c.windowsData = [{ wall:'front', pos:0.5, w:72, h:42, cy:63, type:BIFOLD, ledge:true }];
   assert.ok(c.barWindowControlsHTML(0).includes('Fold toward'));
 
   // And the fold setter refuses to write one onto a lift-up.

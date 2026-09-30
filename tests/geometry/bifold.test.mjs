@@ -41,8 +41,8 @@ const T = c.THREE;
 c.scene = new T.Scene(); c.shedGroup = new T.Group(); c.scene.add(c.shedGroup);
 const IN = 0.2 / 12;
 
-const KEY = 'Black Bi-Fold Bar 72x40';
-const WIN_W = 72, WIN_H = 40;
+const KEY = 'Black Bi-Fold Bar 72x42';
+const WIN_W = 72, WIN_H = 42;
 const OPENING = WIN_W * IN;                 // the hole in the wall, world units
 
 function build(over) {
