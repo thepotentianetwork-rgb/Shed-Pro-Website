@@ -477,10 +477,9 @@ textarea.inp{resize:vertical}
     <!-- Call and text, same round pill family as the staff padlock but at full
          opacity: these are for the customer, the padlock is not. tel: and sms:
          both hand off to the phone's own dialer/messages app.
-         Two DIFFERENT numbers on purpose, matching the rest of the site: calls
-         go to the shop line, texts to 435-277-0764, which is answered faster.
-         Don't "fix" them to match each other. -->
-    <a href="tel:4352329516" class="ico-btn" title="Call 435-232-9516" aria-label="Call us"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>
+         Calls and texts both go to 435-277-0764 (the sales line wired into
+         the CRM), matching the rest of the site. -->
+    <a href="tel:4352770764" class="ico-btn" title="Call 435-277-0764" aria-label="Call us"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>
     <a href="sms:+14352770764" class="ico-btn" title="Text 435-277-0764" aria-label="Text us"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></a>
     <button type="button" id="duShareBtn" class="ico-btn du-share-btn" onclick="DU.shareDesign('header')" title="Share this design" aria-label="Share this design"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg></button>
     <!-- Staff only: hidden by designer-upgrade.css unless body.du-staff (open the designer with #staff). -->
@@ -499,12 +498,12 @@ textarea.inp{resize:vertical}
     <div class="promo-set">
       <span>Built to withstand the Rocky Mountains</span><span class="promo-sep">&middot;</span>
       <span>One crew, start to finish</span><span class="promo-sep">&middot;</span>
-      <span>Have questions? Call us at <a href="tel:4352329516">435-232-9516</a></span><span class="promo-sep">&middot;</span>
+      <span>Have questions? Call us at <a href="tel:4352770764">435-277-0764</a></span><span class="promo-sep">&middot;</span>
     </div>
     <div class="promo-set" aria-hidden="true">
       <span>Built to withstand the Rocky Mountains</span><span class="promo-sep">&middot;</span>
       <span>One crew, start to finish</span><span class="promo-sep">&middot;</span>
-      <span>Have questions? Call us at <a href="tel:4352329516" tabindex="-1">435-232-9516</a></span><span class="promo-sep">&middot;</span>
+      <span>Have questions? Call us at <a href="tel:4352770764" tabindex="-1">435-277-0764</a></span><span class="promo-sep">&middot;</span>
     </div>
   </div>
 </div>
@@ -16173,7 +16172,7 @@ function openQ(){
     '<div id="qErr" class="qerr-box"></div>'+
     '<div id="qSend" class="cta" onclick="submitQuote()" style="margin-top:16px">Send my request →</div>'+
     '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
-      'Rather talk it through? Call 435-232-9516</div>';
+      'Rather talk it through? Call 435-277-0764</div>';
   openSubPage('Request your quote', body);
   prefillContactFromUrl();
   if(window.DU && DU.afterQuoteForm) DU.afterQuoteForm();
@@ -16272,7 +16271,7 @@ function submitQuote(){
         'A copy is on its way to '+email+'.</div></div>');
     })
     .catch(function(e){
-      fail('Couldn\'t send that \u2014 please try again, or call 435-232-9516.');
+      fail('Couldn\'t send that \u2014 please try again, or call 435-277-0764.');
       if(btn){ btn.textContent='Send my request →'; btn.style.pointerEvents=''; btn.style.opacity=''; }
       console.error(e);
     });
@@ -16635,7 +16634,7 @@ function openConsult(trigger){
     '<div id="cErr" class="qerr-box"></div>'+
     '<div id="cSend" class="cta" onclick="submitConsult()" style="margin-top:16px">Request a call &rarr;</div>'+
     '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
-      'Rather call us now? <a href="tel:4352329516" style="color:var(--blue)">435-232-9516</a></div>';
+      'Rather call us now? <a href="tel:4352770764" style="color:var(--blue)">435-277-0764</a></div>';
   openSubPage('Talk to a designer', body);
   if(window.DU && DU.track) DU.track('consult_opened',{trigger:CONSULT_TRIGGER});
   // Same prefill the quote form uses, for staff reopening a customer's design.
@@ -16708,7 +16707,7 @@ function submitConsult(){
     }
   }).catch(function(){
     if(btn){ btn.textContent = 'Request a call →'; btn.style.pointerEvents = ''; btn.style.opacity = ''; }
-    fail('Couldn\'t send that — please try again, or call 435-232-9516.');
+    fail('Couldn\'t send that — please try again, or call 435-277-0764.');
   });
 }
 
