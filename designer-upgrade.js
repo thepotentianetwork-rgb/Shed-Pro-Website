@@ -65,7 +65,7 @@ function isStaff(){
 function applyStaff(){ document.body.classList.toggle('du-staff', isStaff()); }
 
 /* ── names ── */
-var STYLE_NAMES = {gable:'Gable', barn:'Barn', leanto:'Modern Single Slope', hip:'Poolhouse / Hip', '3peak':'3-Peak', '4peak':'4-Peak'};
+var STYLE_NAMES = {gable:'Gable / A-Frame', barn:'Barn', leanto:'Modern Single Slope', hip:'Poolhouse / Hip', '3peak':'3-Peak', '4peak':'4-Peak'};
 DU.styleName = function(){ return STYLE_NAMES[window.STYLE] || window.STYLE || ''; };
 var FOUNDATION_NAMES = {pad:'Concrete pad, poured by us', blocks:'Leveled on cinder blocks', gravel:'Gravel pad + leveled on blocks', existing:'Existing foundation'};
 var ELEC_NAMES = {none:'None', basic:'Basic (power-ready)', core:'Core package (power-ready)', essential:'Essential package (power-ready)'};
@@ -360,7 +360,7 @@ function ago(t){
 function offerResume(){
   if(/[?&#]d=/.test(location.href)) return;          // a shared design wins
   var s=readSaved(); if(!s) return;
-  var c=s.cfg, sn={gable:'Gable',barn:'Barn',leanto:'Modern Single Slope',hip:'Poolhouse / Hip','3peak':'3-Peak','4peak':'4-Peak'}[c.style]||c.style;
+  var c=s.cfg, sn={gable:'Gable / A-Frame',barn:'Barn',leanto:'Modern Single Slope',hip:'Poolhouse / Hip','3peak':'3-Peak','4peak':'4-Peak'}[c.style]||c.style;
   window._consultRetired=true; if(typeof window.hideConsultNudge==='function') window.hideConsultNudge();
   var card=document.createElement('div');
   card.id='duResume'; card.className='du-resume'; card.setAttribute('role','dialog'); card.setAttribute('aria-labelledby','duResumeT');
