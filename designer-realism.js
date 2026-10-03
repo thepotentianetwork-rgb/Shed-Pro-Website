@@ -123,8 +123,12 @@ function setupGround(){
 }
 
 /* ── backdrop ring ── */
+var RING_COPIES=7;
 function setupRing(){
-  var R=36, COPIES=6, H=(2*Math.PI*R/COPIES)*(1024/1536), Y0=-3.2;
+  /* Height kept from the original 6-copy ring so the horizon line and framing
+     don't move; the seamless tile (see realism/seam.py) repeats RING_COPIES
+     times around without mirroring, so there is no symmetric seam to spot. */
+  var R=36, H=(2*Math.PI*R/6)*(1024/1536), Y0=-3.2;
   var geo=new THREE.CylinderGeometry(R,R,H,96,1,true);
   var mat=new THREE.MeshBasicMaterial({side:THREE.BackSide, transparent:true, depthWrite:false, fog:false, toneMapped:false, color:0xffffff});
   var ring=new THREE.Mesh(geo, mat);
@@ -134,8 +138,8 @@ function setupRing(){
 }
 function ringTexture(mode, cb){
   if(st.ringTex[mode]) return cb(st.ringTex[mode]);
-  loadTex(ENV+'backdrop-'+mode+(LOW?'-1k':'')+'.webp', true, function(t){
-    t.encoding=THREE.sRGBEncoding; t.wrapS=THREE.MirroredRepeatWrapping; t.repeat.set(6,1);
+  loadTex(ENV+'backdrop-'+mode+'-tile'+(LOW?'-1k':'')+'.webp', true, function(t){
+    t.encoding=THREE.sRGBEncoding; t.wrapS=THREE.RepeatWrapping; t.repeat.set(RING_COPIES,1);
     t.anisotropy=Math.min(4, renderer.capabilities.getMaxAnisotropy());
     st.ringTex[mode]=t; cb(t);
   });
@@ -251,14 +255,20 @@ function dressLights(night){
     var fx=null; g.children.forEach(function(ch){ if(!fx && ch.isGroup) fx=ch; });
     if(!fx) return;
     var y=fx.position.y;
+    var bb=(typeof SIDING!=='undefined' && SIDING==='board-batten');
+    var faceZ=0.025+(bb?0.0125:0)+0.002;            // just proud of the wall (battens on B&B)
+    // Additive light on pale paint blows out to white; scale it by the siding's brightness.
+    var c=(typeof sc!=='undefined')?sc:0x808080;
+    var lum=(0.2126*((c>>16)&255)+0.7152*((c>>8)&255)+0.0722*(c&255))/255;
+    var washOp=0.55*(1-0.72*lum);
     var wash=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.95),
-      new THREE.MeshBasicMaterial({map:getWashTex(), transparent:true, opacity:0.55, blending:THREE.AdditiveBlending,
+      new THREE.MeshBasicMaterial({map:getWashTex(), transparent:true, opacity:washOp, blending:THREE.AdditiveBlending,
         depthWrite:false, toneMapped:false, fog:false}));
-    wash.position.set(0, y-0.40, 0.012); wash.renderOrder=2; wash.raycast=function(){};
+    wash.position.set(0, y-0.40, faceZ); wash.renderOrder=2; wash.raycast=function(){};
     g.add(wash);
     var halo=new THREE.Sprite(new THREE.SpriteMaterial({map:getHaloTex(), transparent:true, opacity:0.9,
       blending:THREE.AdditiveBlending, depthWrite:false, toneMapped:false, fog:false}));
-    halo.scale.set(0.16,0.16,0.16); halo.position.set(0, y-0.07, 0.07); halo.raycast=function(){};
+    halo.scale.set(0.16,0.16,0.16); halo.position.set(0, y-0.07, fx.position.z+0.045); halo.raycast=function(){};
     g.add(halo);
     fx.traverse(function(o){ if(o.isPointLight){ o.intensity=0.9; o.distance=1.7; o.decay=2; } });
   });
