@@ -16169,6 +16169,10 @@ function openQ(){
     '<input id="qWebsite" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" '+
       'style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">'+
 
+    '<label for="qSms" style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:12px;line-height:1.5;color:var(--mu);cursor:pointer">'+
+      '<input id="qSms" type="checkbox" style="flex:0 0 auto;width:18px;height:18px;margin:1px 0 0;accent-color:var(--blue)">'+
+      '<span>Yes, text me about my quote and build updates from ShedPro. Msg frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. '+
+      'See our <a href="/privacy" target="_blank" rel="noopener" style="color:var(--blue)">Privacy Policy</a> and <a href="/terms" target="_blank" rel="noopener" style="color:var(--blue)">Terms</a>.</span></label>'+
     '<div id="qErr" class="qerr-box"></div>'+
     '<div id="qSend" class="cta" onclick="submitQuote()" style="margin-top:16px">Send my request →</div>'+
     '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
@@ -16193,6 +16197,9 @@ function prefillContactFromUrl(){
   });
 }
 
+/* SMS consent (optional, unchecked). Also copied into page, which the Worker stores verbatim. */
+function smsConsentInfo(id,src){ var on=!!(document.getElementById(id)||{}).checked;
+  return { sms_consent:on, sms_consent_at:on?new Date().toISOString():null, sms_consent_source:src }; }
 var _lastShortLink=null;
 function submitQuote(){
   var g=function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
@@ -16226,6 +16233,7 @@ function submitQuote(){
       shedUse: (typeof SHED_USE!=='undefined' && SHED_USE) || null,   // v462
       heardAbout: heardAbout||null,
       heardAboutOther: heardAboutOther||null,
+      sms_consent: !!(document.getElementById('qSms')||{}).checked,
       quotedPrice: (quoteCache.total!=null)?Math.round(quoteCache.total):null,
       /* The margin target staff dialled in, so the order is stored at the
          price they actually quoted. Without this the redline panel showed one
@@ -16243,7 +16251,7 @@ function submitQuote(){
       // designer-upgrade: lead source + session context ride inside page (the
       // Worker stores page verbatim; see DU.leadContext).
       page: Object.assign({ url:location.href, ref:document.referrer||'', ua:navigator.userAgent },
-                          (window.DU && DU.leadContext) ? DU.leadContext() : {})
+                          (window.DU && DU.leadContext) ? DU.leadContext() : {}, smsConsentInfo('qSms','designer-quote'))
     };
     _lastShortLink = shortLink;
 
@@ -16631,6 +16639,10 @@ function openConsult(trigger){
     '<input id="cWebsite" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" '+
       'style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">'+
 
+    '<label for="cSms" style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:12px;line-height:1.5;color:var(--mu);cursor:pointer">'+
+      '<input id="cSms" type="checkbox" style="flex:0 0 auto;width:18px;height:18px;margin:1px 0 0;accent-color:var(--blue)">'+
+      '<span>Yes, text me about my quote and build updates from ShedPro. Msg frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. '+
+      'See our <a href="/privacy" target="_blank" rel="noopener" style="color:var(--blue)">Privacy Policy</a> and <a href="/terms" target="_blank" rel="noopener" style="color:var(--blue)">Terms</a>.</span></label>'+
     '<div id="cErr" class="qerr-box"></div>'+
     '<div id="cSend" class="cta" onclick="submitConsult()" style="margin-top:16px">Request a call &rarr;</div>'+
     '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
@@ -16693,7 +16705,8 @@ function submitConsult(){
         trigger: CONSULT_TRIGGER,
         config: (typeof getDesignConfig === 'function') ? getDesignConfig() : null,
         permalink: link,
-        page: Object.assign({ url:location.href }, (window.DU && DU.leadContext) ? DU.leadContext() : {})
+        sms_consent: !!(document.getElementById('cSms')||{}).checked,
+        page: Object.assign({ url:location.href }, (window.DU && DU.leadContext) ? DU.leadContext() : {}, smsConsentInfo('cSms','designer-consult'))
       })
     });
   }).then(function(r){
