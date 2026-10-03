@@ -1,4 +1,10 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/offers", "destination": "/", "permanent": true },
+    { "source": "/offers.html", "destination": "/", "permanent": true },
+    { "source": "/materials", "destination": "/gallery#materials", "permanent": true },
+    { "source": "/materials.html", "destination": "/gallery#materials", "permanent": true }
+  ]
 }
