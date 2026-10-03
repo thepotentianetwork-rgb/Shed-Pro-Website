@@ -32,9 +32,9 @@
 .bmap .leaflet-popup-close-button{color:rgba(255,255,255,.6)!important}
 .bmap .leaflet-tile-pane{filter:brightness(.82) contrast(1.08) sepia(.25) hue-rotate(160deg) saturate(1.4)}
 @media (max-width:760px){.bmap{height:380px;border-radius:18px}
-.bmap-stats{top:12px;left:12px;padding:9px 12px}
-.bmap-stats b{font-size:30px}
-.bmap-stats span{font-size:10px}
+.bmap-stats{top:10px;left:10px;gap:8px;padding:7px 10px;border-radius:12px}
+.bmap-stats b{font-size:24px}
+.bmap-stats span{font-size:9px;letter-spacing:.05em}
 .bmap-legend{left:12px}}
 .bmap .bmap-canvas{position:absolute;inset:0;height:100%}
 .bmap .leaflet-container{z-index:1!important}

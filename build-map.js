@@ -71,7 +71,16 @@
       L.marker([c[1],c[2]],{icon:pin,title:c[0],riseOnHover:true}).addTo(map).bindPopup('<div class="build-popup-title">'+c[0]+'</div>',{closeButton:false,offset:[0,-4]});
     });
     var vg=wrap.querySelector('.bmap-vignette'); if(vg) map.getContainer().appendChild(vg);
-    map.fitBounds(L.latLngBounds(CITIES.map(function(c){return [c[1],c[2]]})),{padding:[40,40]});
+    /* fit all pins; if any pin lands under the stats chip or legend, refit with extra top/bottom room */
+    var B=L.latLngBounds(CITIES.map(function(c){return [c[1],c[2]]}));
+    map.fitBounds(B,{padding:[40,40]});
+    var chip=wrap.querySelector('.bmap-stats'),leg=wrap.querySelector('.bmap-legend');
+    var hits=function(box){if(!box)return false;var r={l:box.offsetLeft-14,t:box.offsetTop-14,r:box.offsetLeft+box.offsetWidth+14,b:box.offsetTop+box.offsetHeight+14};
+      return CITIES.some(function(c){var p=map.latLngToContainerPoint([c[1],c[2]]);return p.x>r.l&&p.x<r.r&&p.y>r.t&&p.y<r.b})};
+    if(hits(chip)||hits(leg)){
+      var top=chip?chip.offsetTop+chip.offsetHeight+18:40,bot=leg?wrap.clientHeight-leg.offsetTop+12:40;
+      map.fitBounds(B,{paddingTopLeft:[30,Math.max(40,top)],paddingBottomRight:[30,Math.max(40,bot)]});
+    }
     wrap.classList.add('ready');
     var gate=wrap.querySelector('.bmap-gate'),done=wrap.querySelector('.bmap-done');
     if(touch){
