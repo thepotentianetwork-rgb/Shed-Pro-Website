@@ -207,7 +207,7 @@ button{font:inherit;color:inherit}
 .stat b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:clamp(34px,4vw,48px);font-weight:800;color:var(--white);line-height:1}
 .stat b em{font-style:normal;color:var(--blue)}
 .stat span{display:block;margin-top:8px;font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-#home-build-map{height:420px;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border)}
+#home-build-map{height:100%}
 .map-foot{text-align:center;margin-top:22px}
 
 /* why */
@@ -374,7 +374,7 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
   .cards3{grid-template-columns:1fr}
   .checks{grid-template-columns:1fr 1fr;gap:12px}
   .checks li{font-size:14px}
-  #home-build-map{height:320px}
+  #home-build-map{height:100%}
   .rv-nav{display:none}
   .rv-head{align-items:flex-start}
   .phone{right:-6px;bottom:-24px;width:30%}
@@ -467,7 +467,42 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
 @media (max-width:370px){.sh-logo strong{display:none}}
 @media (prefers-reduced-motion:reduce){.sh-drawer,.sh-burger span,.sh-topbar-msg{transition:none!important}}
 
-</style><style id="page-transition">body{transition:opacity .22s ease-out}html.sp-fade body{opacity:0}@media (prefers-reduced-motion:reduce){body{transition:none}html.sp-fade body{opacity:1}}</style><script id="page-transition-js">(function(){var h=document.documentElement;try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;}catch(e){}h.className+=" sp-fade";function clear(){h.className=h.className.replace(/\s*\bsp-fade\b/g,"");}function show(){try{requestAnimationFrame(function(){requestAnimationFrame(clear);});}catch(e){clear();}}document.addEventListener("DOMContentLoaded",show);window.addEventListener("load",show);setTimeout(clear,700);})();</script></head>
+</style><style id="page-transition">body{transition:opacity .22s ease-out}html.sp-fade body{opacity:0}@media (prefers-reduced-motion:reduce){body{transition:none}html.sp-fade body{opacity:1}}</style><script id="page-transition-js">(function(){var h=document.documentElement;try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;}catch(e){}h.className+=" sp-fade";function clear(){h.className=h.className.replace(/\s*\bsp-fade\b/g,"");}function show(){try{requestAnimationFrame(function(){requestAnimationFrame(clear);});}catch(e){clear();}}document.addEventListener("DOMContentLoaded",show);window.addEventListener("load",show);setTimeout(clear,700);})();</script><style id="bmap-css">
+.bmap{position:relative;height:480px;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:#0b0d10;box-shadow:0 40px 80px -40px rgba(0,0,0,.8),0 0 0 1px rgba(43,181,232,.06) inset;isolation:isolate}
+.bmap .leaflet-container{background:#0b0d10!important;font-family:'Barlow',sans-serif}
+.bmap-vignette{position:absolute;inset:0;z-index:450;pointer-events:none;background:radial-gradient(ellipse at 55% 50%,transparent 45%,rgba(6,7,9,.55) 80%,rgba(6,7,9,.85) 100%);box-shadow:inset 0 0 60px rgba(0,0,0,.6)}
+.bmap-stats{position:absolute;z-index:600;top:18px;left:18px;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;background:rgba(12,14,17,.72);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:none}
+.bmap-stats b{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;line-height:1;color:#fff}
+.bmap-stats b em{font-style:normal;color:var(--blue)}
+.bmap-stats span{font-size:12px;font-weight:600;line-height:1.3;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.06em}
+.bmap-legend{position:absolute;z-index:600;left:18px;bottom:18px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(12,14,17,.72);border:1px solid rgba(255,255,255,.1);font-size:12px;font-weight:600;color:rgba(255,255,255,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:none}
+.bmap-legend i{width:10px;height:10px;border-radius:50%;background:#2BB5E8;box-shadow:0 0 0 3px rgba(43,181,232,.25),0 0 12px 2px rgba(43,181,232,.7)}
+.bmap-gate{display:none;position:absolute;inset:0;z-index:700;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.bmap-gate span{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);padding:9px 16px;border-radius:999px;background:rgba(12,14,17,.8);border:1px solid rgba(255,255,255,.16);color:#fff;font:600 13px 'Barlow',sans-serif;white-space:nowrap;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.bmap-done{display:none;position:absolute;z-index:700;top:14px;right:14px;padding:8px 16px;border-radius:999px;border:0;background:#2BB5E8;color:#06212D;font:800 13px 'Barlow',sans-serif;cursor:pointer}
+.bmap.touch .bmap-gate{display:block}
+.bmap.touch.live .bmap-gate{display:none}
+.bmap.touch.live .bmap-done{display:block}
+.bmap.touch .bmap-legend{bottom:62px}
+.bmap.touch.live .bmap-legend{bottom:18px}
+.bmap-glow{pointer-events:none}
+.bmap-glow div{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(43,181,232,.26) 0%,rgba(43,181,232,.08) 40%,rgba(43,181,232,0) 70%)}
+.bmap-pin div{position:relative;width:12px;height:12px;border-radius:50%;background:#2BB5E8;border:2px solid #E9F8FF;box-shadow:0 0 0 3px rgba(43,181,232,.3),0 0 14px 3px rgba(43,181,232,.75)}
+.bmap-pin div::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(43,181,232,.6);animation:bmapPulse 2.8s ease-out infinite;animation-delay:var(--dl,0s)}
+@keyframes bmapPulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+@media (prefers-reduced-motion:reduce){.bmap-pin div::after{animation:none;opacity:0}}
+.bmap .leaflet-control-zoom{border:0!important;box-shadow:0 8px 24px rgba(0,0,0,.4)!important;border-radius:12px!important;overflow:hidden}
+.bmap .leaflet-control-zoom a{background:rgba(18,20,24,.9)!important;color:#fff!important;border-bottom:1px solid rgba(255,255,255,.08)!important;width:34px!important;height:34px!important;line-height:34px!important}
+.bmap .leaflet-control-zoom a:hover{background:#2BB5E8!important;color:#06212D!important}
+.bmap .leaflet-control-attribution{background:rgba(10,11,13,.6)!important;color:rgba(255,255,255,.45)!important;font-size:10px!important;border-top-left-radius:8px}
+.bmap .leaflet-control-attribution a{color:rgba(255,255,255,.6)!important}
+.bmap .leaflet-popup-content-wrapper{background:rgba(18,20,24,.96)!important;border:1px solid rgba(43,181,232,.3);box-shadow:0 12px 30px rgba(0,0,0,.5)!important}
+.bmap .leaflet-popup-tip{background:rgba(18,20,24,.96)!important}
+.bmap .leaflet-popup-close-button{color:rgba(255,255,255,.6)!important}
+.bmap .leaflet-tile-pane{filter:brightness(.82) contrast(1.08) sepia(.25) hue-rotate(160deg) saturate(1.4)}
+@media (max-width:760px){.bmap{height:380px;border-radius:18px}.bmap-stats{top:12px;left:12px;padding:9px 12px}.bmap-stats b{font-size:30px}.bmap-stats span{font-size:10px}.bmap-legend{left:12px}}
+</style>
+</head>
 <body class="home">
 <a class="sr-only" href="#main">Skip to content</a>
 <!-- ═══ SITE HEADER (shared shell) ═══ -->
@@ -485,9 +520,8 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
   </div>
 </div>
 <div class="sh-drawer" id="shDrawer">
-  <a href="/">Home</a><a href="/gallery">Styles</a><a href="/#shed-designer">Studio</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="/contact">Reserve Your Spot</a>
-  <div class="sh-drawer-ctas">
-    <a href="/contact" class="sh-btn sh-btn-primary sh-btn-lg">Reserve your spot — free quote</a>
+  <a href="/">Home</a><a href="/gallery">Styles</a><a href="/#shed-designer">Studio</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="/contact">Contact</a> <div class="sh-drawer-ctas">
+    <a href="/contact" class="sh-btn sh-btn-primary sh-btn-lg">Get your free quote</a>
     <a href="/designer" class="sh-btn sh-btn-ghost sh-btn-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z"/><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5"/></svg>Design your shed in 3D</a>
     <a href="tel:+14352329516" class="sh-btn sh-btn-ghost sh-btn-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81 19.79 19.79 0 01.02 1.14 2 2 0 012 1h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>Call 435-232-9516</a>
     <a href="sms:+14352770764" class="sh-btn sh-btn-ghost sh-btn-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Text 435-277-0764</a>
@@ -520,11 +554,10 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
       <h1 class="display">Custom Sheds<br><em>Built On-Site,</em><br>Designed by You</h1>
       <p class="hero-sub">We come to you. ShedPro LLC builds custom sheds directly in your backyard across Utah, Idaho &amp; surrounding states. Every shed is custom-built, by appointment.</p>
       <div class="hero-ctas">
-        <a href="/contact" class="btn btn-light btn-lg" data-cta="hero-quote">Reserve your spot — free quote<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+        <a href="/contact" class="btn btn-light btn-lg" data-cta="hero-quote">Get your free quote<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
         <a href="/designer" class="btn btn-primary btn-lg" data-cta="hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z"/><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5"/></svg>Design your shed in 3D<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
       </div>
-      <p class="hero-micro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81 19.79 19.79 0 01.02 1.14 2 2 0 012 1h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>A ShedPro rep calls you within 24 hours to quote and reserve your spot.</p>
-      <ul class="hero-trust">
+      <p class="hero-micro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81 19.79 19.79 0 01.02 1.14 2 2 0 012 1h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>A ShedPro rep calls you within 24 hours with your free quote.</p> <ul class="hero-trust">
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Custom-built, by appointment</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Free quote within 24 hours</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>3-year workmanship warranty</li>
@@ -666,7 +699,7 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
       <ol class="steps">
         <li><div><h3>Design it</h3><p>Choose from Gable, Barn, Lean-To, Poolhouse, 3 Peak, 4 Peak and Cabin styles, then make it yours.</p></div></li>
         <li><div><h3>Get your free quote</h3><p>Tap “Request Free Quote” and your exact design comes straight to us. A ShedPro rep calls you within 24 hours with your quote.</p></div></li>
-        <li><div><h3>Reserve your spot</h3><p>Lock in your place on our build schedule, and our crew builds your shed on-site, start to finish.</p></div></li>
+        <li><div><h3>Lock in your build date</h3><p>Lock in your place on our build schedule, and our crew builds your shed on-site, start to finish.</p></div></li>
       </ol>
       <div class="studio-ctas">
         <a href="/designer" class="btn btn-primary btn-lg" data-cta="studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z"/><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5"/></svg>Open ShedPro Studio<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
@@ -707,12 +740,57 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Our full attention, from first call to finished build</li>
       </ul>
       <div class="team-ctas">
-        <a href="/contact" class="btn btn-primary btn-lg" data-cta="team-reserve">Reserve your spot<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-        <p class="team-micro">A ShedPro rep calls you within 24 hours to quote and reserve your spot.</p>
+        <a href="/contact" class="btn btn-primary btn-lg" data-cta="team-talk">Talk to our team<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+        <p class="team-micro">A ShedPro rep calls you within 24 hours. We build by appointment on a limited schedule.</p>
       </div>
     </div>
   </div>
 </section>
+<!-- ─── ONE TEAM TEASER (foundation · build · electrical) ─── -->
+<section class="ot-teaser" aria-labelledby="ott-title">
+<style>
+.ot-teaser{padding:var(--sec) 0;background:var(--dark);border-top:1px solid var(--border)}
+.ott-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:clamp(28px,5vw,64px);align-items:center}
+.ott-copy .lead{max-width:520px}.ot-teaser .h2 em{white-space:nowrap}
+.ott-points{list-style:none;margin:22px 0 28px;padding:0;display:grid;gap:10px}
+.ott-points li{display:flex;gap:12px;align-items:flex-start;color:rgba(255,255,255,.82);font-size:15px;line-height:1.5}
+.ott-points b{color:#fff}
+.ott-points i{flex:none;width:24px;height:24px;border-radius:50%;background:rgba(43,181,232,.14);color:var(--blue);display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:800;margin-top:1px}
+.ott-ctas{display:flex;gap:12px;flex-wrap:wrap}
+.ott-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.ott-tile{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:3/4;background:var(--dark3);border:1px solid var(--border)}
+.ott-tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s ease}
+.ott-tile:hover img{transform:scale(1.04)}
+.ott-tile span{position:absolute;left:0;right:0;bottom:0;padding:34px 14px 14px;background:linear-gradient(to top,rgba(8,9,10,.9),rgba(8,9,10,0));font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;text-transform:uppercase;letter-spacing:.02em;color:#fff}
+.ott-tile span small{display:block;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--blue)}
+@media(max-width:900px){.ott-grid{grid-template-columns:1fr}.ott-tiles{order:-1}}
+@media(max-width:520px){.ott-tiles{gap:8px}.ott-tile{border-radius:12px}.ott-tile span{font-size:15px;padding:28px 10px 10px}}
+</style>
+  <div class="wrap">
+    <div class="ott-grid">
+      <div class="ott-copy reveal">
+        <p class="eyebrow">In-house, start to finish</p>
+        <h2 class="h2" id="ott-title">Foundation, build &amp; electrical. <em>One team.</em></h2>
+        <p class="lead">Most shed companies stop at the shed. We pour your concrete pad, build your shed on-site and pre-wire the electrical, all with one ShedPro team.</p>
+        <ul class="ott-points">
+          <li><i>1</i><span><b>One schedule</b>, not three separate bookings</span></li>
+          <li><i>2</i><span><b>One point of contact</b> from first call to finished build</span></li>
+          <li><i>3</i><span><b>No subcontractors</b> to chase or coordinate</span></li>
+        </ul>
+        <div class="ott-ctas">
+          <a href="/gallery#one-team" class="btn btn-primary btn-lg" data-cta="home-oneteam">See foundation &amp; electrical options</a>
+          <a href="/designer" class="btn btn-ghost btn-lg" data-cta="home-oneteam-3d">Design in 3D</a>
+        </div>
+      </div>
+      <div class="ott-tiles reveal" style="--d:.08s">
+        <a class="ott-tile" href="/gallery#foundation"><img src="/concrete-pad.webp" alt="ShedPro crew pouring a reinforced concrete shed pad" width="1200" height="900" loading="lazy" decoding="async"><span><small>01</small>Foundation</span></a>
+        <a class="ott-tile" href="/gallery#builds"><img src="/crew-roofing.webp" alt="ShedPro crew installing a roof on-site" width="1050" height="1400" loading="lazy" decoding="async"><span><small>02</small>Build</span></a>
+        <a class="ott-tile" href="/gallery#power"><img src="/shed-electrical.webp" alt="Pre-wired ShedPro shed with soffit lights on at dusk" width="1050" height="1400" loading="lazy" decoding="async"><span><small>03</small>Electrical</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
 
 <!-- ─── PROOF: stats + build map ─── -->
 <section class="proof" aria-labelledby="proof-title">
@@ -728,7 +806,7 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
       <div class="stat"><b>5<em>★</em></b><span>Rated</span></div>
       <div class="stat"><b>UT <em>&amp;</em> ID</b><span>Service Area</span></div>
     </div>
-    <div id="home-build-map" class="reveal" role="region" aria-label="Map of ShedPro builds"></div>
+    <div class="bmap reveal" id="bmap"><div id="home-build-map" role="region" aria-label="Map of ShedPro build locations across Utah and Idaho"></div><div class="bmap-vignette" aria-hidden="true"></div><div class="bmap-stats" aria-hidden="true"><b>200<em>+</em></b><span>sheds built<br>across Utah &amp; Idaho</span></div><div class="bmap-legend" aria-hidden="true"><i></i>Where we&rsquo;ve built</div><button type="button" class="bmap-gate" id="bmapGate" aria-label="Tap to explore the map"><span>Tap to explore the map</span></button><button type="button" class="bmap-done" id="bmapDone">Done</button></div>
     <div class="map-foot"><a href="/faq#service-area" class="link">See our full service area<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
   </div>
 </section>
@@ -801,16 +879,15 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
 <section class="offers" aria-labelledby="offers-title">
   <div class="wrap">
     <div class="sec-head center reveal">
-      <p class="eyebrow">Ways to Save</p>
-      <h2 class="h2" id="offers-title">Current <em>Offers</em></h2>
+      <p class="eyebrow">Ways to Start</p>
+      <h2 class="h2" id="offers-title">Consult <em>&amp; Save</em></h2>
     </div>
     <div class="offers-grid">
       <article class="offer reveal">
-        <span class="offer-tag">Most Popular</span>
-        <h3>Free Upgrade With Your In-Home Consult</h3>
-        <p>Book a free in-home consultation and we'll upgrade your shed — on us. We come to your property, measure your space, walk through your options, and throw in a free upgrade when you move forward.</p>
-        <a href="/contact" class="link" data-cta="offer-consult">Book Your Free Visit<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        <p class="offer-fine">Must schedule and complete in-home visit to redeem. Free upgrade applied at time of purchase. Limited spots available each month.</p>
+        <span class="offer-tag">By Appointment</span>
+        <h3>In-Home Design Consultation</h3>
+        <p>We come to your property, measure your space, show you real material samples, and walk through your options before anything is built.</p>
+        <a href="https://calendly.com/shedprollc-utah/30min" target="_blank" rel="noopener" class="link" data-cta="offer-consult">Book a consultation<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </article>
       <article class="offer reveal" style="--d:.08s">
         <span class="offer-tag">Design Match Deal</span>
@@ -845,7 +922,7 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
 
     <div class="faq-item">
       <button class="faq-btn" aria-expanded="false">How long does it take to build?<span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button>
-      <div class="faq-answer"><div><div class="faq-answer-inner">Once we break ground, most builds are completed in just 1–3 days. Larger or more complex sheds may take a bit longer, and we'll give you a clear timeline when we reserve your spot on our build schedule.</div></div></div>
+      <div class="faq-answer"><div><div class="faq-answer-inner">Once we break ground, most builds are completed in just 1–3 days. Larger or more complex sheds may take a bit longer, and we'll give you a clear timeline when we lock in your date on our build schedule.</div></div></div>
     </div>
 
   </div>
@@ -860,9 +937,9 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
 <section class="final" id="final-cta" aria-labelledby="final-title">
   <div class="wrap reveal">
     <h2 class="display" id="final-title">Ready to Build<br><em>Your Dream Shed?</em></h2>
-    <p class="lead">Reserve your spot on our build schedule. A ShedPro rep calls you within 24 hours to quote your shed — no obligation, no pressure.</p>
+    <p class="lead">We build by appointment on a limited schedule. A ShedPro rep calls you within 24 hours to quote your shed — no obligation, no pressure.</p>
     <div class="final-ctas">
-      <a href="/contact" class="btn btn-light btn-lg" data-cta="final-quote">Reserve your spot<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+      <a href="/contact" class="btn btn-light btn-lg" data-cta="final-start">Start your build<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
       <a href="/designer" class="btn btn-primary btn-lg" data-cta="final"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z"/><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5"/></svg>Design your shed in 3D<span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
     </div>
     <span class="final-phone">Or call us at <a href="tel:+14352329516">435-232-9516</a></span>
@@ -886,8 +963,8 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
         <ul><li><a href="/">Home</a></li><li><a href="/gallery">Styles &amp; Gallery</a></li><li><a href="/gallery#materials">Materials &amp; Warranty</a></li><li><a href="/about">About</a></li><li><a href="/faq">FAQ &amp; Service Area</a></li><li><a href="/blog">Blog</a></li></ul>
       </div>
       <div class="sh-fcol">
-        <p class="sh-fh">Reserve Your Spot</p>
-        <a href="/contact" class="sh-btn sh-btn-primary" data-cta="footer-reserve">Reserve your spot</a>
+        <p class="sh-fh">Start Your Build</p>
+        <a href="/contact" class="sh-btn sh-btn-primary" data-cta="footer-quote">Get your free quote</a>
         <ul><li><a href="tel:+14352329516">Call 435-232-9516</a></li><li><a href="sms:+14352770764">Text 435-277-0764</a></li><li><a href="mailto:Shedprollc.utah@gmail.com">Shedprollc.utah@gmail.com</a></li></ul>
       </div>
       <div class="sh-fcol">
@@ -917,7 +994,7 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
     "Design your shed in 3D with ShedPro Studio",
     "$500 off a concrete pad through Nov 3 \u2014 select sizes", /* PROMO — remove this line after Nov 3, 2026 */
     "3-Year Workmanship, 50-Year Siding & 30-Year Shingle Warranty",
-    "Book a Free In-Home Visit \u2014 Get a Free Upgrade"
+    "Book an in-home design consultation"
   ];
   /* PROMO auto-expiry (Nov 4, 2026): drop the promo message and any [data-promo-ends] block */
   if(new Date()>=new Date('2026-11-04T00:00:00')){
@@ -981,7 +1058,7 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
     tr.addEventListener('scroll',upd,{passive:true});window.addEventListener('resize',upd);upd();
   }
 
-  /* build map (data unchanged from the previous home page) */
+  /* build map: data unchanged; restyled with CARTO dark tiles + glow markers */
   var builds = [
     {city:"Millcreek, UT", lat:40.6927, lng:-111.8252},
     {city:"Provo Canyon / Rock Canyon, UT", lat:40.2733, lng:-111.6178},
@@ -1047,14 +1124,40 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
     {city:"Tremonton, UT", lat:41.7116, lng:-112.1652}
   ];
   function initMap(){
-    var map=L.map('home-build-map',{scrollWheelZoom:false});
-    var utBuilds=builds.filter(function(b){return b.city.indexOf(', UT')!==-1});
-    var bounds=L.latLngBounds((utBuilds.length?utBuilds:builds).map(function(b){return [b.lat,b.lng]}));
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri &mdash; Esri, DeLorme, NAVTEQ',maxZoom:16}).addTo(map);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:16}).addTo(map);
-    var icon=L.divIcon({className:'custom-pin',html:'<div style="background:#2BB5E8;width:16px;height:16px;border-radius:50%;border:3px solid #0C0C0C;box-shadow:0 0 0 3px rgba(43,181,232,0.3);"></div>',iconSize:[16,16],iconAnchor:[8,8]});
-    builds.forEach(function(b){L.marker([b.lat,b.lng],{icon:icon}).addTo(map).bindPopup('<div class="build-popup-title">'+b.city+'</div>')});
-    map.fitBounds(bounds,{padding:[40,40]});
+    /* one glow marker per city in the existing data (duplicate entries for the same city are merged) */
+    var seen={},cities=[];
+    builds.forEach(function(b){var k=b.city.replace(/\s*\(.*\)$/,'');if(!seen[k]){seen[k]={city:k,lat:b.lat,lng:b.lng};cities.push(seen[k])}});
+    var touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+    var wrap=document.getElementById('bmap');
+    var map=L.map('home-build-map',{scrollWheelZoom:false,dragging:!touch,touchZoom:!touch,doubleClickZoom:!touch,boxZoom:false,keyboard:true,zoomControl:false,attributionControl:true,zoomSnap:.25,tap:false});
+    L.control.zoom({position:'topright'}).addTo(map);
+    map.createPane('glow');map.getPane('glow').style.zIndex=350;map.getPane('glow').style.mixBlendMode='screen';
+    map.createPane('labels');map.getPane('labels').style.zIndex=380;map.getPane('labels').style.pointerEvents='none';
+    /* Esri dark gray canvas: free, no API key (CARTO basemaps now return 'API KEY REQUIRED' tiles) */
+    var esri='https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+    L.tileLayer(esri+'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'&copy; Esri &mdash; Esri, DeLorme, NAVTEQ'}).addTo(map);
+    L.tileLayer(esri+'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,pane:'labels',opacity:.8}).addTo(map);
+    var glow=L.divIcon({className:'bmap-glow',html:'<div></div>',iconSize:[96,96],iconAnchor:[48,48]});
+    cities.forEach(function(c){L.marker([c.lat,c.lng],{icon:glow,pane:'glow',interactive:false,keyboard:false}).addTo(map)});
+    cities.forEach(function(c,i){
+      var pin=L.divIcon({className:'bmap-pin',html:'<div style="--dl:'+((i*0.37)%2.8).toFixed(2)+'s"></div>',iconSize:[12,12],iconAnchor:[6,6]});
+      L.marker([c.lat,c.lng],{icon:pin,title:c.city,riseOnHover:true}).addTo(map).bindPopup('<div class="build-popup-title">'+c.city+'</div>',{closeButton:false,offset:[0,-4]});
+    });
+    var vg=wrap&&wrap.querySelector('.bmap-vignette'); if(vg) map.getContainer().appendChild(vg);
+    var ut=cities.filter(function(c){return c.city.indexOf(', UT')!==-1});
+    map.fitBounds(L.latLngBounds(cities.map(function(c){return [c.lat,c.lng]})),{padding:[40,40]});
+    /* touch: never trap the page scroll. Tap to explore, Done to hand scrolling back. */
+    if(touch&&wrap){
+      wrap.classList.add('touch');
+      var on=function(v){wrap.classList.toggle('live',v);['dragging','touchZoom','doubleClickZoom'].forEach(function(h){map[h][v?'enable':'disable']()})};
+      document.getElementById('bmapGate').addEventListener('click',function(){on(true)});
+      document.getElementById('bmapDone').addEventListener('click',function(){on(false)});
+      if('IntersectionObserver' in window) new IntersectionObserver(function(es){if(!es[0].isIntersecting)on(false)}).observe(wrap);
+    } else {
+      /* desktop: wheel-zoom only after the map is clicked, released when the pointer leaves */
+      map.on('click focus',function(){map.scrollWheelZoom.enable()});
+      map.getContainer().addEventListener('mouseleave',function(){map.scrollWheelZoom.disable()});
+    }
   }
   /* Leaflet is loaded only when the map is near the viewport, so it costs nothing up front */
   var mapEl=document.getElementById('home-build-map');
