@@ -68,7 +68,7 @@ function applyStaff(){ document.body.classList.toggle('du-staff', isStaff()); }
 var STYLE_NAMES = {gable:'Gable', barn:'Barn', leanto:'Modern Single Slope', hip:'Poolhouse / Hip', '3peak':'3-Peak', '4peak':'4-Peak'};
 DU.styleName = function(){ return STYLE_NAMES[window.STYLE] || window.STYLE || ''; };
 var FOUNDATION_NAMES = {pad:'Concrete pad, poured by us', blocks:'Leveled on cinder blocks', gravel:'Gravel pad + leveled on blocks', existing:'Existing foundation'};
-var ELEC_NAMES = {none:'None', basic:'Basic', core:'Core package', essential:'Essential package'};
+var ELEC_NAMES = {none:'None', basic:'Basic (power-ready)', core:'Core package (power-ready)', essential:'Essential package (power-ready)'};
 var SIDING_NAMES = {vertical:'Vertical siding', horizontal:'Horizontal lap siding', 'board-batten':'Board & batten', pine:'Pine'};
 function doorName(d){
   var nm=null;
