@@ -467,41 +467,7 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
 @media (max-width:370px){.sh-logo strong{display:none}}
 @media (prefers-reduced-motion:reduce){.sh-drawer,.sh-burger span,.sh-topbar-msg{transition:none!important}}
 
-</style><style id="page-transition">body{transition:opacity .22s ease-out}html.sp-fade body{opacity:0}@media (prefers-reduced-motion:reduce){body{transition:none}html.sp-fade body{opacity:1}}</style><script id="page-transition-js">(function(){var h=document.documentElement;try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;}catch(e){}h.className+=" sp-fade";function clear(){h.className=h.className.replace(/\s*\bsp-fade\b/g,"");}function show(){try{requestAnimationFrame(function(){requestAnimationFrame(clear);});}catch(e){clear();}}document.addEventListener("DOMContentLoaded",show);window.addEventListener("load",show);setTimeout(clear,700);})();</script><style id="bmap-css">
-.bmap{position:relative;height:480px;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:#0b0d10;box-shadow:0 40px 80px -40px rgba(0,0,0,.8),0 0 0 1px rgba(43,181,232,.06) inset;isolation:isolate}
-.bmap .leaflet-container{background:#0b0d10!important;font-family:'Barlow',sans-serif}
-.bmap-vignette{position:absolute;inset:0;z-index:450;pointer-events:none;background:radial-gradient(ellipse at 55% 50%,transparent 45%,rgba(6,7,9,.55) 80%,rgba(6,7,9,.85) 100%);box-shadow:inset 0 0 60px rgba(0,0,0,.6)}
-.bmap-stats{position:absolute;z-index:600;top:18px;left:18px;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;background:rgba(12,14,17,.72);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:none}
-.bmap-stats b{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;line-height:1;color:#fff}
-.bmap-stats b em{font-style:normal;color:var(--blue)}
-.bmap-stats span{font-size:12px;font-weight:600;line-height:1.3;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.06em}
-.bmap-legend{position:absolute;z-index:600;left:18px;bottom:18px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(12,14,17,.72);border:1px solid rgba(255,255,255,.1);font-size:12px;font-weight:600;color:rgba(255,255,255,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:none}
-.bmap-legend i{width:10px;height:10px;border-radius:50%;background:#2BB5E8;box-shadow:0 0 0 3px rgba(43,181,232,.25),0 0 12px 2px rgba(43,181,232,.7)}
-.bmap-gate{display:none;position:absolute;inset:0;z-index:700;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.bmap-gate span{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);padding:9px 16px;border-radius:999px;background:rgba(12,14,17,.8);border:1px solid rgba(255,255,255,.16);color:#fff;font:600 13px 'Barlow',sans-serif;white-space:nowrap;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.bmap-done{display:none;position:absolute;z-index:700;top:14px;right:14px;padding:8px 16px;border-radius:999px;border:0;background:#2BB5E8;color:#06212D;font:800 13px 'Barlow',sans-serif;cursor:pointer}
-.bmap.touch .bmap-gate{display:block}
-.bmap.touch.live .bmap-gate{display:none}
-.bmap.touch.live .bmap-done{display:block}
-.bmap.touch .bmap-legend{bottom:62px}
-.bmap.touch.live .bmap-legend{bottom:18px}
-.bmap-glow{pointer-events:none}
-.bmap-glow div{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(43,181,232,.26) 0%,rgba(43,181,232,.08) 40%,rgba(43,181,232,0) 70%)}
-.bmap-pin div{position:relative;width:12px;height:12px;border-radius:50%;background:#2BB5E8;border:2px solid #E9F8FF;box-shadow:0 0 0 3px rgba(43,181,232,.3),0 0 14px 3px rgba(43,181,232,.75)}
-.bmap-pin div::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(43,181,232,.6);animation:bmapPulse 2.8s ease-out infinite;animation-delay:var(--dl,0s)}
-@keyframes bmapPulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.9);opacity:0}}
-@media (prefers-reduced-motion:reduce){.bmap-pin div::after{animation:none;opacity:0}}
-.bmap .leaflet-control-zoom{border:0!important;box-shadow:0 8px 24px rgba(0,0,0,.4)!important;border-radius:12px!important;overflow:hidden}
-.bmap .leaflet-control-zoom a{background:rgba(18,20,24,.9)!important;color:#fff!important;border-bottom:1px solid rgba(255,255,255,.08)!important;width:34px!important;height:34px!important;line-height:34px!important}
-.bmap .leaflet-control-zoom a:hover{background:#2BB5E8!important;color:#06212D!important}
-.bmap .leaflet-control-attribution{background:rgba(10,11,13,.6)!important;color:rgba(255,255,255,.45)!important;font-size:10px!important;border-top-left-radius:8px}
-.bmap .leaflet-control-attribution a{color:rgba(255,255,255,.6)!important}
-.bmap .leaflet-popup-content-wrapper{background:rgba(18,20,24,.96)!important;border:1px solid rgba(43,181,232,.3);box-shadow:0 12px 30px rgba(0,0,0,.5)!important}
-.bmap .leaflet-popup-tip{background:rgba(18,20,24,.96)!important}
-.bmap .leaflet-popup-close-button{color:rgba(255,255,255,.6)!important}
-.bmap .leaflet-tile-pane{filter:brightness(.82) contrast(1.08) sepia(.25) hue-rotate(160deg) saturate(1.4)}
-@media (max-width:760px){.bmap{height:380px;border-radius:18px}.bmap-stats{top:12px;left:12px;padding:9px 12px}.bmap-stats b{font-size:30px}.bmap-stats span{font-size:10px}.bmap-legend{left:12px}}
-</style>
+</style><style id="page-transition">body{transition:opacity .22s ease-out}html.sp-fade body{opacity:0}@media (prefers-reduced-motion:reduce){body{transition:none}html.sp-fade body{opacity:1}}</style><script id="page-transition-js">(function(){var h=document.documentElement;try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;}catch(e){}h.className+=" sp-fade";function clear(){h.className=h.className.replace(/\s*\bsp-fade\b/g,"");}function show(){try{requestAnimationFrame(function(){requestAnimationFrame(clear);});}catch(e){clear();}}document.addEventListener("DOMContentLoaded",show);window.addEventListener("load",show);setTimeout(clear,700);})();</script><link rel="stylesheet" href="/build-map.css">
 </head>
 <body class="home">
 <a class="sr-only" href="#main">Skip to content</a>
@@ -806,8 +772,7 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
       <div class="stat"><b>5<em>★</em></b><span>Rated</span></div>
       <div class="stat"><b>UT <em>&amp;</em> ID</b><span>Service Area</span></div>
     </div>
-    <div class="bmap reveal" id="bmap"><div id="home-build-map" role="region" aria-label="Map of ShedPro build locations across Utah and Idaho"></div><div class="bmap-vignette" aria-hidden="true"></div><div class="bmap-stats" aria-hidden="true"><b>200<em>+</em></b><span>sheds built<br>across Utah &amp; Idaho</span></div><div class="bmap-legend" aria-hidden="true"><i></i>Where we&rsquo;ve built</div><button type="button" class="bmap-gate" id="bmapGate" aria-label="Tap to explore the map"><span>Tap to explore the map</span></button><button type="button" class="bmap-done" id="bmapDone">Done</button></div>
-    <div class="map-foot"><a href="/faq#service-area" class="link">See our full service area<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+    <div class="bmap reveal" data-build-map><div class="bmap-canvas" id="home-build-map" role="region" aria-label="Map of ShedPro build locations across Utah and Idaho"></div><div class="bmap-vignette" aria-hidden="true"></div><div class="bmap-stats" aria-hidden="true"><b>200<em>+</em></b><span>sheds built<br>across Utah &amp; Idaho</span></div><div class="bmap-legend" aria-hidden="true"><i></i>Where we&rsquo;ve built</div><button type="button" class="bmap-gate" aria-label="Tap to explore the map"><span>Tap to explore the map</span></button><button type="button" class="bmap-done">Done</button></div>div class="map-foot"><a href="/faq#service-area" class="link">See our full service area<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
   </div>
 </section>
 
@@ -1058,120 +1023,12 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
     tr.addEventListener('scroll',upd,{passive:true});window.addEventListener('resize',upd);upd();
   }
 
-  /* build map: data unchanged; restyled with CARTO dark tiles + glow markers */
-  var builds = [
-    {city:"Millcreek, UT", lat:40.6927, lng:-111.8252},
-    {city:"Provo Canyon / Rock Canyon, UT", lat:40.2733, lng:-111.6178},
-    {city:"North Logan, UT", lat:41.7672, lng:-111.7958},
-    {city:"Brigham City, UT", lat:41.5102, lng:-112.0155},
-    {city:"Perry, UT", lat:41.4669, lng:-112.0469},
-    {city:"Logan, UT", lat:41.7370, lng:-111.8338},
-    {city:"Farmington, UT", lat:40.9805, lng:-111.8874},
-    {city:"Hyrum, UT (Little Bear Creek)", lat:41.6325, lng:-111.8505},
-    {city:"Layton, UT (Chisam Meadows)", lat:41.0780, lng:-111.9555},
-    {city:"Mapleton, UT", lat:40.1429, lng:-111.5772},
-    {city:"Logan, UT", lat:41.7330, lng:-111.8400},
-    {city:"North Ogden / Pleasant View, UT", lat:41.3088, lng:-111.9669},
-    {city:"Logan, UT", lat:41.7280, lng:-111.8350},
-    {city:"Eagle Mountain, UT", lat:40.3147, lng:-112.0006},
-    {city:"Preston, ID", lat:42.0966, lng:-111.8766},
-    {city:"Logan, UT", lat:41.7400, lng:-111.8300},
-    {city:"Logan, UT", lat:41.7250, lng:-111.8450},
-    {city:"Soda Springs, ID", lat:42.6530, lng:-111.6041},
-    {city:"Kaysville, UT", lat:41.0350, lng:-111.9391},
-
-    // Idaho expansion - Preston, Soda Springs, Malad clusters
-    {city:"Preston, ID", lat:42.0966, lng:-111.8766},
-    {city:"Preston, ID", lat:42.1100, lng:-111.8500},
-    {city:"Preston, ID", lat:42.0800, lng:-111.9000},
-    {city:"Soda Springs, ID", lat:42.6700, lng:-111.5800},
-    {city:"Soda Springs, ID", lat:42.6350, lng:-111.6300},
-    {city:"Malad City, ID", lat:42.1916, lng:-112.2502},
-    {city:"Malad City, ID", lat:42.2100, lng:-112.2200},
-    {city:"Malad City, ID", lat:42.1700, lng:-112.2800},
-
-    // Scattered into Twin Falls / Pocatello
-    {city:"Twin Falls, ID", lat:42.5630, lng:-114.4609},
-    {city:"Pocatello, ID", lat:42.8713, lng:-112.4455},
-    {city:"Pocatello, ID", lat:42.8900, lng:-112.4150},
-    {city:"Idaho Falls, ID", lat:43.4666, lng:-112.0341},
-    {city:"Idaho Falls, ID", lat:43.4900, lng:-112.0100},
-
-    // Heber/Park City, Morgan, Smithfield
-    {city:"Heber City, UT", lat:40.5069, lng:-111.4133},
-    {city:"Park City, UT", lat:40.6461, lng:-111.4980},
-    {city:"Morgan, UT", lat:41.0391, lng:-111.6766},
-    {city:"Smithfield, UT", lat:41.8347, lng:-111.8336},
-
-    // Additional builds near existing areas
-    {city:"Logan, UT", lat:41.7450, lng:-111.8200},
-    {city:"Logan, UT", lat:41.7200, lng:-111.8500},
-    {city:"Millcreek, UT", lat:40.7050, lng:-111.8100},
-    {city:"Provo, UT", lat:40.2500, lng:-111.6650},
-    {city:"North Logan, UT", lat:41.7750, lng:-111.7900},
-    {city:"Eagle Mountain, UT", lat:40.3300, lng:-111.9800},
-    {city:"Brigham City, UT", lat:41.5250, lng:-112.0000},
-
-    // In-between coverage along the Wasatch Front
-    {city:"Ogden, UT", lat:41.2230, lng:-111.9738},
-    {city:"Bountiful, UT", lat:40.8894, lng:-111.8808},
-    {city:"Salt Lake City, UT", lat:40.7608, lng:-111.8910},
-    {city:"Sandy, UT", lat:40.5649, lng:-111.8389},
-    {city:"Lehi, UT", lat:40.3916, lng:-111.8508},
-    {city:"American Fork, UT", lat:40.3766, lng:-111.7958},
-    {city:"Orem, UT", lat:40.2969, lng:-111.6946},
-    {city:"Spanish Fork, UT", lat:40.1150, lng:-111.6549},
-    {city:"Tremonton, UT", lat:41.7116, lng:-112.1652}
-  ];
-  function initMap(){
-    /* one glow marker per city in the existing data (duplicate entries for the same city are merged) */
-    var seen={},cities=[];
-    builds.forEach(function(b){var k=b.city.replace(/\s*\(.*\)$/,'');if(!seen[k]){seen[k]={city:k,lat:b.lat,lng:b.lng};cities.push(seen[k])}});
-    var touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
-    var wrap=document.getElementById('bmap');
-    var map=L.map('home-build-map',{scrollWheelZoom:false,dragging:!touch,touchZoom:!touch,doubleClickZoom:!touch,boxZoom:false,keyboard:true,zoomControl:false,attributionControl:true,zoomSnap:.25,tap:false});
-    L.control.zoom({position:'topright'}).addTo(map);
-    map.createPane('glow');map.getPane('glow').style.zIndex=350;map.getPane('glow').style.mixBlendMode='screen';
-    map.createPane('labels');map.getPane('labels').style.zIndex=380;map.getPane('labels').style.pointerEvents='none';
-    /* Esri dark gray canvas: free, no API key (CARTO basemaps now return 'API KEY REQUIRED' tiles) */
-    var esri='https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
-    L.tileLayer(esri+'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'&copy; Esri &mdash; Esri, DeLorme, NAVTEQ'}).addTo(map);
-    L.tileLayer(esri+'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,pane:'labels',opacity:.8}).addTo(map);
-    var glow=L.divIcon({className:'bmap-glow',html:'<div></div>',iconSize:[96,96],iconAnchor:[48,48]});
-    cities.forEach(function(c){L.marker([c.lat,c.lng],{icon:glow,pane:'glow',interactive:false,keyboard:false}).addTo(map)});
-    cities.forEach(function(c,i){
-      var pin=L.divIcon({className:'bmap-pin',html:'<div style="--dl:'+((i*0.37)%2.8).toFixed(2)+'s"></div>',iconSize:[12,12],iconAnchor:[6,6]});
-      L.marker([c.lat,c.lng],{icon:pin,title:c.city,riseOnHover:true}).addTo(map).bindPopup('<div class="build-popup-title">'+c.city+'</div>',{closeButton:false,offset:[0,-4]});
-    });
-    var vg=wrap&&wrap.querySelector('.bmap-vignette'); if(vg) map.getContainer().appendChild(vg);
-    var ut=cities.filter(function(c){return c.city.indexOf(', UT')!==-1});
-    map.fitBounds(L.latLngBounds(cities.map(function(c){return [c.lat,c.lng]})),{padding:[40,40]});
-    /* touch: never trap the page scroll. Tap to explore, Done to hand scrolling back. */
-    if(touch&&wrap){
-      wrap.classList.add('touch');
-      var on=function(v){wrap.classList.toggle('live',v);['dragging','touchZoom','doubleClickZoom'].forEach(function(h){map[h][v?'enable':'disable']()})};
-      document.getElementById('bmapGate').addEventListener('click',function(){on(true)});
-      document.getElementById('bmapDone').addEventListener('click',function(){on(false)});
-      if('IntersectionObserver' in window) new IntersectionObserver(function(es){if(!es[0].isIntersecting)on(false)}).observe(wrap);
-    } else {
-      /* desktop: wheel-zoom only after the map is clicked, released when the pointer leaves */
-      map.on('click focus',function(){map.scrollWheelZoom.enable()});
-      map.getContainer().addEventListener('mouseleave',function(){map.scrollWheelZoom.disable()});
-    }
-  }
-  /* Leaflet is loaded only when the map is near the viewport, so it costs nothing up front */
-  var mapEl=document.getElementById('home-build-map');
-  if(mapEl){
-    var started=false;
-    var start=function(){if(started)return;started=true;
-      var css=document.createElement('link');css.rel='stylesheet';css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(css);
-      var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=initMap;document.head.appendChild(s);};
-    if('IntersectionObserver' in window){var mo=new IntersectionObserver(function(es){if(es[0].isIntersecting){mo.disconnect();start()}},{rootMargin:'600px 0px'});mo.observe(mapEl)}else start();
-  }
+  /* build map: see /build-map.js (shared with the FAQ page) */
 })();
 
 /* analytics loader (unchanged) */
 window.addEventListener('load',function(){var s=document.createElement('script');s.src='https://www.googletagmanager.com/gtag/js?id=G-GR8BG7DXZE';s.async=true;document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-GR8BG7DXZE');};});
 
 </script>
+<script src="/build-map.js" defer></script>
 </body></html>
