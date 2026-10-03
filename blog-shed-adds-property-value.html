@@ -131,41 +131,106 @@
       .nav-drawer a[href^="tel"],.nav-drawer a[href^="sms"]{font-size:18px!important}
     }
   </style>
-<style id="page-transition">body{transition:opacity .22s ease-out}html.sp-fade body{opacity:0}@media (prefers-reduced-motion:reduce){body{transition:none}html.sp-fade body{opacity:1}}</style><script id="page-transition-js">(function(){var h=document.documentElement;try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;}catch(e){}h.className+=" sp-fade";function clear(){h.className=h.className.replace(/\s*\bsp-fade\b/g,"");}function show(){try{requestAnimationFrame(function(){requestAnimationFrame(clear);});}catch(e){clear();}}document.addEventListener("DOMContentLoaded",show);window.addEventListener("load",show);setTimeout(clear,700);})();</script></head>
+<style id="page-transition">body{transition:opacity .22s ease-out}html.sp-fade body{opacity:0}@media (prefers-reduced-motion:reduce){body{transition:none}html.sp-fade body{opacity:1}}</style><script id="page-transition-js">(function(){var h=document.documentElement;try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;}catch(e){}h.className+=" sp-fade";function clear(){h.className=h.className.replace(/\s*\bsp-fade\b/g,"");}function show(){try{requestAnimationFrame(function(){requestAnimationFrame(clear);});}catch(e){clear();}}document.addEventListener("DOMContentLoaded",show);window.addEventListener("load",show);setTimeout(clear,700);})();</script><style id="sh-shell">
+/* ═══ SHARED SHELL (header/footer) — scoped sh-* classes ═══ */
+.sh-topbar,.sh-nav,.sh-drawer,.sh-footer{--sh-blue:#2BB5E8;--sh-ink:#06212D;--sh-border:rgba(255,255,255,.08);--sh-border2:rgba(255,255,255,.14);--sh-muted:rgba(255,255,255,.64);--sh-gutter:clamp(20px,4vw,40px);font-family:'Barlow',system-ui,sans-serif;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+.sh-topbar *,.sh-nav *,.sh-drawer *,.sh-footer *{box-sizing:border-box;margin:0;padding:0}
+.sh-wrap{max-width:1200px;margin:0 auto;padding:0 var(--sh-gutter)}
+.sh-topbar{background:#2BB5E8;color:#06212D;font-weight:700;font-size:13px;letter-spacing:.03em;text-align:center;padding:9px 16px;min-height:36px;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.3}
+.sh-topbar svg{width:15px;height:15px;flex-shrink:0}
+.sh-topbar-msg{transition:opacity .3s ease}
+.sh-nav{position:sticky;top:0;z-index:200;height:72px;background:rgba(10,11,12,.84);backdrop-filter:saturate(140%) blur(14px);-webkit-backdrop-filter:saturate(140%) blur(14px);border-bottom:1px solid var(--sh-border);display:block;padding:0;margin:0}
+.sh-nav .sh-wrap{height:100%;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.sh-logo{display:flex;align-items:center;gap:10px;flex-shrink:0;text-decoration:none;color:#fff}
+.sh-logo img{width:44px;height:44px;object-fit:contain;display:block}
+.sh-logo strong{display:block;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;letter-spacing:.03em;color:#fff;line-height:1}
+.sh-logo small{display:block;font-size:10px;color:var(--sh-blue);font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-top:3px}
+.sh-links{display:flex;gap:2px;list-style:none;margin:0;padding:0}
+.sh-links li{list-style:none}
+.sh-links a{display:block;font-size:14px;font-weight:600;color:var(--sh-muted);padding:8px 13px;border-radius:8px;text-decoration:none;transition:color .2s,background .2s;text-transform:none;letter-spacing:normal}
+.sh-links a:hover,.sh-links a[aria-current]{color:#fff;background:rgba(255,255,255,.06)}
+.sh-right{display:flex;align-items:center;gap:8px}
+.sh-icon{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--sh-blue);border:1px solid var(--sh-border);transition:background .2s,border-color .2s;text-decoration:none}
+.sh-icon:hover{background:rgba(43,181,232,.1);border-color:rgba(43,181,232,.4)}
+.sh-icon svg{width:17px;height:17px}
+.sh-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:'Barlow',sans-serif;font-weight:700;font-size:15px;line-height:1;padding:15px 24px;border-radius:999px;border:1px solid transparent;cursor:pointer;white-space:nowrap;letter-spacing:.01em;text-decoration:none;transition:background .2s,border-color .2s,transform .2s,box-shadow .2s}
+.sh-btn svg{width:17px;height:17px;flex-shrink:0}
+.sh-btn-primary{background:#2BB5E8;color:#06212D;box-shadow:0 10px 30px -10px rgba(43,181,232,.6)}
+.sh-btn-primary:hover{background:#45c2ef;color:#06212D;transform:translateY(-1px)}
+.sh-btn-ghost{background:rgba(255,255,255,.04);color:#fff;border-color:var(--sh-border2)}
+.sh-btn-ghost:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3);color:#fff}
+.sh-btn-sm{font-size:13.5px;padding:11px 16px}
+.sh-btn-lg{font-size:16px;padding:17px 26px}
+.sh-burger{display:none;width:40px;height:40px;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:none;border:none;cursor:pointer;padding:0}
+.sh-burger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;transition:transform .3s,opacity .3s}
+.sh-burger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.sh-burger.open span:nth-child(2){opacity:0}
+.sh-burger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.sh-drawer{position:fixed;top:108px;left:0;right:0;bottom:0;background:rgba(10,11,12,.98);backdrop-filter:blur(14px);z-index:199;padding:24px var(--sh-gutter) 40px;display:flex;flex-direction:column;gap:4px;transform:translateX(-100%);visibility:hidden;transition:transform .35s cubic-bezier(.2,.7,.2,1),visibility 0s .35s;overflow-y:auto}
+.sh-drawer.open{transform:none;visibility:visible;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.sh-drawer > a{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;text-transform:uppercase;padding:10px 0;border-bottom:1px solid var(--sh-border);color:#fff;text-decoration:none}
+.sh-drawer > a:hover{color:var(--sh-blue)}
+.sh-drawer-ctas{display:grid;gap:10px;margin-top:20px}
+.sh-drawer-ctas .sh-btn{width:100%}
+.sh-footer{background:#070809;border-top:1px solid var(--sh-border);padding:64px 0 32px;color:rgba(255,255,255,.9);display:block;margin:0}
+.sh-fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:40px;margin-bottom:44px}
+.sh-fbrand img{width:56px;height:56px;object-fit:contain;margin-bottom:12px;display:block}
+.sh-fbrand strong{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:.03em;display:block;margin-bottom:8px;color:#fff}
+.sh-fbrand p{font-size:14px;color:var(--sh-muted);line-height:1.6;margin-bottom:18px;max-width:34ch}
+.sh-social{display:flex;gap:10px}
+.sh-social a{width:38px;height:38px;border:1px solid var(--sh-border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--sh-muted);transition:color .2s,border-color .2s}
+.sh-social a:hover{color:var(--sh-blue);border-color:rgba(43,181,232,.4)}
+.sh-social svg{width:16px;height:16px}
+.sh-fh{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--sh-blue);margin-bottom:16px}
+.sh-fcol ul{list-style:none;display:grid;gap:10px;margin:0;padding:0}
+.sh-fcol li{list-style:none}
+.sh-fcol a{font-size:14.5px;color:var(--sh-muted);text-decoration:none;transition:color .2s}
+.sh-fcol a:hover{color:#fff}
+.sh-fcol .sh-btn{margin-bottom:16px;font-size:14px;padding:12px 18px}
+.sh-fcol .sh-btn-primary,.sh-fcol .sh-btn-primary:hover{color:#06212D}
+.sh-fcol .sh-btn-ghost{color:#fff}
+.sh-ficon{display:inline-flex;align-items:center;gap:8px}
+.sh-gm,.sh-fm{width:16px;height:16px;flex-shrink:0}
+.sh-gm{background:#fff;border-radius:50%;padding:1px}
+.sh-fbottom{border-top:1px solid var(--sh-border);padding-top:22px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:rgba(255,255,255,.42)}
+.sh-fbottom a{color:var(--sh-blue);text-decoration:none}
+.sh-topbar a,.sh-nav a:focus-visible,.sh-footer a:focus-visible,.sh-drawer a:focus-visible,.sh-burger:focus-visible{outline-offset:3px}
+@media (max-width:1100px){.sh-links a{font-size:13px;padding:8px 9px}.sh-logo small{display:none}.sh-fgrid{grid-template-columns:1fr 1fr}}
+@media (max-width:900px){.sh-links,.sh-hide-m{display:none}.sh-burger{display:flex}}
+@media (max-width:768px){.sh-nav{height:64px}.sh-logo img{width:38px;height:38px}.sh-logo strong{font-size:18px}.sh-fgrid{grid-template-columns:1fr;gap:32px}}
+@media (max-width:520px){.sh-3d span{display:none}.sh-3d{padding:10px 11px}.sh-reserve{font-size:13px;padding:11px 14px}}
+@media (max-width:420px){.sh-logo strong{font-size:16px}}
+@media (max-width:370px){.sh-logo strong{display:none}}
+@media (prefers-reduced-motion:reduce){.sh-drawer,.sh-burger span,.sh-topbar-msg{transition:none!important}}
+</style></head>
 <body>
 
-<nav>
-  <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
-  <a href="/" class="nav-logo" aria-label="ShedPro LLC Home">
-    <div class="logo-badge"><img src="ShedPro-Logo.webp" alt="ShedPro LLC Utah Logo" width="52" height="52"></div>
-    <div class="logo-text"><strong>SHEDPRO LLC</strong><span>Utah's #1 Custom Shed Builder</span></div>
-  </a>
-  <div class="nav-right">
-    <ul class="nav-links">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="gallery.html">Gallery</a></li>
-      <li><a href="materials.html">Materials</a></li>
-      <li><a href="faq.html">FAQ</a></li>
-      <li><a href="about.html">About</a></li>
-      <li><a href="contact.html">Contact</a></li>
-    </ul>
-    <a href="tel:+14352329516" class="nav-phone" aria-label="Call ShedPro LLC"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
-    <a href="contact.html" class="btn btn-blue">Get A Free Quote</a>
+<!-- ═══ SITE HEADER (shared shell) ═══ -->
+<div class="sh-topbar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg><span class="sh-topbar-msg" id="shTopbarMsg">Free quote within 24 hours — a ShedPro rep calls you</span></div>
+<div class="sh-nav" role="navigation" aria-label="Main">
+  <div class="sh-wrap">
+    <button class="sh-burger" id="shBurger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="shDrawer"><span></span><span></span><span></span></button>
+    <a href="/" class="sh-logo" aria-label="ShedPro LLC Home"><img src="/ShedPro-Logo.webp" alt="ShedPro LLC Logo" width="44" height="44"><span><strong>SHEDPRO LLC</strong><small>Utah's #1 Custom Shed Builder</small></span></a>
+    <ul class="sh-links"><li><a href="/gallery">Styles</a></li><li><a href="/#shed-designer">Studio</a></li><li><a href="/about">About</a></li><li><a href="/faq">FAQ</a></li></ul>
+    <div class="sh-right">
+      <a href="tel:+14352329516" class="sh-icon sh-hide-m" aria-label="Call ShedPro LLC"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81 19.79 19.79 0 01.02 1.14 2 2 0 012 1h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="/designer" class="sh-btn sh-btn-ghost sh-btn-sm sh-3d" data-cta="nav-3d" aria-label="Design your shed in 3D"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z"/><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5"/></svg><span>Design in 3D</span></a>
+      <a href="/contact" class="sh-btn sh-btn-primary sh-btn-sm sh-reserve" data-cta="nav-reserve">Reserve Your Spot</a>
+    </div>
   </div>
-</nav>
-
-<div class="nav-drawer" id="navDrawer">
-  <a href="index.html">Home</a>
-  <a href="gallery.html">Gallery</a>
-  <a href="materials.html">Materials</a>
-  <a href="faq.html">FAQ</a>
-  <a href="about.html">About Us</a>
-  <a href="contact.html">Contact</a>
-  <a href="tel:+14352329516">Call 435-232-9516</a>
-  <a href="sms:+14352770764">Text 435-277-0764</a>
 </div>
+<div class="sh-drawer" id="shDrawer">
+  <a href="/">Home</a><a href="/gallery">Styles</a><a href="/#shed-designer">Studio</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="/contact">Reserve Your Spot</a>
+  <div class="sh-drawer-ctas">
+    <a href="/contact" class="sh-btn sh-btn-primary sh-btn-lg">Reserve your spot — free quote</a>
+    <a href="/designer" class="sh-btn sh-btn-ghost sh-btn-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z"/><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5"/></svg>Design your shed in 3D</a>
+    <a href="tel:+14352329516" class="sh-btn sh-btn-ghost sh-btn-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81 19.79 19.79 0 01.02 1.14 2 2 0 012 1h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>Call 435-232-9516</a>
+    <a href="sms:+14352770764" class="sh-btn sh-btn-ghost sh-btn-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Text 435-277-0764</a>
+  </div>
+</div>
+<!-- ═══ /SITE HEADER ═══ -->
 
-<div class="breadcrumb"><a href="index.html">Home</a> &rsaquo; <a href="blog.html">Blog</a> &rsaquo; Does a Shed Add Property Value?</div>
+<div class="breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/blog">Blog</a> &rsaquo; Does a Shed Add Property Value?</div>
 
 <main>
 <header class="article-hero">
@@ -330,64 +395,69 @@
     <p>Book a free in-home consultation. We'll come to your property, walk the space, and help you plan a build that works for your life — and your home's value. Choose a free upgrade when you book.</p>
     <div class="article-cta-btns">
       <a href="https://calendly.com/shedprollc-utah/30min" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:var(--dark);font-family:'Barlow',sans-serif;font-weight:800;font-size:15px;padding:13px 24px;border-radius:50px;text-decoration:none;">&#128197; Book a Free In-Home Visit</a>
-      <a href="contact.html" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--white);font-family:'Barlow',sans-serif;font-weight:700;font-size:15px;padding:12px 20px;border-radius:50px;border:2px solid rgba(255,255,255,.3);text-decoration:none;">Get A Free Quote</a>
+      <a href="/contact" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--white);font-family:'Barlow',sans-serif;font-weight:700;font-size:15px;padding:12px 20px;border-radius:50px;border:2px solid rgba(255,255,255,.3);text-decoration:none;">Get A Free Quote</a>
     </div>
   </div>
 
-  <p style="font-size:13px;color:var(--muted);border-top:1px solid var(--border);padding-top:20px;">&larr; <a href="blog.html" style="color:var(--blue);">Back to Blog</a></p>
+  <p style="font-size:13px;color:var(--muted);border-top:1px solid var(--border);padding-top:20px;">&larr; <a href="/blog" style="color:var(--blue);">Back to Blog</a></p>
 </div>
 </main>
 
-<footer>
-  <div class="footer-inner">
-    <div class="footer-top">
-      <div class="footer-brand">
-        <img src="ShedPro-Logo.webp" alt="ShedPro LLC" width="64" height="64" style="object-fit:contain;margin-bottom:10px" loading="lazy">
-        <p>Utah's #1 Custom Shed Builder. Built on-site, backed by warranty, serving Utah, Idaho & surrounding states.</p>
+<!-- ═══ SITE FOOTER (shared shell) ═══ -->
+<div class="sh-footer" role="contentinfo">
+  <div class="sh-wrap">
+    <div class="sh-fgrid">
+      <div class="sh-fbrand">
+        <img src="/ShedPro-Logo.webp" alt="ShedPro LLC" width="56" height="56" loading="lazy">
+        <strong>SHEDPRO LLC</strong>
+        <p>Custom sheds built on-site across Utah, Idaho &amp; surrounding states. A small team, custom-built by appointment.</p>
+        <div class="sh-social"><a href="https://www.facebook.com/profile.php?id=100070811200824" aria-label="Facebook" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a><a href="https://www.instagram.com/shedprout" aria-label="Instagram" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg></a><a href="https://www.tiktok.com/@shedprout" aria-label="TikTok" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.79 1.53V6.79a4.85 4.85 0 01-1.02-.1z"/></svg></a></div>
       </div>
-      <div class="footer-col">
-        <h3>Quick Links</h3>
-        <ul>
-          <li><a href="index.html">Home</a></li>
-          <li><a href="gallery.html">Gallery</a></li>
-          <li><a href="materials.html">Materials</a></li>
-          <li><a href="faq.html">FAQ</a></li>
-          <li><a href="about.html">About Us</a></li>
-          <li><a href="contact.html">Contact</a></li>
-          <li><a href="blog.html">Blog</a></li>
-        </ul>
+      <div class="sh-fcol">
+        <p class="sh-fh">Explore</p>
+        <ul><li><a href="/">Home</a></li><li><a href="/gallery">Styles &amp; Gallery</a></li><li><a href="/gallery#materials">Materials &amp; Warranty</a></li><li><a href="/about">About</a></li><li><a href="/faq">FAQ &amp; Service Area</a></li><li><a href="/blog">Blog</a></li></ul>
       </div>
-      <div class="footer-col">
-        <h3>Services</h3>
-        <ul>
-          <li><a href="gallery.html">A-Frame / Gable</a></li>
-          <li><a href="gallery.html">Barn Style</a></li>
-          <li><a href="gallery.html">Lean-To</a></li>
-          <li><a href="gallery.html">Pool House</a></li>
-          <li><a href="gallery.html">ADU / Livable</a></li>
-        </ul>
+      <div class="sh-fcol">
+        <p class="sh-fh">Reserve Your Spot</p>
+        <a href="/contact" class="sh-btn sh-btn-primary" data-cta="footer-reserve">Reserve your spot</a>
+        <ul><li><a href="tel:+14352329516">Call 435-232-9516</a></li><li><a href="sms:+14352770764">Text 435-277-0764</a></li><li><a href="mailto:Shedprollc.utah@gmail.com">Shedprollc.utah@gmail.com</a></li></ul>
       </div>
-      <div class="footer-col">
-        <h3>Contact</h3>
-        <ul>
-          <li><a href="tel:+14352329516">435-232-9516</a></li>
-          <li><a href="mailto:info@shedpro-utah.com">info@shedpro-utah.com</a></li>
-          <li><a href="https://www.instagram.com/shedprout" target="_blank" rel="noopener">Instagram</a></li>
-          <li><a href="https://www.tiktok.com/@shedprout" target="_blank" rel="noopener">TikTok</a></li>
-        </ul>
+      <div class="sh-fcol">
+        <p class="sh-fh">ShedPro Studio</p>
+        <a href="/designer" class="sh-btn sh-btn-ghost" data-cta="footer-3d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z"/><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5"/></svg>Design your shed in 3D</a>
+        <ul><li><a class="sh-ficon" href="https://search.google.com/local/writereview?placeid=ChIJwwlFnLcoHgERAfeFtnSUYNc" target="_blank" rel="noopener"><svg class="sh-gm" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>Leave us a Google review</a></li><li><a class="sh-ficon" href="https://search.google.com/local/reviews?placeid=ChIJwwlFnLcoHgERAfeFtnSUYNc" target="_blank" rel="noopener"><svg class="sh-gm" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>Read our 22 Google reviews</a></li><li><a class="sh-ficon" href="https://www.facebook.com/profile.php?id=100070811200824&sk=reviews" target="_blank" rel="noopener"><svg class="sh-fm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M13.4 19.5v-6.1h2.1l.3-2.4h-2.4V9.4c0-.7.2-1.2 1.2-1.2h1.3V6.1c-.2 0-1-.1-1.9-.1-1.9 0-3.2 1.2-3.2 3.3V11H8.7v2.4h2.1v6.1z"/></svg>See our Facebook reviews</a></li></ul>
       </div>
     </div>
-    <div class="footer-bottom">
-      <p>&copy; 2025 ShedPro LLC. All rights reserved.</p>
-      <p>Utah &bull; Idaho &bull; Surrounding States</p>
-    </div>
+    <div class="sh-fbottom"><span>&copy; 2026 ShedPro LLC &nbsp;·&nbsp; Utah, Idaho &amp; Beyond</span><span><a href="tel:+14352329516">435-232-9516</a></span></div>
   </div>
-</footer>
-<script>
-const hamburger=document.getElementById('hamburger');
-const navDrawer=document.getElementById('navDrawer');
-hamburger.addEventListener('click',()=>{navDrawer.classList.toggle('open');hamburger.classList.toggle('open');});
-document.addEventListener('click',(e)=>{if(!hamburger.contains(e.target)&&!navDrawer.contains(e.target)){navDrawer.classList.remove('open');hamburger.classList.remove('open');}});
+</div>
+<!-- ═══ /SITE FOOTER ═══ -->
+<script id="sh-shell-js">
+/* ═══ SHARED SHELL JS ═══ */
+(function(){
+  var reduce=false; try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
+  var b=document.getElementById('shBurger'),d=document.getElementById('shDrawer'),n=document.querySelector('.sh-nav');
+  if(b&&d){b.addEventListener('click',function(){
+    d.style.top=Math.max(0,n.getBoundingClientRect().bottom)+'px';
+    var o=!d.classList.contains('open');b.classList.toggle('open',o);d.classList.toggle('open',o);b.setAttribute('aria-expanded',o);document.body.style.overflow=o?'hidden':'';
+  });
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&d.classList.contains('open'))b.click()});}
+  var msgs=[
+    "Free quote within 24 hours \u2014 a ShedPro rep calls you",
+    "Design your shed in 3D with ShedPro Studio",
+    "$500 off a concrete pad through Nov 3 \u2014 select sizes", /* PROMO — remove this line after Nov 3, 2026 */
+    "3-Year Workmanship, 50-Year Siding & 30-Year Shingle Warranty",
+    "Book a Free In-Home Visit \u2014 Get a Free Upgrade"
+  ];
+  /* PROMO auto-expiry (Nov 4, 2026): drop the promo message and any [data-promo-ends] block */
+  if(new Date()>=new Date('2026-11-04T00:00:00')){
+    msgs=msgs.filter(function(m){return m.indexOf('$500 off')===-1});
+    document.querySelectorAll('[data-promo-ends]').forEach(function(el){el.remove()});
+  }
+  var el=document.getElementById('shTopbarMsg');
+  if(el&&!reduce){var i=0;setInterval(function(){i=(i+1)%msgs.length;el.style.opacity='0';setTimeout(function(){el.textContent=msgs[i];el.style.opacity='1'},300)},4500);}
+})();
 </script>
+
 </body>
 </html>

@@ -4,7 +4,7 @@
   <!-- Homepage -->
   <url>
     <loc>https://www.shedpro-utah.com/</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -12,7 +12,7 @@
   <!-- Styles & Gallery -->
   <url>
     <loc>https://www.shedpro-utah.com/gallery</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -20,31 +20,23 @@
   <!-- About Us -->
   <url>
     <loc>https://www.shedpro-utah.com/about</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
-  <!-- Contact -->
+  <!-- Reserve Your Spot (contact) -->
   <url>
     <loc>https://www.shedpro-utah.com/contact</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
-  </url>
-
-  <!-- Materials -->
-  <url>
-    <loc>https://www.shedpro-utah.com/materials</loc>
-    <lastmod>2026-06-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
   </url>
 
   <!-- FAQ -->
   <url>
     <loc>https://www.shedpro-utah.com/faq</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -52,9 +44,31 @@
   <!-- Blog -->
   <url>
     <loc>https://www.shedpro-utah.com/blog</loc>
-    <lastmod>2026-06-14</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+  </url>
+
+
+  <url>
+    <loc>https://www.shedpro-utah.com/blog-adu-rising-cost-of-living</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://www.shedpro-utah.com/blog-shed-adds-property-value</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://www.shedpro-utah.com/blog-top-5-shed-uses</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 
 </urlset>
