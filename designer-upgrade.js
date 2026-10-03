@@ -272,6 +272,9 @@ DU.renderSuccess = function(o){
     '<p class="du-sheet-p">A copy is on its way to '+esc(o.email)+'.</p>'+
     (img?'<img class="du-rv-img" src="'+img+'" alt="The shed you sent us">':'')+
     '<dl class="du-rv du-rv-compact">'+rows.map(function(r){ return '<div class="du-rv-row"><dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd></div>'; }).join('')+'</dl>'+
+    (aiRenderOn()?'<div class="du-ai" id="duAi" aria-live="polite"><div class="du-ai-h">Artist\'s rendering</div>'+
+      '<div class="du-ai-body" id="duAiBody"><div class="du-ai-spin" aria-hidden="true"></div>'+
+      '<p>Your artist\'s rendering is being created. This takes about 1–2 minutes, and you can keep this page open.</p></div></div>':'')+
     '<div class="du-next"><div class="du-next-h">What happens next</div><ol>'+
       '<li><b>A ShedPro rep calls you within 24 hours</b> to go over your design and finalize your quote.</li>'+
       '<li><b>Reserve your spot</b> on our build schedule.</li>'+
@@ -284,6 +287,45 @@ DU.renderSuccess = function(o){
   window.openSubPage('Request sent', html);
   try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
   var t=$('duTextDesign'); if(t) t.addEventListener('click', function(){ DU.shareDesign('success', o.link); });
+  if(aiRenderOn()) DU.startAiRender(o);
+};
+
+/* ── artist's rendering (TEST — off unless ?airender=1 or window.SP_AI_RENDER,
+   AND the server has RENDER_ENABLED=1; any failure hides the card) ── */
+function aiRenderOn(){
+  return window.SP_AI_RENDER===true || /[?&]airender=1(&|$)/.test(location.search);
+}
+DU.startAiRender = function(o){
+  var card=$('duAi'), body=$('duAiBody');
+  function hide(){ if(card) card.remove(); }
+  if(!card || typeof window.getDesignConfig!=='function' || !window.fetch) return hide();
+  var img=null;
+  try{ img=(window.DR && DR.captureForAI) ? DR.captureForAI() : null; }catch(e){}
+  var tries=0, started=Date.now();
+  fetch('/api/render',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({image:img, config:window.getDesignConfig(), code:o && o.link || null})})
+  .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+  .then(function(j){ if(!j || !j.id) throw new Error('no id'); poll(j.id); })
+  .catch(hide);
+  function poll(id){
+    setTimeout(function(){
+      if(!document.body.contains(card)) return;          // sheet closed
+      if(++tries>60 || Date.now()-started>5*60000) return hide();
+      fetch('/api/render?id='+encodeURIComponent(id),{cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(j){
+        if(j.status==='done' && j.url) return show(j);
+        if(j.status==='pending') return poll(id);
+        hide();
+      }).catch(hide);
+    }, 5000);
+  }
+  function show(j){
+    body.innerHTML='<figure class="du-ai-fig"><img src="'+esc(j.url)+'" alt="Artist\'s rendering of your shed">'+
+      '<figcaption>Artist\'s rendering. Your final build follows your approved design.'+
+      (j.mock?' <span class="du-ai-mock">(Sample image, test mode)</span>':'')+'</figcaption></figure>';
+    try{ if(window.DU && DU.track) DU.track('ai_render_shown',{mock:!!j.mock}); }catch(e){}
+  }
 };
 
 /* ── autosave + resume ── */

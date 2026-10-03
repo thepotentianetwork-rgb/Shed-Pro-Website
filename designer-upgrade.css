@@ -117,3 +117,16 @@ body.du-last .sum > .cta{display:none}
 .du-success-btns{display:flex;flex-direction:column;gap:8px}
 /* the 3D view is right above on a phone, so the snapshot only pushes the specs down */
 @media (max-width:600px), (max-width:700px) and (max-aspect-ratio:5/7){ .du-rv-img{display:none} }
+
+/* artist's rendering card (test feature) */
+.du-ai{margin:14px 0;padding:14px;border:1px solid rgba(41,182,232,.35);border-radius:12px;background:rgba(41,182,232,.06)}
+.du-ai-h{font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#29b6e8;margin-bottom:8px}
+.du-ai-body{display:flex;gap:12px;align-items:center}
+.du-ai-body p{margin:0;font-size:14px;line-height:1.45}
+.du-ai-spin{flex:0 0 26px;height:26px;border-radius:50%;border:3px solid rgba(41,182,232,.25);border-top-color:#29b6e8;animation:duAiSpin 1s linear infinite}
+@keyframes duAiSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.du-ai-spin{animation:none}}
+.du-ai-fig{margin:0;width:100%}
+.du-ai-fig img{display:block;width:100%;height:auto;border-radius:8px}
+.du-ai-fig figcaption{font-size:12px;opacity:.8;margin-top:6px}
+.du-ai-mock{color:#f0b429}
