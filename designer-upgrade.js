@@ -282,7 +282,7 @@ DU.renderSuccess = function(o){
     '<div class="du-success-btns">'+
       '<button type="button" class="cta" id="duTextDesign">Text this design to someone</button>'+
       '<button type="button" class="du-btn-ghost" onclick="closeSubPage()">Keep designing</button>'+
-      '<a class="du-btn-ghost" href="tel:4352329516">Questions? Call 435-232-9516</a>'+
+      '<a class="du-btn-ghost" href="tel:4352770764">Questions? Call 435-277-0764</a>'+
     '</div></div>';
   window.openSubPage('Request sent', html);
   try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
