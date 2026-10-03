@@ -2391,8 +2391,8 @@ function init(){
       var pld=porchLightsData[selectedPorchLight];
       var r5=pointerOnWall(pld.wall, 6, null, true);
       if(!r5) return;
-      if(Math.abs(pld.pos-r5.pos)<1e-4) return;
-      pld.pos=r5.pos;
+      if(Math.abs(pld.pos-r5.pos)<1e-4 && pld.manual) return;
+      pld.pos=r5.pos; pld.manual=true;
       buildShed();
     }
   }
@@ -10491,34 +10491,258 @@ function buildPorchLightFixture(style){
   grp.add(pl);
   return grp;
 }
+/* ── PORCH LIGHT PLACEMENT (auto) ──────────────────────────────────────────
+   Lights used to sit wherever their saved pos put them, at 0.74 of the wall —
+   on the starters that was tight against the door casing, low, and right next
+   to a window. A real install puts a PAIR one each side of the door, centred
+   in the clear wall between the casing and the next opening (or corner),
+   at about 6ft, the same distance out on both sides; a SINGLE light goes
+   centred over the door just above the head casing.
+
+   Applies to every light that has not been dragged by hand (pld.manual).
+   Nothing about the light COUNT changes — only where each one hangs. The
+   result is runtime-only (porchLightPlacement), so saved designs, share links
+   and quotes carry exactly what they carried before.
+
+   Units are scene units (0.2 per foot). "s" is the distance along the wall
+   from its start corner, the same axis posToAxis() works on. */
+var PL_IN=0.2/12;
+var PL_Y_FT=6;                                   // fixture centre ~6ft (head height)
+var PL_CLEAR=1.5*PL_IN;                          // daylight to any trim/casing
+var PL_GAP_MIN=8*PL_IN, PL_GAP_MAX=12*PL_IN;    // visible siding between casing and fixture edge
+var PL_GAP_WANT=10*PL_IN;
+var porchLightPlacement=[];
+function plFixtureDims(style){
+  if(style==='craftsman') return {hw:0.034, hh:0.085, back:0.035};
+  if(style==='classic')   return {hw:0.050, hh:0.050, back:0.006};
+  return {hw:0.033, hh:0.079, back:0.033};      // modern cylinder
+}
+function plWallS(f, pos, widthWorld){
+  var margin=widthWorld/2+0.12, usable=f.len-margin*2;
+  return margin+pos*usable;
+}
+function plWallTop(wall){
+  var f=wallFrame(wall);
+  var top=f.height;
+  if(typeof porchWall==='function' && porchWall()===wall && typeof porchCeilY==='function') top=Math.min(top, porchCeilY());
+  return top;
+}
+/* Every opening on the wall as an obstacle box {a,b} along s, {y0,y1} up. */
+function plObstacles(wall){
+  var f=wallFrame(wall), out=[];
+  (doorsData||[]).forEach(function(d, i){
+    if(d.wall!==wall) return;
+    var dw=Math.min(d.w*PL_IN, f.len-0.3), dh=Math.min(d.h*PL_IN, f.height-0.12);
+    var c=plWallS(f, d.pos, dw);
+    var trim=(d.style==='fairytale')?0.065:0.06;      // fairytale: no casing, but its strap hinges reach that far
+    var top=dh+0.05+((d.style==='cedar'||d.style==='cedarSingle')?0.035:0);
+    var aw=(typeof ADDONS!=='undefined' && ADDONS.doorAwning && d.awning && dw>=0.85);
+    out.push({kind:'door', i:i, c:c, half:dw/2+trim, a:c-dw/2-trim, b:c+dw/2+trim, y0:0, y1:top,
+              dw:dw, dh:dh, headTop:top, awning:aw,
+              // awning reaches ~0.11 past the opening each side and sits up to 0.22 above the head
+              awA:c-dw/2-0.12, awB:c+dw/2+0.12, awTop:dh+0.25});
+  });
+  (windowsData||[]).forEach(function(w){
+    if(w.wall!==wall) return;
+    var ww=w.w*PL_IN, wh=w.h*PL_IN, cy=(w.cy==null?52:w.cy)*PL_IN;
+    var side=0.055;
+    if(typeof ADDONS!=='undefined' && ADDONS.shutters) side+=0.006+Math.min(ww*0.42,0.16);
+    var c=plWallS(f, w.pos, ww);
+    out.push({kind:'window', c:c, a:c-ww/2-side, b:c+ww/2+side, y0:cy-wh/2-0.06, y1:cy+wh/2+0.06});
+  });
+  (typeof ventsData!=='undefined'?ventsData:[]).forEach(function(v){
+    if(v.wall!==wall || v.cy==null) return;
+    var vw=(typeof VENT_W!=='undefined'?VENT_W:16*PL_IN), vh=(typeof VENT_H!=='undefined'?VENT_H:8*PL_IN);
+    var c=plWallS(f, v.pos, 16*PL_IN), cy=v.cy*PL_IN;
+    out.push({kind:'vent', c:c, a:c-vw/2-0.05, b:c+vw/2+0.05, y0:cy-vh/2-0.05, y1:cy+vh/2+0.05});
+  });
+  return out;
+}
+function plClearBand(obs, y0, y1, a, b){
+  return !obs.some(function(o){ return o.b>a && o.a<b && o.y1>y0 && o.y0<y1; });
+}
+/* How high a fixture may reach at offset x (from the wall's centre). On a
+   gable or gambrel END wall the siding carries on up into the triangle, so an
+   over-the-door light can sit above the plate there; under a porch ceiling or
+   on an eave wall it stops at the ceiling/plate. */
+function plTopAt(wall, x){
+  var top=plWallTop(wall);
+  var f=wallFrame(wall);
+  if(typeof porchWall==='function' && porchWall()===wall) return top;
+  if(wall!=='front' && wall!=='back') return top;
+  var w=encWft()*0.2, h=f.height, ax=Math.abs(x), M=0.07;   // clear of rake trim
+  if(STYLE==='gable') return Math.max(top, h+Math.max(0, w/2-ax)*(PITCH/12)-M);
+  if(STYLE==='barn' && typeof barnProfile==='function'){
+    var bp=barnProfile(), kx=bp.kneeX, y;
+    if(ax>=w/2) y=h;
+    else if(ax>=kx) y=h+(w/2-ax)/(w/2-kx)*(bp.kneeY-h);
+    else y=bp.kneeY+(kx-ax)/kx*(bp.ridgeY-bp.kneeY);
+    return Math.max(top, y-M);
+  }
+  return top;
+}
+/* Free runs of wall walking outward from the door on one side, in the height
+   band [y0,y1]. Anything in the band that overlaps the door's own zone (a
+   shutter or casing touching the door casing) leaves no room right next to
+   the door. Runs are {start,end} measured outward from the door edge. */
+function plRuns(f, obs, door, dir, y0, y1){
+  var edge=(dir<0)?door.a:door.b;
+  if(door.awning) edge=(dir<0)?Math.min(edge, door.awA-0.01):Math.max(edge, door.awB+0.01);
+  var lim=(dir<0)?0.06:f.len-0.06;                  // corner board
+  var blocks=[];
+  obs.forEach(function(o){
+    if(o===door || !(o.y1>y0 && o.y0<y1)) return;
+    var d0, d1;
+    if(dir<0){ if(!(o.a<edge)) return; d0=edge-Math.min(o.b,edge); d1=edge-Math.max(o.a,lim); }
+    else     { if(!(o.b>edge)) return; d0=Math.max(o.a,edge)-edge; d1=Math.min(o.b,lim)-edge; }
+    if(d1>d0) blocks.push([d0,d1]);
+  });
+  blocks.sort(function(p,q){ return p[0]-q[0]; });
+  var maxD=Math.abs(lim-edge), runs=[], cur=0;
+  blocks.forEach(function(bk){
+    if(bk[0]>cur) runs.push({start:cur, end:Math.min(bk[0],maxD)});
+    cur=Math.max(cur, bk[1]);
+  });
+  if(cur<maxD) runs.push({start:cur, end:maxD});
+  return {edge:edge, runs:runs.filter(function(r){ return r.end-r.start>1e-4; })};
+}
+function plPrimaryDoor(obs, f){
+  var best=null;
+  obs.forEach(function(o){
+    if(o.kind!=='door') return;
+    if(!best || o.dw>best.dw+1e-6 || (Math.abs(o.dw-best.dw)<1e-6 && Math.abs(o.c-f.len/2)<Math.abs(best.c-f.len/2))) best=o;
+  });
+  return best;
+}
+function computePorchLightPlacement(){
+  var place=[], byWall={};
+  porchLightsData.forEach(function(pld, idx){
+    if(pld.manual) return;
+    (byWall[pld.wall]=byWall[pld.wall]||[]).push(idx);
+  });
+  Object.keys(byWall).forEach(function(wall){
+    var f=wallFrame(wall); if(!f) return;
+    var idxs=byWall[wall], obs=plObstacles(wall), door=plPrimaryDoor(obs, f);
+    if(!door) return;                                // no door: leave them where they are
+    var top=plWallTop(wall);
+    var dims=idxs.map(function(i){ return plFixtureDims(porchLightsData[i].style); });
+    var hw=Math.max.apply(null, dims.map(function(d){ return d.hw; }));
+    var hh=Math.max.apply(null, dims.map(function(d){ return d.hh; }));
+    var others=obs.filter(function(o){ return o!==door; });
+    var ySide=Math.min(PL_Y_FT*0.2, top-0.10-hh);
+    var y0=ySide-hh-0.01, y1=ySide+hh+0.01;
+    var yAbove=door.headTop+PL_CLEAR+hh;
+    function aboveFits(sList){
+      if(door.awning) return false;
+      return sList.every(function(sv){
+        var x=sv-f.len/2;
+        return yAbove+hh+0.02<=plTopAt(wall, Math.abs(x)+hw) &&
+               plClearBand(others, yAbove-hh-0.01, yAbove+hh+0.01, sv-hw-0.01, sv+hw+0.01);
+      });
+    }
+    var minRoom=PL_GAP_MIN+2*hw+PL_CLEAR;
+    // distance from the door edge to the fixture centre inside run r, or null
+    function inRun(r, nextToDoor){
+      var room=r.end-r.start;
+      if(room<minRoom) return null;
+      // next to the door: 8-12in of siding between casing and fixture (centred
+      // in the run when the run is short); further out: centred in that run.
+      var g=nextToDoor ? Math.max(PL_GAP_MIN, Math.min(PL_GAP_WANT, room/2-hw, room-2*hw-PL_CLEAR))
+                       : Math.max(PL_GAP_MIN, Math.min(room/2-hw, PL_GAP_MAX));
+      return r.start+g+hw;
+    }
+    var L=plRuns(f, obs, door, -1, y0, y1), R=plRuns(f, obs, door, 1, y0, y1);
+    var hL=door.c-L.edge, hR=R.edge-door.c;          // door centre to its clear edge, each side
+    function besideDoor(){
+      var rl=L.runs[0], rr=R.runs[0];
+      if(!rl || !rr || rl.start>1e-4 || rr.start>1e-4) return null;   // something touches the door
+      var dl=inRun(rl,true), dr=inRun(rr,true); if(dl==null || dr==null) return null;
+      var dc=Math.max(hL+dl, hR+dr);                 // the same distance from the door centre
+      if(dc-hL>rl.end-hw-PL_CLEAR || dc-hR>rr.end-hw-PL_CLEAR) dc=Math.min(hL+dl, hR+dr);
+      return [door.c-dc, door.c+dc];
+    }
+    function outward(){
+      function firstFit(side){
+        for(var i=0;i<side.runs.length;i++){
+          if(side.runs[i].start<=1e-4) continue;     // that one is beside the door
+          var d=inRun(side.runs[i], false); if(d!=null) return {d:d, run:side.runs[i]};
+        }
+        return null;
+      }
+      var a=firstFit(L), b=firstFit(R); if(!a || !b) return null;
+      var dc=(hL+a.d+hR+b.d)/2;                      // symmetric when both runs allow it
+      var okL=dc-hL>=a.run.start+hw+PL_CLEAR && dc-hL<=a.run.end-hw-PL_CLEAR;
+      var okR=dc-hR>=b.run.start+hw+PL_CLEAR && dc-hR<=b.run.end-hw-PL_CLEAR;
+      return (okL&&okR) ? [door.c-dc, door.c+dc] : [door.c-hL-a.d, door.c+hR+b.d];
+    }
+    function abovePair(){
+      var off=Math.max(door.dw/2-hw-0.02, hw+0.04);
+      var sl=[door.c-off, door.c+off];
+      return aboveFits(sl) ? sl : null;
+    }
+    var first=idxs.slice(0,2);
+    if(first.length===1){
+      if(aboveFits([door.c])){ place[first[0]]={s:door.c, y:yAbove, mount:'above'}; return; }
+      // no room over the door (canopy, low ceiling): beside it, latch side first
+      var rr1=R.runs[0], rl1=L.runs[0];
+      var dR=(rr1 && rr1.start<=1e-4)?inRun(rr1,true):null, dL=(rl1 && rl1.start<=1e-4)?inRun(rl1,true):null;
+      if(dR!=null) place[first[0]]={s:R.edge+dR, y:ySide, mount:'side'};
+      else if(dL!=null) place[first[0]]={s:L.edge-dL, y:ySide, mount:'side'};
+      return;
+    }
+    var order=(door.dw>=0.85) ? [besideDoor, abovePair, outward] : [besideDoor, outward, abovePair];
+    var pair=null, mount='side';
+    for(var k=0;k<order.length && !pair;k++){ pair=order[k](); mount=(order[k]===abovePair)?'above':'side'; }
+    if(!pair){
+      // Last resort: over the head casing corners — never on the door itself.
+      var off2=Math.max(door.dw/2-hw-0.02, hw+0.04);
+      pair=[door.c-off2, door.c+off2]; mount='above';
+    }
+    place[first[0]]={s:pair[0], y:mount==='above'?yAbove:ySide, mount:mount};
+    place[first[1]]={s:pair[1], y:mount==='above'?yAbove:ySide, mount:mount};
+  });
+  return place;
+}
 function buildPorchLights(){
   porchLightMeshes=[];
+  porchLightPlacement=[];
   if(porchLightsData.length===0) return;
+  try{ porchLightPlacement=computePorchLightPlacement(); }catch(e){ console.error('porch light placement', e); porchLightPlacement=[]; }
+  var bb=(typeof SIDING!=='undefined' && SIDING==='board-batten');
   porchLightsData.forEach(function(pld, idx){
     var f=wallFrame(pld.wall);
-    /* Mount height follows the ceiling this light actually hangs under.
-       It was always 0.74 of the WALL, so lowering a porch to 8ft under 10ft
-       walls left the fixture up at 7.4ft — still pinned to the wall, nearly
-       touching the porch ceiling it was supposed to sit below.
-       On the porch wall the reference is the porch ceiling; anywhere else it
-       is the wall, exactly as before. Same 0.74, so nothing moves on a porch
-       that matches its walls or on a light mounted somewhere else. */
-    var ref=(typeof porchWall==='function' && porchWall()===pld.wall &&
-             typeof porchCeilY==='function') ? porchCeilY() : f.height;
-    var cy=ref*0.74;
+    var auto=porchLightPlacement[idx];
+    var dims=plFixtureDims(pld.style);
+    var top=plWallTop(pld.wall);
+    // Hand-placed (or nowhere sensible to put it): keep its spot along the
+    // wall, at the same ~6ft mount height, clear of the ceiling it hangs under.
+    var cy=auto ? auto.y : Math.min(PL_Y_FT*0.2, top-0.10-dims.hh);
     var grp=new THREE.Group();
     // Carries its wall like every other placed item, so pickOpening() can tell
     // whether you are looking at it. Without this the filter there skips the
     // check and a light on the far side stays tappable.
-    grp.userData={isPorchLight:true, index:idx, wall:pld.wall};
+    grp.userData={isPorchLight:true, index:idx, wall:pld.wall, mount:auto?auto.mount:'manual'};
+    var WALL_FACE=0.025, BAT=bb?0.0125:0;          // battens stand proud of the boards
+    if(bb){
+      // Mounting block so the fixture seats on a flat face, not half on a batten.
+      var blk=new THREE.Mesh(new THREE.BoxGeometry(dims.hw*2+0.03, dims.hh*2+0.04, BAT),
+        new THREE.MeshStandardMaterial({color:(typeof sc!=='undefined'?sc:0x888888), roughness:0.8}));
+      blk.position.set(0, cy, WALL_FACE+BAT/2); blk.castShadow=true; blk.receiveShadow=true;
+      grp.add(blk);
+    }
     var fixture=buildPorchLightFixture(pld.style);
-    fixture.position.set(0, cy, 0.02);
+    fixture.position.set(0, cy, WALL_FACE+BAT+dims.back);
     grp.add(fixture);
     if(EDIT_MODE && selectedKind==='plight' && selectedPorchLight===idx){
       grp.add(mk(new THREE.BoxGeometry(0.16,0.22,0.006),
-        new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.5, side:THREE.DoubleSide}), 0, cy, 0.05));
+        new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.5, side:THREE.DoubleSide}), 0, cy, 0.09));
     }
     applyWallTransform(grp, pld.wall, pld.pos, 6);
+    if(auto){
+      var startA=(f.ax==='x') ? f.ctr-f.ux*(f.len/2) : f.ctr-f.uz*(f.len/2);
+      var along=startA+((f.ax==='x')?f.ux:f.uz)*auto.s;
+      if(f.ax==='x') grp.position.x=along; else grp.position.z=along;
+    }
     shedGroup.add(grp);
     porchLightMeshes.push({group:grp, index:idx});
   });
