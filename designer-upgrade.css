@@ -1,0 +1,119 @@
+/* designer-upgrade.css: styles for designer-upgrade.js. Linked before the
+   designer's own <style>, so rules that override it are prefixed with "body"
+   to win on specificity rather than on order. */
+
+/* ── staff-only padlock ── */
+body:not(.du-staff) #priceLockBtn{display:none !important}
+
+/* ── header share button: same pill as call/text ── */
+.du-share-btn{background:transparent;cursor:pointer;padding:0;color:inherit;font:inherit}
+.du-share-btn svg{width:15px;height:15px}
+
+/* ── focus that's visible on the dark UI ── */
+body :focus-visible{outline:2px solid #2BB5E8;outline-offset:2px}
+body .inp:focus-visible{outline:none}
+
+/* ── starter builds ── */
+.du-sec-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:2px 0 8px}
+.du-sec-lbl + .tgrid{margin-top:0}
+#useGrid + .du-sec-lbl{margin-top:16px}
+.du-starters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.du-starter{position:relative;display:flex;flex-direction:column;text-align:left;padding:0;margin:0;
+  background:var(--d3);border:1px solid var(--br);border-radius:10px;overflow:hidden;cursor:pointer;
+  color:var(--w);font:inherit;transition:border-color .15s,transform .15s}
+.du-starter:hover{border-color:rgba(43,181,232,.55)}
+.du-starter.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)}
+.du-st-img{aspect-ratio:4/3;background:#0e1a22;overflow:hidden}
+.du-st-img img{width:100%;height:100%;object-fit:cover;display:block}
+.du-st-scratch{display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#151c22 0 8px,#121820 8px 16px)}
+.du-st-scratch span{font-size:34px;font-weight:300;color:var(--blue);line-height:1}
+.du-st-cap{display:flex;flex-direction:column;gap:2px;padding:7px 9px 9px}
+.du-st-name{font-weight:800;font-size:13px;line-height:1.2}
+.du-st-sub{font-size:11px;color:var(--mu);line-height:1.3}
+.du-st-badge{position:absolute;top:6px;left:6px;background:var(--blue);color:#000;font-size:9.5px;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:20px}
+.du-st-badge.du-tier-luxury{background:linear-gradient(135deg,#e9c46a,#c99a2e);color:#1a1200}
+.du-st-check{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#000;
+  font-size:12px;font-weight:900;display:none;align-items:center;justify-content:center}
+.du-starter.on .du-st-check{display:flex}
+
+/* ── mobile layout ── */
+@media (max-width:600px), (max-width:700px) and (max-aspect-ratio:5/7){
+  body .promo-banner{display:none}
+  body .vp{height:42vh;min-height:220px}
+  body:not(.du-staff) .sum{display:none}
+  body.du-last #hdrQuoteBtn{display:none}
+  .du-starters{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:8px;padding-bottom:4px;
+    margin:0 -2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .du-starters::-webkit-scrollbar{display:none}
+  .du-starter{flex:0 0 150px;scroll-snap-align:start}
+  .du-st-sub{font-size:10.5px}
+}
+@media (max-width:400px), (max-width:430px) and (max-aspect-ratio:5/7){
+  body .vp{height:40vh;min-height:200px}
+  .du-starter{flex-basis:140px}
+}
+@media (max-height:760px) and (max-width:600px),
+       (max-height:760px) and (max-width:700px) and (max-aspect-ratio:5/7){
+  body .vp{height:36vh;min-height:170px}
+}
+@media (max-height:560px) and (max-width:600px){
+  body .vp{height:28vh;min-height:120px}
+}
+/* desktop: on the last step the wizard's own button already says "Request Free Quote" */
+body.du-last .sum > .cta{display:none}
+@media (min-width:1200px){ body .sb{width:310px} }
+
+/* ── review spec sheet ── */
+.du-rv-img{display:block;width:100%;border-radius:10px;margin:2px 0 10px;border:1px solid var(--br);background:#0e1a22}
+.du-rv{margin:0;display:flex;flex-direction:column}
+.du-rv-row{display:grid;grid-template-columns:84px 1fr auto;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--br)}
+.du-rv-row:last-child{border-bottom:none}
+.du-rv dt{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
+.du-rv dd{margin:0;font-size:12.5px;line-height:1.4;color:var(--w)}
+.du-rv-edit{background:none;border:none;color:var(--blue);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;padding:2px 0}
+.du-rv-compact .du-rv-row{grid-template-columns:84px 1fr}
+.du-rv-actions{margin-top:10px}
+
+/* ── buttons ── */
+.du-btn,.du-btn-ghost{display:flex;align-items:center;justify-content:center;width:100%;padding:11px 14px;border-radius:var(--pill,50px);
+  font-family:'Barlow',sans-serif;font-weight:800;font-size:13px;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.du-btn{background:var(--blue);color:#000;border:none}
+.du-btn-ghost{background:transparent;color:var(--w);border:1px solid var(--br)}
+.du-btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── share sheet ── */
+.du-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:601px){ .du-overlay{align-items:center} }
+.du-sheet{width:100%;max-width:420px;background:var(--d2,#141414);color:var(--w,#fff);border:1px solid var(--br);border-radius:16px 16px 0 0;
+  padding:16px 18px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box}
+@media (min-width:601px){ .du-sheet{border-radius:16px} }
+.du-sheet-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.du-sheet-h h2{font-size:17px;margin:0;font-weight:800}
+.du-x{background:none;border:none;color:var(--mu);font-size:26px;line-height:1;cursor:pointer;padding:0 4px}
+.du-sheet-p{font-size:13px;color:var(--mu);line-height:1.5;margin:4px 0 12px}
+.du-share-link{width:100%;box-sizing:border-box;margin-bottom:10px;font-size:12px}
+.du-share-btns{display:flex;flex-direction:column;gap:8px}
+
+/* ── resume card ── */
+.du-resume{position:absolute;left:12px;bottom:12px;z-index:40;max-width:300px;background:rgba(20,20,20,.96);border:1px solid rgba(43,181,232,.45);
+  border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.45);color:#fff}
+.du-resume-t{font-weight:800;font-size:14px}
+.du-resume-s{font-size:12px;color:var(--mu);margin:3px 0 10px}
+.du-resume-b{display:flex;gap:8px}
+.du-resume-b > *{flex:1;padding:9px 10px;font-size:12px}
+@media (max-width:600px){ .du-resume{left:8px;right:8px;bottom:8px;max-width:none} }
+
+/* ── success screen ── */
+.du-success{text-align:center;padding:8px 2px 4px}
+.du-ok{width:56px;height:56px;border-radius:50%;background:rgba(43,181,232,.12);border:1px solid rgba(43,181,232,.3);
+  display:flex;align-items:center;justify-content:center;margin:6px auto 12px;font-size:26px;color:var(--blue)}
+.du-success-h{font-size:18px;font-weight:800;margin:0 0 4px}
+.du-success .du-rv{text-align:left}
+.du-next{text-align:left;background:var(--d3);border:1px solid var(--br);border-radius:10px;padding:11px 13px;margin:12px 0}
+.du-next-h{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:6px}
+.du-next ol{margin:0;padding-left:18px;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,.88)}
+.du-next li + li{margin-top:5px}
+.du-success-btns{display:flex;flex-direction:column;gap:8px}
+/* the 3D view is right above on a phone, so the snapshot only pushes the specs down */
+@media (max-width:600px), (max-width:700px) and (max-aspect-ratio:5/7){ .du-rv-img{display:none} }
