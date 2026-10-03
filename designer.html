@@ -7,6 +7,17 @@
 <!-- The designer had no icon at all, so a tab showed the browser's blank page
      glyph. SVG first for anything modern; the site's existing raster logo is
      the fallback for browsers that don't take an SVG icon. -->
+<!-- designer-upgrade: warm the 3D engine download while the page parses. No
+     crossorigin attribute on purpose, so the preload matches the plain script
+     tag the loader below injects and the browser reuses it. -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js">
+<link rel="stylesheet" href="designer-upgrade.css">
+<script src="lead-source.js"></script>
+<!-- Vercel Web Analytics (already enabled on this project). Custom events go
+     through DU.track in designer-upgrade.js. -->
+<script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
+<script defer src="/_vercel/insights/script.js"></script>
 <link rel="icon" type="image/svg+xml" href="logo/favicon.svg">
 <link rel="alternate icon" href="ShedPro-Logo.webp">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
@@ -471,9 +482,11 @@ textarea.inp{resize:vertical}
          Don't "fix" them to match each other. -->
     <a href="tel:4352329516" class="ico-btn" title="Call 435-232-9516" aria-label="Call us"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>
     <a href="sms:+14352770764" class="ico-btn" title="Text 435-277-0764" aria-label="Text us"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></a>
+    <button type="button" id="duShareBtn" class="ico-btn du-share-btn" onclick="DU.shareDesign('header')" title="Share this design" aria-label="Share this design"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg></button>
+    <!-- Staff only: hidden by designer-upgrade.css unless body.du-staff (open the designer with #staff). -->
     <span id="priceLockBtn" class="lock-btn" onclick="togglePriceLock()" title="Staff pricing">&#128274;</span>
     <a href="index.html" class="btn bg" aria-label="Back">&#8592;<span class="btn-word"> Back</span></a>
-    <button class="btn bb" onclick="openQ()">Get Quote</button>
+    <button class="btn bb" id="hdrQuoteBtn" onclick="openQ()">Get Quote</button>
   </div>
 </header>
 <div class="promo-banner">
@@ -497,8 +510,8 @@ textarea.inp{resize:vertical}
 </div>
 <div class="main">
   <div class="vp">
-    <canvas id="c"></canvas>
-    <div class="hint">Drag to rotate &nbsp;&middot;&nbsp; Scroll to zoom</div>
+    <canvas id="c" role="img" aria-label="3D preview of your shed. Drag to rotate, scroll or pinch to zoom."></canvas>
+    <div class="hint" id="vpHint">Drag to rotate &nbsp;&middot;&nbsp; Scroll to zoom</div>
     <div id="measureGuide" class="measure-guide"></div>
     <!-- DUPLICATE. Floated over the canvas rather than added to the editor
          panel, because that panel's containers (winSelControls,
@@ -537,13 +550,18 @@ textarea.inp{resize:vertical}
          it shows the shape of the remaining work at a glance rather than
          asking anyone to divide. Title and caption only. -->
     <div class="wstep-head">
-      <div class="wstep-title" id="wStepTitle">Choose your style</div>
-      <div class="wstep-sub" id="wStepSub">Every build starts here.</div>
+      <div class="wstep-title" id="wStepTitle">Start your design</div>
+      <div class="wstep-sub" id="wStepSub">Start from a ShedPro favorite, or pick a style.</div>
     </div>
 
     <div class="wsteps">
       <!-- STEP 2 · STYLE -->
       <div class="wstep on" data-step="0">
+        <!-- designer-upgrade: fully loaded starter builds. Cards are rendered
+             by renderUseGrid() from STARTER_BUILDS. -->
+        <div class="du-sec-lbl" id="duStartersLbl">ShedPro favorites &middot; fully loaded</div>
+        <div id="useGrid" class="du-starters" role="list"></div>
+        <div class="du-sec-lbl">Or start with a style</div>
         <div class="tgrid" id="styleGrid">
           <div class="tile on" data-style="gable" onclick="pickStyle('gable',this)">
             <div class="tile-img" data-icon="style-gable"></div>
@@ -2601,6 +2619,7 @@ function init(){
   if(typeof syncPorchLightVisibility==='function') syncPorchLightVisibility();
   if(typeof renderFloorJoist==='function') renderFloorJoist();
   if(typeof captureStockBuild==='function') captureStockBuild();
+  if(typeof captureStockConfig==='function') captureStockConfig(false);
   if(typeof renderUseGrid==='function') renderUseGrid();
   if(typeof renderAddons==='function') renderAddons();
   if(typeof paintCupolaTag==='function') paintCupolaTag();
@@ -2790,9 +2809,118 @@ function sidingTileWorld(key){
    clutter. SHED_USE itself IS still read: applyDesignConfig restores it from
    old permalinks, and the flooring recommendation checks it for 'garage'.
    Worth a proper clean-up as its own change. */
-var SHED_USES = [
-  {k:'custom',   name:'Design My Own',   sub:'Start from scratch', custom:true}
+/* ══════════════════════════════════════════════════════════════════════════
+   STARTER BUILDS (designer-upgrade)
+   The cards at the top of step 1. Each is a COMPLETE, fully loaded design:
+   Core electrical (the Popular package) with porch lights, the poured
+   concrete pad, windows and add-ons, using only option keys that exist in
+   this designer. Ordered by what customers actually buy (Gable first).
+   Edit here - this is the only place they are defined. Each `cfg` uses the
+   same field names as getDesignConfig(); anything left out comes from the
+   stock build captured at load, so a field can never leak in from whichever
+   starter was picked before. `img` is a daylight render in designer-starters/
+   (re-render it if you change a starter's look).
+   ══════════════════════════════════════════════════════════════════════════ */
+var STARTER_BUILDS = [
+ {k:'classic-gable', name:'Classic Gable', sub:'10×12 · Power, porch lights & concrete pad', badge:'Most popular',
+  img:'designer-starters/classic-gable.webp',
+  cfg:{style:'gable', w:10, l:12, h:8, pitch:6, siding:'vertical',
+   sidingColor:0xF2F0EC, trimColor:0x1A1A1A, roofColor:0x28282A, roofType:'shingle', ovh:4, ovType:'all4', soffit:'black',
+   foundation:'pad', elec:'core',
+   doors:[{wall:'front',pos:0.5,style:'craftsman',w:60,h:76}],
+   windows:[{wall:'right',pos:0.5,w:24,h:36,type:'Black Vinyl 24x36'},{wall:'left',pos:0.5,w:24,h:36,type:'Black Vinyl 24x36'}],
+   porchLights:[{wall:'front',pos:0.17,style:'modern'},{wall:'front',pos:0.83,style:'modern'}],
+   addons:{flowerboxes:true, fbColor:'black'}}},
+ {k:'signature-gable', name:'Signature Gable', sub:'12×16 · Cupola, shutters & power', badge:'Popular',
+  img:'designer-starters/signature-gable.webp',
+  cfg:{style:'gable', w:12, l:16, h:8, pitch:6, siding:'vertical',
+   sidingColor:0x3C3F43, trimColor:0xF2F0EC, roofColor:0x28282A, roofType:'shingle', ovh:4, ovType:'all4', soffit:'white',
+   foundation:'pad', elec:'core',
+   doors:[{wall:'front',pos:0.5,style:'craftsman',w:72,h:76}],
+   windows:[{wall:'right',pos:0.3,w:24,h:30,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,type:'White Vinyl 24x30'},{wall:'left',pos:0.5,w:24,h:30,type:'White Vinyl 24x30'}],
+   porchLights:[{wall:'front',pos:0.18,style:'modern'},{wall:'front',pos:0.82,style:'modern'}],
+   addons:{shutters:true, shutterColor:'white', flowerboxes:true, fbColor:'white', cupola:'black', ridgeVent:true}}},
+ {k:'estate-porch', name:'Estate Porch Gable', sub:'16×24 · Covered front porch, 9 ft walls', badge:'Luxury', tier:'luxury',
+  img:'designer-starters/estate-porch.webp',
+  cfg:{style:'gable', w:16, l:24, h:9, pitch:6, siding:'board-batten',
+   sidingColor:0x2C3E52, trimColor:0xF2F0EC, roofColor:0x1A1A1A, roofType:'metal', ovh:6, ovType:'all4', soffit:'cedar',
+   porchLoc:'front', porchDepth:6, porchDeck:'composite', deckColor:'brown', porchTier:'standard',
+   foundation:'pad', elec:'core',
+   doors:[{wall:'front',pos:0.5,style:'resfull',w:36,h:82.5}],
+   windows:[{wall:'front',pos:0.17,w:36,h:36,type:'White Vinyl 36x36'},{wall:'front',pos:0.83,w:36,h:36,type:'White Vinyl 36x36'},
+            {wall:'right',pos:0.5,w:36,h:36,type:'White Vinyl 36x36'},{wall:'left',pos:0.5,w:36,h:36,type:'White Vinyl 36x36'}],
+   porchLights:[{wall:'front',pos:0.38,style:'modern'},{wall:'front',pos:0.62,style:'modern'}],
+   addons:{flowerboxes:true, fbColor:'white', ridgeVent:true}}},
+ {k:'heritage-barn', name:'Heritage Barn', sub:'10×20 · Copper cupola & power', badge:'Most space',
+  img:'designer-starters/heritage-barn.webp',
+  cfg:{style:'barn', w:10, l:20, h:8, siding:'vertical',
+   sidingColor:0x7C8A6E, trimColor:0xF2F0EC, roofColor:0x28282A, roofType:'shingle',
+   foundation:'pad', elec:'core',
+   doors:[{wall:'front',pos:0.5,style:'xtrim',w:72,h:76}],
+   windows:[{wall:'right',pos:0.3,w:24,h:30,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,type:'White Vinyl 24x30'}],
+   porchLights:[{wall:'front',pos:0.12,style:'modern'},{wall:'front',pos:0.88,style:'modern'}],
+   addons:{flowerboxes:true, fbColor:'white', cupola:'copper'}}},
+ {k:'modern-studio', name:'Modern Studio', sub:'12×16 · Cedar doors, metal roof & power', badge:'Modern',
+  img:'designer-starters/modern-studio.webp',
+  cfg:{style:'leanto', w:12, l:16, h:9, siding:'horizontal',
+   sidingColor:0x3C3F43, trimColor:0x1A1A1A, roofColor:0x1A1A1A, roofType:'metal', ovh:6, ovType:'all4', soffit:'cedar',
+   foundation:'pad', elec:'core',
+   doors:[{wall:'front',pos:0.21,style:'cedar',w:60,h:76}],
+   windows:[{wall:'front',pos:0.92,w:36,h:36,type:'Black Vinyl 36x36'},{wall:'right',pos:0.5,w:36,h:36,type:'Black Vinyl 36x36'},
+            {wall:'left',pos:0.3,w:14,h:36,type:'Black Transom 14x36'},{wall:'left',pos:0.7,w:14,h:36,type:'Black Transom 14x36'}],
+   porchLights:[{wall:'front',pos:0.0,style:'modern'},{wall:'front',pos:0.64,style:'modern'}],
+   addons:{}}}
 ];
+var SHED_USES = STARTER_BUILDS.concat([
+  {k:'custom',   name:'Design from scratch',   sub:'Pick a style below and build it your way', custom:true}
+]);
+/* The page's own default build, captured once (after the first build, before
+   any shared or resumed design is applied). Starters layer on top of it and
+   "Design from scratch" returns to it. */
+var STOCK_CONFIG=null, STOCK_NAMES=null;
+function captureStockConfig(force){
+  if(STOCK_CONFIG) return;
+  if(!force && !(typeof doorsData!=='undefined' && doorsData.length)) return;
+  try{
+    STOCK_CONFIG=JSON.parse(JSON.stringify(getDesignConfig()));
+    STOCK_NAMES={sn:sn, tn:tn, rn:rn};
+  }catch(e){ STOCK_CONFIG=null; }
+}
+function starterColorName(hex, list, fallback){
+  for(var i=0;i<(list||[]).length;i++) if(list[i].hex===hex) return list[i].name;
+  return fallback;
+}
+function applyStarterConfig(u){
+  var base=JSON.parse(JSON.stringify(STOCK_CONFIG));
+  if(u.custom){
+    base.use='custom';
+    applyDesignConfig(base);
+    if(STOCK_NAMES){ sn=STOCK_NAMES.sn; tn=STOCK_NAMES.tn; rn=STOCK_NAMES.rn; }
+  } else {
+    var cfg=JSON.parse(JSON.stringify(u.cfg));
+    var c=Object.assign(base, cfg);
+    c.use=u.k;
+    c.addons=Object.assign({}, JSON.parse(JSON.stringify(STOCK_CONFIG.addons||{})), cfg.addons||{});
+    c.doors=cfg.doors||[];
+    c.windows=(cfg.windows||[]).map(function(wd){
+      var o=Object.assign({}, wd);
+      if(o.cy==null) o.cy=(typeof defaultCyFor==='function') ? defaultCyFor(o.h, o.type, o.w) : 52;
+      return o;
+    });
+    c.porchLights=cfg.porchLights||[];
+    if(!cfg.vents) c.vents=base.vents||[];
+    if(!cfg.shelves) c.shelves=base.shelves||[];
+    applyDesignConfig(c);
+    sn=starterColorName(c.sidingColor, typeof WALL_COLORS!=='undefined'?WALL_COLORS:[], sn);
+    tn=starterColorName(c.trimColor,   typeof WALL_COLORS!=='undefined'?WALL_COLORS:[], tn);
+    var roofList=(c.roofType==='metal') ? (typeof METAL_COLORS!=='undefined'?METAL_COLORS:[]) : (typeof SHINGLE_COLORS!=='undefined'?SHINGLE_COLORS:[]);
+    rn=starterColorName(c.roofColor, roofList, rn);
+  }
+  if(typeof selectedWindow!=='undefined') selectedWindow=-1;
+  if(typeof renderWallColors==='function') renderWallColors();
+  if(typeof renderRoofColors==='function') renderRoofColors();
+}
+
 
 var SHED_USE=null;                       // null until they pick — goes on the quote
 /* v467 — THE STOCK BUILD, captured once at startup.
@@ -3049,12 +3177,19 @@ function applyRecommendations(){
 }
 function renderUseGrid(){
   var el=document.getElementById('useGrid'); if(!el) return;
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   el.innerHTML=SHED_USES.map(function(u){
-    return '<div class="tile'+(SHED_USE===u.k?' on':'')+'" onclick="setShedUse(\''+u.k+'\')">'+
-      '<div class="tile-img">'+shedUseIcon(u.k)+'</div>'+
-      '<div class="tile-cap"><div class="tile-name">'+u.name+'</div>'+
-      '<div class="tile-price">'+u.sub+'</div></div>'+
-      '<div class="tile-check">&#10003;</div></div>';
+    var on=(SHED_USE===u.k);
+    var img=u.custom
+      ? '<div class="du-st-img du-st-scratch" aria-hidden="true"><span>+</span></div>'
+      : '<div class="du-st-img"><img src="'+esc(u.img)+'" alt="" loading="lazy" decoding="async" width="320" height="240"></div>';
+    var badge=u.badge?'<span class="du-st-badge'+(u.tier?' du-tier-'+esc(u.tier):'')+'">'+esc(u.badge)+'</span>':'';
+    return '<button type="button" role="listitem" class="du-starter'+(on?' on':'')+(u.custom?' du-scratch':'')+'" '+
+      'aria-pressed="'+on+'" data-starter="'+esc(u.k)+'" onclick="setShedUse(\''+u.k+'\')">'+
+      img+badge+
+      '<span class="du-st-cap"><span class="du-st-name">'+esc(u.name)+'</span>'+
+      '<span class="du-st-sub">'+esc(u.sub)+'</span></span>'+
+      '<span class="du-st-check" aria-hidden="true">&#10003;</span></button>';
   }).join('');
 }
 function setShedUse(k){
@@ -3068,6 +3203,26 @@ function setShedUse(k){
   var u=null;
   for(var i=0;i<SHED_USES.length;i++) if(SHED_USES[i].k===k) u=SHED_USES[i];
   if(!u) return;
+  if(window.DU && DU.onStarter) DU.onStarter(k);
+  if(u.cfg || u.custom){
+    /* designer-upgrade: a starter is a COMPLETE design, applied the same way a
+       saved design is. It starts from the stock build captured at load, so
+       nothing from the previous starter (a porch, a cupola, a third window)
+       can leak into the next one. "Design from scratch" goes back to that
+       stock build exactly. */
+    if(!STOCK_CONFIG) captureStockConfig(true);
+    if(STOCK_CONFIG){
+      applyStarterConfig(u);
+      SHED_USE=k;
+      if(u.custom) SIZE_SET_BY_CUSTOMER=false;
+      renderUseGrid();
+      if(typeof renderStyleTiles==='function') renderStyleTiles();
+      if(typeof applyRecommendations==='function') applyRecommendations();
+      if(typeof syncControlsFromState==='function') syncControlsFromState();
+      if(typeof updateSum==='function') updateSum();
+      return;
+    }
+  }
   SHED_USE=k;
   if(u.custom){
     // Back to the stock build — see captureStockBuild above.
@@ -11164,9 +11319,13 @@ function buildInterior(){
 }
 
 
+var _swayT=0;
 function animate(){
   requestAnimationFrame(animate);
-  if(autoR){theta+=0.004;updateCamera();}
+  /* designer-upgrade: sway gently around the front instead of spinning a full
+     circle, so the idle view keeps showing the doors and porch. Stops for good
+     on the first drag (autoR goes false there). */
+  if(autoR){ _swayT+=0.006; theta=0.6+0.55*Math.sin(_swayT); updateCamera(); }
   // Gentle drift for the floating backdrop logos
   /* The logos are ground decals now (v446) — fixed to the grass, so no drift
      and no billboarding. Turning to face the camera would have spun them flat
@@ -11203,7 +11362,7 @@ var WIZ_STEPS = [
      setW and setL both call clampPorch - so the cost is a porch picker seeing
      the 8x12 ladder first and coming back to it, against style being the
      question a customer actually arrives with. */
-  {title:"Choose your style",  sub:"Every build starts here."},
+  {title:"Start your design",  sub:"Start from a ShedPro favorite, or pick a style."},
   {title:"Pick your size",     sub:"Width, length, and wall height."},
   {title:"Foundation",         sub:"What your shed sits on."},
   {title:"Siding & color",     sub:"Pick your look early."},
@@ -11328,6 +11487,7 @@ function wizRender(){
   var sc=document.querySelector('.wsteps'); if(sc) sc.scrollTop=0;
   /* v479 — badge the recommended choice on whichever step just drew. */
   if(typeof applyRecommendations==='function') applyRecommendations();
+  if(window.DU && DU.onStep) DU.onStep(wizStep);
 }
 function wizNext(){
   if(wizStep>=WIZ_STEPS.length-1){ openQ(); return; }
@@ -12807,10 +12967,12 @@ function setAddWall2(wall, el){ ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall; syncWallUI
 // ---- REVIEW ----
 function buildReview(){
   var host=document.getElementById('reviewSummary'); if(!host) return;
+  // designer-upgrade: full spec sheet with Edit links (designer-upgrade.js).
+  if(window.DU && DU.renderReview){ try{ if(DU.renderReview(host)) return; }catch(e){ console.error('review sheet failed',e); } }
   var styleName={gable:'A-Frame / Gable',barn:'Barn / Gambrel',leanto:'Lean-To / Slope',hip:'Poolhouse / Hip','3peak':'3 Peak / Cross Gable','4peak':'4 Peak / Cross Gable Both Sides'}[STYLE]||STYLE;
   var lines=[];
   lines.push('<b>'+W+'\u00d7'+L+' ft</b> '+styleName+', '+H+'ft walls');
-  lines.push(PITCH+'/12 pitch');
+  if(STYLE!=='barn' && STYLE!=='leanto') lines.push(PITCH+'/12 pitch');
   lines.push(doorsData.length+' door'+(doorsData.length===1?'':'s')+', '+windowsData.length+' window'+(windowsData.length===1?'':'s'));
   if(typeof ELEC!=='undefined' && ELEC!=='none') lines.push(ELEC.charAt(0).toUpperCase()+ELEC.slice(1)+' electrical');
   if(typeof LOFT!=='undefined' && LOFT!=='none') lines.push('Loft: '+LOFT.replace('-',"' "));
@@ -15798,6 +15960,8 @@ function applyDesignConfig(c){
     if(c.leantoFrontOvh!=null)LEANTO_FRONT_OVH=(c.leantoFrontOvh==='match')?'match':+c.leantoFrontOvh;
     if(c.porchLoc)PORCH_LOC=c.porchLoc; if(c.porchDepth!=null)SIDE_PORCH=+c.porchDepth;
     if(c.porchTier)PORCH_TIER=c.porchTier;
+    // Saved by getDesignConfig but never read back, so a reopened design lost its deck choice.
+    if(c.porchDeck)PORCH_DECK=c.porchDeck; if(c.deckColor)DECK_COLOR=c.deckColor; if(c.porchH!=null)PORCH_H=+c.porchH;
     if(c.dormerL!=null)DORMER_L=+c.dormerL; if(c.dormerR!=null)DORMER_R=+c.dormerR;
     if(c.foundation)FOUNDATION=c.foundation;
     if(c.foundationFinish)FOUNDATION_FINISH=c.foundationFinish;
@@ -15937,7 +16101,7 @@ function legacyCopyToClipboard(text){
 function captureRenders(){
   var shots=[], sPhi=phi, sTheta=theta, sR=radius;
   var views=[
-    {view:'perspective', phi:0.55, theta:1.15},
+    {view:'perspective', phi:1.2,  theta:0.62},   // front three-quarter, matches the opening view
     {view:'front',       phi:1.4,  theta:0},
     {view:'right',       phi:1.4,  theta:Math.PI/2},
     {view:'back',        phi:1.4,  theta:Math.PI},
@@ -15958,6 +16122,7 @@ function captureRenders(){
 
 function openQ(){
   var price=quoteCache.total;
+  if(window.DU && DU.track) DU.track('quote_form_opened',{step:wizStep});
   var body=''+
     '<div style="font-size:13px;color:var(--mu);line-height:1.5;margin-bottom:4px">'+
       'Send us your build and we\'ll get back to you with a firm quote. '+
@@ -15965,18 +16130,18 @@ function openQ(){
     (price?(
       '<div class="sqbox" style="margin:18px 0 4px;text-align:center">'+
         '<div class="sqbox-l">Your Build</div>'+
-        '<div class="sqbox-n">'+(PRICE_LOCKED?'Request a quote':('$'+Math.round(price).toLocaleString()))+'</div>'+
-        '<div class="sqbox-s">'+W+'x'+L+' ft &middot; estimated price</div>'+
+        '<div class="sqbox-n">'+(PRICE_LOCKED?(W+'\u00d7'+L+' '+((window.DU&&DU.styleName)?DU.styleName():'')):('$'+Math.round(price).toLocaleString()))+'</div>'+
+        '<div class="sqbox-s">'+(PRICE_LOCKED?'A ShedPro rep calls within 24 hours to finalize your quote':(W+'x'+L+' ft &middot; estimated price'))+'</div>'+
       '</div>'
     ):'')+
     '<div class="qsec-lbl">Contact Info</div>'+
-    '<div class="grp"><span class="lbl">Name</span>'+
+    '<div class="grp"><label class="lbl" for="qName">Name</label>'+
       '<input id="qName" class="inp" type="text" autocomplete="name" placeholder="Full name"></div>'+
-    '<div class="grp"><span class="lbl">Email</span>'+
+    '<div class="grp"><label class="lbl" for="qEmail">Email</label>'+
       '<input id="qEmail" class="inp" type="email" autocomplete="email" placeholder="you@example.com"></div>'+
-    '<div class="grp"><span class="lbl">Phone</span>'+
+    '<div class="grp"><label class="lbl" for="qPhone">Phone</label>'+
       '<input id="qPhone" class="inp" type="tel" autocomplete="tel" placeholder="(435) 555-0123"></div>'+
-    '<div class="grp"><span class="lbl">How did you hear about us?</span>'+
+    '<div class="grp"><label class="lbl" for="qHeard">How did you hear about us?</label>'+
       '<select id="qHeard" class="inp" onchange="document.getElementById(\'qHeardOtherWrap\').style.display=(this.value===\'other\'?\'block\':\'none\')">'+
         '<option value="">Select one (optional)</option>'+
         '<option value="word-of-mouth">Word of Mouth</option>'+
@@ -15986,17 +16151,17 @@ function openQ(){
         '<option value="other">Other</option>'+
       '</select></div>'+
     '<div class="grp" id="qHeardOtherWrap" style="display:none">'+
-      '<span class="lbl">Tell us more</span>'+
+      '<label class="lbl" for="qHeardOther">Tell us more</label>'+
       '<input id="qHeardOther" class="inp" type="text" placeholder="Where did you hear about us?"></div>'+
     '<div class="qsec-lbl">Delivery Address</div>'+
-    '<div class="grp"><span class="lbl">Street</span>'+
+    '<div class="grp"><label class="lbl" for="qAddr">Street</label>'+
       '<input id="qAddr" class="inp" type="text" autocomplete="street-address" placeholder="Street address"></div>'+
     '<div class="grp" style="display:flex;gap:8px">'+
-      '<input id="qCity" class="inp" type="text" placeholder="City" style="flex:2">'+
-      '<input id="qState" class="inp" type="text" placeholder="UT" style="flex:1" maxlength="2">'+
-      '<input id="qZip" class="inp" type="text" placeholder="ZIP" style="flex:1" inputmode="numeric"></div>'+
+      '<input id="qCity" class="inp" type="text" placeholder="City" aria-label="City" autocomplete="address-level2" style="flex:2">'+
+      '<input id="qState" class="inp" type="text" placeholder="UT" aria-label="State" autocomplete="address-level1" style="flex:1" maxlength="2">'+
+      '<input id="qZip" class="inp" type="text" placeholder="ZIP" aria-label="ZIP code" autocomplete="postal-code" style="flex:1" inputmode="numeric"></div>'+
     '<div class="qsec-lbl">Anything Else?</div>'+
-    '<div class="grp"><textarea id="qNotes" class="inp" rows="3" placeholder="Site access, timing, questions... (optional)"></textarea></div>'+
+    '<div class="grp"><textarea id="qNotes" class="inp" aria-label="Anything else" rows="3" placeholder="Site access, timing, questions... (optional)"></textarea></div>'+
     /* Honeypot. Positioned off-screen rather than display:none, because the
        form-filling bots worth catching skip hidden fields but not ones that
        are merely out of view. A person never sees it, never tabs to it and
@@ -16011,6 +16176,7 @@ function openQ(){
       'Rather talk it through? Call 435-232-9516</div>';
   openSubPage('Request your quote', body);
   prefillContactFromUrl();
+  if(window.DU && DU.afterQuoteForm) DU.afterQuoteForm();
 }
 // admin-customer.html's "View design" link carries a customer's known
 // contact info as ?prefill_name=&prefill_email=... ahead of the #hash the
@@ -16028,6 +16194,7 @@ function prefillContactFromUrl(){
   });
 }
 
+var _lastShortLink=null;
 function submitQuote(){
   var g=function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
   var err=document.getElementById('qErr');
@@ -16074,8 +16241,12 @@ function submitQuote(){
       // Only populated when staff had the redline panel open and unlocked while submitting.
       redline: quoteCache.redline||null,
       renders: captureRenders(),
-      page:{ url:location.href, ref:document.referrer||'', ua:navigator.userAgent }
+      // designer-upgrade: lead source + session context ride inside page (the
+      // Worker stores page verbatim; see DU.leadContext).
+      page: Object.assign({ url:location.href, ref:document.referrer||'', ua:navigator.userAgent },
+                          (window.DU && DU.leadContext) ? DU.leadContext() : {})
     };
+    _lastShortLink = shortLink;
 
     // The token rides along only when staff are actually driving; an ordinary
     // customer submit carries no Authorization header and no overrides, and
@@ -16089,6 +16260,8 @@ function submitQuote(){
   }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
     .then(function(res){
       if(!res.ok) throw new Error(res.j&&res.j.error||'Request failed');
+      if(window.DU && DU.track) DU.track('quote_submitted',{starter:(SHED_USE||'none')});
+      if(window.DU && DU.renderSuccess){ try{ DU.renderSuccess({name:name, email:email, link:_lastShortLink}); return; }catch(e){ console.error(e); } }
       openSubPage('Request sent', '<div style="text-align:center;padding:30px 8px">'+
         '<div style="width:64px;height:64px;border-radius:50%;background:rgba(43,181,232,.12);'+
         'border:1px solid rgba(43,181,232,.3);display:flex;align-items:center;justify-content:center;'+
@@ -16443,13 +16616,13 @@ function openConsult(trigger){
       'Give us a number and a good time, and one of our designers will walk you '+
       'through it &mdash; sizes, layout, what it will cost. No charge, no obligation.</div>'+
     '<div class="qsec-lbl">Your Info</div>'+
-    '<div class="grp"><span class="lbl">Name</span>'+
+    '<div class="grp"><label class="lbl" for="cName">Name</label>'+
       '<input id="cName" class="inp" type="text" autocomplete="name" placeholder="Full name"></div>'+
-    '<div class="grp"><span class="lbl">Phone</span>'+
+    '<div class="grp"><label class="lbl" for="cPhone">Phone</label>'+
       '<input id="cPhone" class="inp" type="tel" autocomplete="tel" placeholder="(435) 555-0123"></div>'+
-    '<div class="grp"><span class="lbl">Email <span style="color:var(--mu);font-weight:400">(optional)</span></span>'+
+    '<div class="grp"><label class="lbl" for="cEmail">Email <span style="color:var(--mu);font-weight:400">(optional)</span></label>'+
       '<input id="cEmail" class="inp" type="email" autocomplete="email" placeholder="you@example.com"></div>'+
-    '<div class="grp"><span class="lbl">Best time to reach you</span>'+
+    '<div class="grp"><label class="lbl" for="cTime">Best time to reach you</label>'+
       '<select id="cTime" class="inp">'+
         CONSULT_TIMES.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+
       '</select></div>'+
@@ -16464,6 +16637,7 @@ function openConsult(trigger){
     '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
       'Rather call us now? <a href="tel:4352329516" style="color:var(--blue)">435-232-9516</a></div>';
   openSubPage('Talk to a designer', body);
+  if(window.DU && DU.track) DU.track('consult_opened',{trigger:CONSULT_TRIGGER});
   // Same prefill the quote form uses, for staff reopening a customer's design.
   if(typeof prefillContactFromUrl === 'function'){
     try {
@@ -16520,12 +16694,13 @@ function submitConsult(){
         trigger: CONSULT_TRIGGER,
         config: (typeof getDesignConfig === 'function') ? getDesignConfig() : null,
         permalink: link,
-        page: location.href
+        page: Object.assign({ url:location.href }, (window.DU && DU.leadContext) ? DU.leadContext() : {})
       })
     });
   }).then(function(r){
     if(!r || !r.ok) throw new Error('consult request failed');
     CONSULT_DONE = true;
+    if(window.DU && DU.track) DU.track('consult_submitted',{trigger:CONSULT_TRIGGER});
     try { sessionStorage.setItem('consultNudgeSeen','1'); } catch(e){}
     closeSubPage();
     if(typeof showToast === 'function'){
@@ -16597,6 +16772,7 @@ function consultNudgeInit(sharedDesign){
 
 (function(){
   function boot(){
+    if(typeof captureStockConfig==='function') captureStockConfig(false);
     /* #diag — colour every part so a screenshot NAMES it instead of me guessing
        which white board is which. This is how the hip-trim hunt should have
        started. front wall MAGENTA, side walls BLUE, back wall ORANGE, gable
@@ -16627,5 +16803,7 @@ function consultNudgeInit(sharedDesign){
   else window.addEventListener('load',function(){ setTimeout(boot,400); });
 })();
 </script>
+<script src="designer-upgrade.js"></script>
+<script src="designer-realism.js"></script>
 </body>
 </html>
