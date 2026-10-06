@@ -16381,11 +16381,15 @@ function openQ(){
       '</div>'
     ):'')+
     '<div class="qsec-lbl">Contact Info</div>'+
-    '<div class="grp"><label class="lbl" for="qName">Name</label>'+
+    /* The asterisks are not decoration. Nothing on this form said which fields
+       were needed, so the first a customer heard of it was the submit button
+       refusing them — and the delivery address was not checked at all, which is
+       how quotes arrived with nowhere to deliver to. */
+    '<div class="grp"><label class="lbl" for="qName">Name *</label>'+
       '<input id="qName" class="inp" type="text" autocomplete="name" placeholder="Full name"></div>'+
-    '<div class="grp"><label class="lbl" for="qEmail">Email</label>'+
+    '<div class="grp"><label class="lbl" for="qEmail">Email *</label>'+
       '<input id="qEmail" class="inp" type="email" autocomplete="email" placeholder="you@example.com"></div>'+
-    '<div class="grp"><label class="lbl" for="qPhone">Phone</label>'+
+    '<div class="grp"><label class="lbl" for="qPhone">Phone *</label>'+
       '<input id="qPhone" class="inp" type="tel" autocomplete="tel" placeholder="(435) 555-0123"></div>'+
     '<div class="grp"><label class="lbl" for="qHeard">How did you hear about us?</label>'+
       '<select id="qHeard" class="inp" onchange="document.getElementById(\'qHeardOtherWrap\').style.display=(this.value===\'other\'?\'block\':\'none\')">'+
@@ -16399,7 +16403,7 @@ function openQ(){
     '<div class="grp" id="qHeardOtherWrap" style="display:none">'+
       '<label class="lbl" for="qHeardOther">Tell us more</label>'+
       '<input id="qHeardOther" class="inp" type="text" placeholder="Where did you hear about us?"></div>'+
-    '<div class="qsec-lbl">Delivery Address</div>'+
+    '<div class="qsec-lbl">Delivery Address *</div>'+
     '<div class="grp"><label class="lbl" for="qAddr">Street</label>'+
       '<input id="qAddr" class="inp" type="text" autocomplete="street-address" placeholder="Street address"></div>'+
     '<div class="grp" style="display:flex;gap:8px">'+
@@ -16452,10 +16456,36 @@ function submitQuote(){
   var g=function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
   var err=document.getElementById('qErr');
   var name=g('qName'), email=g('qEmail'), phone=g('qPhone');
-  function fail(m){ if(err){ err.textContent=m; err.style.display='block'; } }
-  if(!name) return fail('Please add your name.');
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('That email doesn\'t look right.');
-  if(phone.replace(/\D/g,'').length<10) return fail('Please add a 10-digit phone number.');
+
+  /* EVERY FIELD THE FORM ASKS FOR, not just the three it used to check.
+     The delivery address was never validated, so quotes arrived with nowhere
+     to deliver to: no distance to price, nothing to geocode onto the map, and
+     a phone call needed before the job could even be scheduled. The form never
+     said those fields were needed either, which is why they were skipped.
+
+     Checked in the order they appear on screen, so the first thing complained
+     about is the first thing missing — a form that reports the LAST problem
+     sends someone scrolling past the one above it. */
+  function fail(m, id){
+    if(err){ err.textContent=m; err.style.display='block'; }
+    /* Put them ON the field, not just near a message. On a phone the error
+       line can be off-screen entirely when the offending input is not. */
+    var el=id&&document.getElementById(id);
+    if(el){
+      try{ el.focus({preventScroll:true}); }catch(e){ try{ el.focus(); }catch(e2){} }
+      if(el.scrollIntoView) try{ el.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
+    }
+    return undefined;
+  }
+  if(!name) return fail('Please add your name.', 'qName');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('That email doesn\'t look right.', 'qEmail');
+  if(phone.replace(/\D/g,'').length<10) return fail('Please add a 10-digit phone number.', 'qPhone');
+  if(!g('qAddr')) return fail('Where should we deliver it? Please add the street address.', 'qAddr');
+  if(!g('qCity')) return fail('Please add the city.', 'qCity');
+  /* Two letters. A state typed as "Utah" is not what the worker geocodes
+     against, and the box is maxlength=2 anyway. */
+  if(!/^[A-Za-z]{2}$/.test(g('qState'))) return fail('Please add a 2-letter state, like UT.', 'qState');
+  if(!/^\d{5}(-\d{4})?$/.test(g('qZip'))) return fail('Please add a 5-digit ZIP code.', 'qZip');
   if(err) err.style.display='none';
 
   var btn=document.getElementById('qSend');
