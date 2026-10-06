@@ -16452,6 +16452,25 @@ function prefillContactFromUrl(){
 function smsConsentInfo(id,src){ var on=!!(document.getElementById(id)||{}).checked;
   return { sms_consent:on, sms_consent_at:on?new Date().toISOString():null, sms_consent_source:src }; }
 var _lastShortLink=null;
+/* BOTH LEAD FORMS REPORT A PROBLEM THE SAME WAY.
+   The message goes in that form's own error box, and the customer is put ON
+   the offending field rather than only told about it — on a phone the error
+   line is often off-screen while the input is not.
+
+   Shared because the focus/scroll pair is fiddly and two copies of it drift:
+   focus must NOT scroll, or it fights scrollIntoView and the field lands under
+   the viewport's top edge instead of centred. The options object is wrapped
+   because a browser that does not know preventScroll throws on it, and a
+   browser that cannot focus at all must not take the message down with it. */
+function formFail(err, msg, id){
+  if(err){ err.textContent=msg; err.style.display='block'; }
+  var el=id&&document.getElementById(id);
+  if(el){
+    try{ el.focus({preventScroll:true}); }catch(e){ try{ el.focus(); }catch(e2){} }
+    if(el.scrollIntoView) try{ el.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
+  }
+  return undefined;
+}
 function submitQuote(){
   var g=function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
   var err=document.getElementById('qErr');
@@ -16466,17 +16485,7 @@ function submitQuote(){
      Checked in the order they appear on screen, so the first thing complained
      about is the first thing missing — a form that reports the LAST problem
      sends someone scrolling past the one above it. */
-  function fail(m, id){
-    if(err){ err.textContent=m; err.style.display='block'; }
-    /* Put them ON the field, not just near a message. On a phone the error
-       line can be off-screen entirely when the offending input is not. */
-    var el=id&&document.getElementById(id);
-    if(el){
-      try{ el.focus({preventScroll:true}); }catch(e){ try{ el.focus(); }catch(e2){} }
-      if(el.scrollIntoView) try{ el.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
-    }
-    return undefined;
-  }
+  function fail(m, id){ return formFail(err, m, id); }
   if(!name) return fail('Please add your name.', 'qName');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('That email doesn\'t look right.', 'qEmail');
   if(phone.replace(/\D/g,'').length<10) return fail('Please add a 10-digit phone number.', 'qPhone');
@@ -16900,9 +16909,9 @@ function openConsult(trigger){
       'Give us a number and a good time, and one of our designers will walk you '+
       'through it &mdash; sizes, layout, what it will cost. No charge, no obligation.</div>'+
     '<div class="qsec-lbl">Your Info</div>'+
-    '<div class="grp"><label class="lbl" for="cName">Name</label>'+
+    '<div class="grp"><label class="lbl" for="cName">Name *</label>'+
       '<input id="cName" class="inp" type="text" autocomplete="name" placeholder="Full name"></div>'+
-    '<div class="grp"><label class="lbl" for="cPhone">Phone</label>'+
+    '<div class="grp"><label class="lbl" for="cPhone">Phone *</label>'+
       '<input id="cPhone" class="inp" type="tel" autocomplete="tel" placeholder="(435) 555-0123"></div>'+
     '<div class="grp"><label class="lbl" for="cEmail">Email <span style="color:var(--mu);font-weight:400">(optional)</span></label>'+
       '<input id="cEmail" class="inp" type="email" autocomplete="email" placeholder="you@example.com"></div>'+
@@ -16941,13 +16950,13 @@ function openConsult(trigger){
 function submitConsult(){
   var g = function(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; };
   var err = document.getElementById('cErr');
-  function fail(m){ if(err){ err.textContent = m; err.style.display = 'block'; } }
+  function fail(m, id){ return formFail(err, m, id); }
   var name = g('cName'), phone = g('cPhone'), email = g('cEmail');
-  if(!name) return fail('Please add your name.');
-  if(phone.replace(/\D/g,'').length < 10) return fail('Please add a 10-digit phone number.');
+  if(!name) return fail('Please add your name.', 'cName');
+  if(phone.replace(/\D/g,'').length < 10) return fail('Please add a 10-digit phone number.', 'cPhone');
   // Email is optional here — but a typo in one they DID type is worth catching,
   // since a wrong address fails silently where a wrong phone number does not.
-  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('That email doesn\'t look right.');
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('That email doesn\'t look right.', 'cEmail');
   if(err) err.style.display = 'none';
 
   var btn = document.getElementById('cSend');
