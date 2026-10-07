@@ -180,39 +180,17 @@ function dressPad(m){
 }
 
 /* ── board & batten: give the battens the wall's paint finish ── */
-var mapAvgCache=typeof WeakMap!=='undefined'?new WeakMap():null;
-function mapAvg(img){
-  if(!img || !mapAvgCache) return 1;
-  if(mapAvgCache.has(img)) return mapAvgCache.get(img);
-  if(img.complete===false || !(img.width>0)) return 1;
-  var v=1;
-  try{
-    var c=document.createElement('canvas'); c.width=c.height=32;
-    var x=c.getContext('2d'); x.drawImage(img,0,0,32,32);
-    var d=x.getImageData(0,0,32,32).data, t=0;
-    for(var i=0;i<d.length;i+=4){ var l=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])/255; t+=Math.pow(l,2.2); }
-    v=Math.max(0.2,Math.min(1,t/(d.length/4)));
-  }catch(e){}
-  mapAvgCache.set(img,v); return v;
-}
-function findWallMap(){
-  var img=null;
-  shedGroup.traverse(function(o){
-    if(img || !o.isMesh || !o.material || !o.material.map || !o.material.isMeshStandardMaterial) return;
-    var g=o.geometry && o.geometry.parameters;
-    if(g && g.width>1 && o.material.color.getHex()===sc) img=o.material.map.image;
-  });
-  return img;
-}
-function dressBatten(m, wallMul){
+function dressBatten(m){
   if(typeof SIDING==='undefined' || SIDING!=='board-batten') return;
   var mt=m.material; if(!mt || !mt.isMeshStandardMaterial || mt.map || mt.userData.drBat) return;
   if(Math.abs(mt.roughness-0.62)>0.005 || mt.color.getHex()!==sc) return;
   mt.userData.drBat=true;
-  /* The walls are the same paint colour multiplied by a siding texture, so they
-     render darker than the untextured battens; on dark paint that read as pale
-     pinstripes. Match the battens to the wall's effective (linear) tone. */
-  if(wallMul && wallMul<1) mt.color.multiplyScalar(Math.min(1,wallMul*1.12));
+  /* Battens used to be darkened here by the wall map's average, because the
+     walls multiplied the paint colour in twice (map x colour) and so rendered
+     darker than the plain battens. sidingMat no longer does that and flat
+     colours are decoded from sRGB in the shader (installSRGBMaterialColors),
+     so a batten and the wall behind it already render the same paint. Only
+     the finish is matched now. */
   mt.roughness=0.8; mt.envMapIntensity=0.6; mt.needsUpdate=true;
 }
 
@@ -278,11 +256,10 @@ function afterBuild(){
   var night=(typeof ELEC!=='undefined' && ELEC!=='none');
   if(typeof floatLogos!=='undefined' && floatLogos) floatLogos.forEach(function(m){ m.visible=false; });
   if(typeof shedGroup!=='undefined' && shedGroup){
-    var wallMul=(typeof SIDING!=='undefined' && SIDING==='board-batten')?mapAvg(findWallMap()):1;
     shedGroup.traverse(function(o){
       if(!o.isMesh) return;
       dressPad(o);
-      dressBatten(o, wallMul);
+      dressBatten(o);
       if(isGlass(o.material) && !o.material.userData.drGlow){
         o.material.userData.drGlow=true;
         if(night){ o.material.color.setHex(0xffc47e); o.material.opacity=0.58; }
@@ -307,7 +284,10 @@ function applyMode(){
   if(!st.envTex[mode]) st.envTex[mode]=buildEnv(ENVGRAD[mode]);
   if(st.envTex[mode]) scene.environment=st.envTex[mode];
   if(night){
-    renderer.toneMappingExposure=1.05;
+    /* 0.88, was 1.05: the day exposure came down by the same factor (0.80/0.95)
+       when the colour fix landed - see DAY_RIG in designer.html. Both were
+       tuned against the same two colour errors, so both move together. */
+    renderer.toneMappingExposure=0.88;
     ambLight.intensity=0.06;
     hemiLight.intensity=0.80; hemiLight.color.setHex(0x8ea2d0); hemiLight.groundColor.setHex(0x1f251b);
     sunLight.intensity=0.65; sunLight.color.setHex(0xffb98f);         // last warm light from the west
