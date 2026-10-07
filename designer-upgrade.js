@@ -126,7 +126,13 @@ DU.specRows = function(){
   var porch = (S.PORCH_LOC && S.PORCH_LOC!=='none' && S.SIDE_PORCH>0);
   rows.push(['Style & size', S.W+'×'+S.L+' ft '+DU.styleName()+' · '+S.H+' ft walls'+(porch?' · '+S.SIDE_PORCH+' ft '+S.PORCH_LOC+' porch':''), 'Pick your size']);
   rows.push(['Foundation', FOUNDATION_NAMES[S.FOUNDATION]||S.FOUNDATION, 'Foundation']);
-  rows.push(['Siding', (SIDING_NAMES[S.SIDING]||S.SIDING)+' · '+(S.sn||'')+' with '+(S.tn||'')+' trim', 'Siding & color']);
+  /* Siding, trim and door colour each get their own row, so a brand paint pick
+     (paint-codes.js) reads in full: "Siding · Sherwin-Williams SW 7006 Extra White". */
+  rows.push(['Siding', (SIDING_NAMES[S.SIDING]||S.SIDING)+(S.SIDING!=='pine' && S.sn ? ' · '+S.sn : ''), 'Siding & color']);
+  rows.push(['Trim', S.TRIM_FINISH==='cedar' ? 'Natural cedar' : (S.tn||''), 'Siding & color']);
+  var pcNames=null;
+  try{ if(S.PC && S.PC.decorateConfig) pcNames=S.PC.decorateConfig({}).colorNames; }catch(e){}
+  if(pcNames && pcNames.door) rows.push(['Door color', pcNames.door, 'Siding & color']);
   var roof=(S.ROOFTYPE==='metal'?'Metal':'Shingle')+' · '+(S.rn||'');
   if(S.STYLE!=='barn' && S.STYLE!=='leanto' && S.PITCH) roof+=' · '+S.PITCH+'/12 pitch';
   if(S.OVH) roof+=' · '+S.OVH+'" overhang';
@@ -134,7 +140,7 @@ DU.specRows = function(){
   rows.push(['Doors', (S.doorsData||[]).length ? countBy(S.doorsData, doorName).join(', ') : 'None', 'Doors']);
   rows.push(['Windows', (S.windowsData||[]).length ? countBy(S.windowsData, function(w){ return w.type||(w.w+'×'+w.h); }).join(', ') : 'None', 'Windows & Vents']);
   var inside=[];
-  if(S.INT_FINISH && S.INT_FINISH!=='none') inside.push(cap(S.INT_FINISH)+' interior');
+  if(S.INT_FINISH && S.INT_FINISH!=='none') inside.push(cap(S.INT_FINISH)+' interior'+(S.INT_FINISH==='painted' && S.ipn ? ' ('+S.ipn+')' : ''));
   if(S.LOFT && S.LOFT!=='none') inside.push('Loft');
   if((S.shelvesData||[]).length) inside.push(S.shelvesData.length+' shelf'+(S.shelvesData.length>1?'ves':''));
   rows.push(['Interior', inside.length?inside.join(' · '):'Unfinished', 'Interior']);
@@ -145,6 +151,14 @@ DU.specRows = function(){
   rows.push(['Add-ons', ad.length?ad.join(', '):'None', 'Add-Ons']);
   return rows;
 };
+/* The paint disclaimer, shown under the spec sheet only when a brand colour is
+   actually on the shed (paint-codes.js owns the wording). */
+DU.paintNote = function(){
+  try{
+    var P=window.PC; if(!P || !P.livePick) return '';
+    return (P.livePick('s')||P.livePick('t')||P.livePick('d')||P.livePick('i')) ? P.NOTE : '';
+  }catch(e){ return ''; }
+};
 DU.renderReview = function(host){
   var img=DU.snapshot();
   var rows=DU.specRows();
@@ -154,6 +168,7 @@ DU.renderReview = function(host){
       return '<div class="du-rv-row"><dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>'+
         '<button type="button" class="du-rv-edit" onclick="wizGoTo(\''+r[2].replace(/'/g,"\\'")+'\')" aria-label="Edit '+esc(r[0])+'">Edit</button></div>';
     }).join('')+'</dl>'+
+    (DU.paintNote() ? '<div class="du-rv-note">'+esc(DU.paintNote())+'</div>' : '')+
     '<div class="du-rv-actions"><button type="button" class="du-btn-ghost" onclick="DU.shareDesign(\'review\')">Share or text this design</button></div>';
   return true;
 };
@@ -264,7 +279,7 @@ function legacyCopy(t){
 /* ── post-submit ── */
 DU.renderSuccess = function(o){
   var img=DU.snapshot();
-  var rows=DU.specRows().slice(0,4);
+  var rows=DU.specRows().slice(0,5);
   var first=esc(String(o.name||'').split(' ')[0]);
   var html='<div class="du-success">'+
     '<div class="du-ok" aria-hidden="true">&#10003;</div>'+
@@ -375,8 +390,10 @@ function offerResume(){
     if(c.use!=null) window.SHED_USE=c.use;
     try{
       if(window.starterColorName){
-        window.sn=window.starterColorName(c.sidingColor, window.WALL_COLORS, window.sn);
-        window.tn=window.starterColorName(c.trimColor, window.WALL_COLORS, window.tn);
+        // A brand paint pick (c.paint) already restored its own label.
+        var cp=c.paint||{};
+        if(!cp.siding) window.sn=window.starterColorName(c.sidingColor, window.WALL_COLORS, window.sn);
+        if(!cp.trim) window.tn=window.starterColorName(c.trimColor, window.WALL_COLORS, window.tn);
         window.rn=window.starterColorName(c.roofColor, c.roofType==='metal'?window.METAL_COLORS:window.SHINGLE_COLORS, window.rn);
       }
     }catch(e){}

@@ -754,6 +754,8 @@ textarea.inp{resize:vertical}
         <div class="grp" style="margin-top:14px">
           <span class="lbl">Siding Color</span>
           <div id="cg-s"></div>
+          <!-- Brand paint search (paint-codes.js): SW / BM / Behr / Valspar / PPG / Dunn-Edwards. -->
+          <div class="pc-host" data-part="s"></div>
           <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
             <input id="hexInput" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexSiding(this.value)" onchange="applyHexSiding(this.value)"
               style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
@@ -764,12 +766,17 @@ textarea.inp{resize:vertical}
         <div class="grp" style="margin-top:14px">
           <span class="lbl">Trim Color</span>
           <div id="cg-t"></div>
+          <div class="pc-host" data-part="t"></div>
           <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
             <input id="hexInputTrim" type="text" maxlength="7" placeholder="#RRGGBB" oninput="applyHexTrim(this.value)" onchange="applyHexTrim(this.value)"
               style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
             <div id="hexSwatchTrim" style="width:34px;height:34px;border-radius:7px;border:1px solid var(--br);background:#F2F0EC"></div>
           </div>
           <span class="lbl" style="font-size:10px;color:var(--mu);margin-top:4px;display:block">Or enter a custom trim hex code</span>
+        </div>
+        <div class="grp" style="margin-top:14px">
+          <span class="lbl">Door Color</span>
+          <div class="pc-host" data-part="d"></div>
         </div>
                       </div>
 
@@ -929,6 +936,7 @@ textarea.inp{resize:vertical}
           <div id="intPaintWrap" style="display:none;margin-top:10px">
             <span class="lbl">Paint Color</span>
             <div id="cg-i"></div>
+            <div class="pc-host" data-part="i"></div>
             <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
               <input id="hexInputInt" type="text" maxlength="7" placeholder="#RRGGBB" onchange="applyHexInterior(this.value)"
                 style="flex:1;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600">
@@ -1888,16 +1896,64 @@ function autoFrame(force){
    (26.0 to 12.3) and gains the ground shadow; on the pictures it is a wash,
    and the default view is the one every customer sees.
 
-   exposure 0.90, not 1.00: measured better at every angle tried. */
+   exposure 0.90, not 1.00: measured better at every angle tried.
+
+   exposure 0.75 since the colour fix (installSRGBMaterialColors, sidingMat).
+   0.90 was tuned while flat colours were read as linear (too light) and the
+   siding colour was multiplied in twice (too dark), so it was balancing two
+   errors. With both gone, eight swatches (white, light/mid grey, Cracked
+   Pepper, black, navy, sage, tan) rendered on siding and on trim and sampled
+   on the wall out of direct sun land closest to their hex at 0.75 (0.80 on
+   screen; designer-realism.js adds 0.05): mean error 16 / 15 (siding / trim,
+   RGB distance) against 28 / 22 at 0.90. The sun is unchanged - the sunlit
+   wall reads lighter than the chip, as a sunlit wall does, and the wall
+   contrast measured above is kept. */
 var DAY_RIG = {
-  amb:0.10, hemi:0.50, sun:2.00, fill:0.20, rim:0.00, exposure:0.90,
+  amb:0.10, hemi:0.50, sun:2.00, fill:0.20, rim:0.00, exposure:0.75,
   sunPos:[-7,5.5,11],     // ~-32.5 deg azimuth, ~23 deg elevation
   fillPos:[7,2.5,-11],    // opposite the sun, lower, so the shade side isn't black
   rimPos:[-3,6,-9]
 };
 function rigPos(light, p){ if(light && light.position) light.position.set(p[0],p[1],p[2]); }
 
+/* HEX COLOURS ARE sRGB - DECODE THEM BEFORE THEY ARE LIT.
+   Every colour on the shed is an sRGB hex: a swatch, a paint chip, a brand
+   paint code. r128 has no ColorManagement, so `new MeshStandardMaterial(
+   {color:0x4F5152})` hands the shader 0.31 as if it were LINEAR light. The
+   renderer then encodes its output to sRGB (outputEncoding, below), which
+   brightens it a second time. Colour MAPS never had this problem - they carry
+   texture.encoding = sRGBEncoding and are decoded on sampling - so only the
+   flat-coloured parts were wrong: trim, fascia, battens, door frames, roof
+   accents, metal roofs, interior paint. The darker the colour the worse it
+   got: Behr Cracked Pepper (#4F5152) trim rendered at ~(217,218,217), near
+   white, and #1E1E1E black trim at ~(169,171,168).
+
+   The fix is the conversion r152's ColorManagement does on Color.set(): the
+   standard/physical fragment shaders now decode `diffuse` and `emissive`
+   from sRGB to linear. It is done in the shader rather than on the Color
+   values so material.color keeps the authored hex - designer-realism.js and
+   the tests recognise materials by hex, and a converted value would no
+   longer match. A material WITH a colour map keeps `diffuse` as a plain
+   multiplier on the (already decoded) map, so textured siding, shingles,
+   pine and the lawn are untouched by this. */
+function installSRGBMaterialColors(){
+  if(!window.THREE || THREE.__srgbHexColors) return;
+  var DIFF='vec4 diffuseColor = vec4( diffuse, opacity );';
+  var EMIS='vec3 totalEmissiveRadiance = emissive;';
+  ['standard','physical'].forEach(function(k){
+    var sh=THREE.ShaderLib && THREE.ShaderLib[k]; if(!sh) return;
+    var f=sh.fragmentShader;
+    if(f.indexOf(DIFF)<0 || f.indexOf(EMIS)<0){ console.warn('sRGB colour patch: '+k+' shader not recognised'); return; }
+    sh.fragmentShader=f
+      .replace(DIFF, '#ifdef USE_MAP\n\t'+DIFF+'\n#else\n\tvec4 diffuseColor = vec4( sRGBToLinear( vec4( diffuse, 1.0 ) ).rgb, opacity );\n#endif')
+      .replace(EMIS, 'vec3 totalEmissiveRadiance = sRGBToLinear( vec4( emissive, 1.0 ) ).rgb;');
+  });
+  THREE.__srgbHexColors=true;
+}
+
 function init(){
+  // Before the first material compiles - see installSRGBMaterialColors.
+  installSRGBMaterialColors();
   var canvas=document.getElementById('c');
   var vp=document.querySelector('.vp');
 
@@ -4550,8 +4606,16 @@ function sidingMat(color, tex, rough){
       envI = envI - 0.55*_dark;
     }
   }
+  /* DO NOT MULTIPLY THE COLOUR IN TWICE - the v358 shingle bug, on the walls.
+     makeSiding() paints the map in the siding colour, so `color:color` on top
+     of it squared the paint: #808080 walls rendered as 0.216 x 0.50 = 0.108
+     linear, half the paint's real reflectance, and a navy shed read
+     near-black. The light rig was tuned by eye around that. White lets the
+     map through untouched, so the walls, the battens and the trim (flat
+     colour, see installSRGBMaterialColors) all render one paint the same.
+     Without a map the colour still has to come from `color`. */
   return new THREE.MeshStandardMaterial({
-    color:color, map:tex||null,
+    color:tex ? 0xFFFFFF : color, map:tex||null,
     bumpMap:(tex&&tex.bumpMap)||null, bumpScale:bump,
     roughness:r, metalness:0.0, envMapIntensity:envI
   });
@@ -7922,7 +7986,9 @@ function buildDoor(){
     var DOOR_TILE=sidingTileFor();
     // Door face ALWAYS uses the same siding texture as the walls, so the pattern
     // and grain direction match the wall it sits on (trim styles draw on top).
-    doorTex=makeSiding(sc, SIDING);
+    // A door paint code (paint-codes.js) overrides the siding colour on the leaf.
+    var doorSc=(typeof DOOR_PAINT==='number') ? DOOR_PAINT : sc;
+    doorTex=makeSiding(doorSc, SIDING);
     // Match the WALLS' board density exactly so the door's vertical siding lines
     // line up with the wall siding (same groove spacing), reading as continuous.
     var wallFullLen=encWft()*0.2;                              // front-wall width (same basis as walls)
@@ -7944,7 +8010,7 @@ function buildDoor(){
       doorTex.repeat.set(dRepX,dRepY);
       if(doorTex.bumpMap) doorTex.bumpMap.repeat.set(dRepX,dRepY);
     }
-    var doorMat=sidingMat(sc, doorTex);   // same satin finish as the walls
+    var doorMat=sidingMat(doorSc, doorTex);   // same satin finish as the walls
     var doorDk=new THREE.MeshStandardMaterial({color:tc,roughness:0.6,metalness:0.0,emissive:tc,emissiveIntensity:0.05});
     var trimMat=paintMat(tc,0.1);
     // Door glass — SAME technique AND the same tint/opacity as the windows, so a
@@ -16045,7 +16111,7 @@ var DESIGN_ENDPOINT = 'https://potentia-assistant.thepotentianetwork.workers.dev
 var CONSULT_ENDPOINT = 'https://potentia-assistant.thepotentianetwork.workers.dev/shed/consult';
 
 function getDesignConfig(){
-  return {
+  var cfg={
     v:1,
     use:(typeof SHED_USE!=='undefined'?SHED_USE:null),   // v462 — survives a permalink
     style:STYLE, w:W, l:L, h:H, pitch:PITCH,
@@ -16061,6 +16127,9 @@ function getDesignConfig(){
     doors:doorsData, windows:windowsData, vents:ventsData, shelves:shelvesData,
     porchLights:porchLightsData
   };
+  // Brand paint picks (paint, colorNames, doorColor, intColor) - paint-codes.js.
+  if(window.PC && PC.decorateConfig) PC.decorateConfig(cfg);
+  return cfg;
 }
 /* ---- SYNC THE CONTROLS TO THE RESTORED STATE ----
    applyDesignConfig assigns the globals and rebuilds the 3D model, but every
@@ -16256,6 +16325,8 @@ function applyDesignConfig(c){
     // would show the wrong ones until the style was touched again, even
     // though the 3D model itself (built below) is already correct either way.
     if(typeof syncOverhangUI==='function') syncOverhangUI();
+    // Brand paint picks, door and interior colour, and the colour names.
+    if(window.PC && PC.restoreConfig) PC.restoreConfig(c);
     // Every picker still shows the page defaults at this point — the globals
     // above changed, the controls did not. This ticks them to match, so a
     // reopened design shows the customer what they actually chose.
@@ -17102,6 +17173,7 @@ function consultNudgeInit(sharedDesign){
 })();
 </script>
 <script src="designer-upgrade.js"></script>
+<script src="paint-codes.js"></script>
 <script src="designer-realism.js"></script>
 <!-- SEO / help panel: real, crawlable copy about the designer, kept OUT of the
      app's way. It is in the HTML so search engines read it, but it only shows

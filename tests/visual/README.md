@@ -61,3 +61,24 @@ change can produce much shape. If you are testing form, use an angle where one
 wall genuinely faces away from the sun (`theta: 1.95` does). This is worth
 fixing in the product too — a hero angle that lights both faces equally is
 throwing away the form the rig is there to create.
+
+## Swatch accuracy (`swatches.mjs`)
+
+Does a hex on the shed render as that hex? `swatches.mjs` paints eight swatches
+(white, light grey, mid grey, Behr Cracked Pepper #4F5152, black, navy, sage,
+tan) on the siding, the trim and a paint-code door, finds each part's pixels by
+rendering it red then green, groups them by wall (raycast normal) and prints the
+median pixel against the hex. Judge colour on the `right` wall, the one out of
+direct sun; the sunlit `front` wall is meant to read lighter than the chip.
+
+```sh
+python3 -m http.server 8761 &            # repo root
+PW=/path/to/node_modules/playwright-core node tests/visual/swatches.mjs \
+  http://127.0.0.1:8761/designer.html after /tmp/swatches
+```
+
+What it caught: flat colours were sent to the shader as linear (r128 has no
+ColorManagement), so Cracked Pepper trim rendered at (168,177,177) on the shade
+wall and (217,218,217) in sun, near white, while the siding multiplied its colour
+in twice. Mean RGB distance on the shade wall went from 105 (trim) / 23 (siding)
+to 15 / 16 with `installSRGBMaterialColors` and the untinted siding map.

@@ -74,6 +74,7 @@ body.du-last .sum > .cta{display:none}
 .du-rv-edit{background:none;border:none;color:var(--blue);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;padding:2px 0}
 .du-rv-compact .du-rv-row{grid-template-columns:84px 1fr}
 .du-rv-actions{margin-top:10px}
+.du-rv-note{margin-top:8px;font-size:11px;line-height:1.45;color:var(--mu)}
 
 /* ── buttons ── */
 .du-btn,.du-btn-ghost{display:flex;align-items:center;justify-content:center;width:100%;padding:11px 14px;border-radius:var(--pill,50px);
