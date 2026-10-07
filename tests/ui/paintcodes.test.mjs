@@ -156,3 +156,34 @@ test('a design saved before this feature reopens unchanged', () => {
   assert.equal(cfg.doorColor, undefined);
   assert.equal(cfg.sidingColor, 0x2C3E52);
 });
+
+test('the review sheet names each brand colour and carries the disclaimer', async () => {
+  const c = setup();
+  vm.runInContext(readFileSync(join(REPO, 'designer-upgrade.js'), 'utf8'), c, { filename: 'designer-upgrade.js' });
+  await c.PC.loadAll();
+  c.__stubLights();
+  const row = (k) => (c.DU.specRows().find(r => r[0] === k) || [])[1];
+  // Nothing picked yet: no door row, no disclaimer.
+  assert.equal(row('Door color'), undefined);
+  assert.equal(c.DU.paintNote(), '');
+  const sw = c.PC.search('SW 7006', 1).hits[0];
+  const behr = c.PC.search('Behr PPU18-01', 1).hits[0];
+  const bm = c.PC.search('Revere Pewter', 1).hits[0];
+  c.PC.applyPick('s', sw.b, sw.e);
+  c.PC.applyPick('t', behr.b, behr.e);
+  c.PC.applyPick('d', bm.b, bm.e);
+  assert.match(row('Siding'), /Sherwin-Williams SW 7006 Extra White$/);
+  assert.equal(row('Trim'), 'Behr PPU18-01 Cracked Pepper');
+  assert.equal(row('Door color'), 'Benjamin Moore HC-172 Revere Pewter');
+  assert.equal(c.DU.paintNote(), "On-screen colors are approximate. We'll confirm your exact color with you before painting.");
+});
+
+test('nothing fetches a paint book until someone searches', () => {
+  const c = setup();
+  const asked = [];
+  const f = c.fetch; c.fetch = (u) => { asked.push(u); return f(u); };
+  // Boot ran inside setup(); a fresh config round trip must not load anything either.
+  c.applyDesignConfig(JSON.parse(JSON.stringify(c.getDesignConfig())));
+  assert.deepEqual(asked.filter(u => /paint-colors/.test(u)), []);
+  assert.deepEqual(Object.keys(c.PC._data), []);
+});
