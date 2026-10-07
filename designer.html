@@ -2938,23 +2938,26 @@ var STARTER_BUILDS = [
    windows:[{wall:'right',pos:0.3,w:24,h:30,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,type:'White Vinyl 24x30'}],
    porchLights:[{wall:'front',pos:0.12,style:'modern'},{wall:'front',pos:0.88,style:'modern'}],
    addons:{flowerboxes:true, fbColor:'white', cupola:'copper'}}},
- {k:'modern-studio', name:'Modern Studio', sub:'12×16 Lean-To · Cedar doors, vertical transoms & power', badge:'Modern',
+ {k:'modern-studio', name:'Modern Studio', sub:'16×12 Lean-To · Cedar doors, big vertical window & 2 porch lights', badge:'Modern',
   img:'designer-starters/modern-studio.webp',
-  cfg:{style:'leanto', w:12, l:16, h:9, siding:'horizontal',
+  cfg:{style:'leanto', w:16, l:12, h:9, siding:'horizontal',
    sidingColor:0x3C3F43, trimColor:0x1A1A1A, roofColor:0x1A1A1A, roofType:'metal', ovh:6, ovType:'all4', soffit:'cedar',
    foundation:'pad', elec:'core',
-   doors:[{wall:'front',pos:0.04,style:'cedar',w:60,h:76}],
-   /* Front: a row of three tall, narrow vertical transoms (the existing
-      "Vertical Transom 12x30" option, priced like any other transom) set high
-      under the roofline, evenly spaced across the wall beside the door. cy is
-      explicit so they sit up under the plate instead of at window height.
-      ONE porch light: the auto-placer centres it over the door head. */
-   windows:[{wall:'front',pos:0.611,w:12,h:30,cy:84,type:'Black Transom 12x30'},
-            {wall:'front',pos:0.793,w:12,h:30,cy:84,type:'Black Transom 12x30'},
-            {wall:'front',pos:0.976,w:12,h:30,cy:84,type:'Black Transom 12x30'},
+   doors:[{wall:'front',pos:0.279,style:'cedar',w:60,h:76}],
+   /* Front: the 16ft side (192in) faces you, the roof slopes back over the
+      12ft depth - same 192 sqft as a 12x16. On the 12ft side there was no
+      way to fit the 60in double door, a light each side of it and a 24in
+      window without the window jammed against a light. Laid out in inches:
+        corner | ~21 | light | 8 | casing | 60in cedar double | casing | 8 | light | ~19 | window | ~23 | corner
+      ONE big vertical window - Black Vinyl 24x36, the largest upright
+      window the pricing worker prices - with its head level with the door
+      head (cy 58 = top at 76in, the door's height). The two porch lights are
+      left to the auto-placer: one each side of the door, the same 8in of
+      siding from each casing, centred ~6ft up (the door's upper third). */
+   windows:[{wall:'front',pos:0.852,w:24,h:36,cy:58,type:'Black Vinyl 24x36'},
             {wall:'right',pos:0.5,w:36,h:36,type:'Black Vinyl 36x36'},
             {wall:'left',pos:0.3,w:14,h:36,type:'Black Transom 14x36'},{wall:'left',pos:0.7,w:14,h:36,type:'Black Transom 14x36'}],
-   porchLights:[{wall:'front',pos:0.04,style:'modern'}],
+   porchLights:[{wall:'front',pos:0.1,style:'modern'},{wall:'front',pos:0.6,style:'modern'}],
    addons:{}}}
 ];
 var SHED_USES = STARTER_BUILDS.concat([

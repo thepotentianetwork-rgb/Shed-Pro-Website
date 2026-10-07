@@ -72,27 +72,29 @@ test('promo: same wording and end date as the home page, gone from Nov 4, 2026',
   assert.ok(DESIGNER.includes('<script src="designer-trust.js"></script>'));
 });
 
-test('Modern Studio lean-to: three vertical transoms high on the front, one porch light over the door', () => {
+test('Modern Studio lean-to: one big vertical window, head level with the door head, clear of the walls', () => {
   const src = /\{k:'modern-studio'[\s\S]*?addons:\{\}\}\}/.exec(DESIGNER)[0];
   const u = vm.runInNewContext('(' + src + ')');
   assert.equal(u.cfg.style, 'leanto');
   const front = u.cfg.windows.filter(w => w.wall === 'front');
-  assert.equal(front.length, 3);
-  front.forEach(w => { assert.match(w.type, /^Black Transom 12x30$/); assert.ok(w.h > w.w * 2, 'vertical'); });
-  const cy = new Set(front.map(w => w.cy)); assert.equal(cy.size, 1, 'one level');
-  const wallIn = u.cfg.h * 12; const top = front[0].cy + front[0].h / 2;
-  assert.ok(top <= wallIn - 6 && top >= wallIn - 14, 'tops sit just under the roofline trim');
-  const d = u.cfg.doors[0];
-  assert.ok(front[0].cy - front[0].h / 2 < d.h && top > d.h, 'they rise above the door head');
-  // even spacing (in the wall's real inches)
-  const lenIn = u.cfg.w * 12, m = 12 / 2 + 7.2, x = front.map(w => m + w.pos * (lenIn - 2 * m));
-  assert.ok(Math.abs((x[1] - x[0]) - (x[2] - x[1])) < 0.6, 'evenly spaced');
-  assert.equal(u.cfg.porchLights.length, 1, 'exactly one porch light');
-  // the windows are real catalog options, so they price like any other window
-  assert.ok(DESIGNER.includes('key:"Black Transom 12x30", label:"Vertical Transom 12x30'));
+  assert.equal(front.length, 1, 'exactly one front window');
+  const w = front[0], d = u.cfg.doors[0];
+  assert.equal(w.type, 'Black Vinyl 24x36', 'the largest upright window the pricing worker prices');
+  assert.ok(DESIGNER.includes('key:"Black Vinyl 24x36"'), 'a real catalog option');
+  assert.ok(w.h > w.w, 'vertical');
+  assert.equal(w.cy + w.h / 2, d.h, 'window head lines up with the door head');
+  // real inches along the wall (posToAxis: margin = width/2 + 7.2in)
+  const len = u.cfg.w * 12;
+  const at = (pos, wIn) => { const m = wIn / 2 + 7.2; return m + pos * (len - 2 * m); };
+  const wc = at(w.pos, w.w), dc = at(d.pos, d.w);
+  const winL = wc - (w.w + 6.6) / 2, winR = wc + (w.w + 6.6) / 2, doorR = dc + (d.w + 7) / 2;
+  assert.ok(winR <= len - 3.6 - 12, 'a foot or more of siding between the window casing and the corner');
+  assert.ok(winL - doorR >= 30, 'room for the porch light between door and window');
+  assert.equal(u.cfg.porchLights.length, 2, 'two porch lights');
+  assert.match(u.sub, /^16×12 Lean-To · Cedar doors, big vertical window & 2 porch lights/);
 });
 
-test('the one porch light lands above the door head, on the wall, clear of the transoms', () => {
+test('the two porch lights flank the door symmetrically at fixture height, clear of the window', () => {
   const { c } = loadDesigner();
   const src = /\{k:'modern-studio'[\s\S]*?addons:\{\}\}\}/.exec(DESIGNER)[0];
   const u = vm.runInNewContext('(' + src + ')');
@@ -103,7 +105,15 @@ test('the one porch light lands above the door head, on the wall, clear of the t
     porchLightsData=JSON.parse(JSON.stringify(cfg.porchLights));
   })(${JSON.stringify(u.cfg)})`, c);
   const p = vm.runInContext('computePorchLightPlacement()', c);
-  assert.equal(p.length, 1); assert.equal(p[0].mount, 'above');
+  assert.equal(p.length, 2);
+  p.forEach(x => assert.equal(x.mount, 'side', 'beside the door, not above it'));
+  const IN = 0.2 / 12;
   const doorC = vm.runInContext("(function(){var f=wallFrame('front');var o=plObstacles('front');return plPrimaryDoor(o,f).c;})()", c);
-  assert.ok(Math.abs(p[0].s - doorC) < 1e-6, 'centred over the door');
+  assert.ok(Math.abs((doorC - p[0].s) - (p[1].s - doorC)) < 1e-6, 'same distance each side');
+  p.forEach(x => { const y = x.y / IN; assert.ok(y >= 66 && y <= 72.01, 'fixture centre 66-72in, got ' + y); });
+  // the right-hand light keeps real siding between it and the window casing
+  const w = u.cfg.windows.find(v => v.wall === 'front');
+  const len = u.cfg.w * 12, m = w.w / 2 + 7.2, wc = m + w.pos * (len - 2 * m);
+  const lightR = p[1].s / IN + 2;                 // modern fixture is 4in wide
+  assert.ok(wc - (w.w + 6.6) / 2 - lightR >= 12, 'at least a foot of siding to the window');
 });
