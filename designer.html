@@ -8663,6 +8663,77 @@ function buildDoor(){
     addOverlays(lf.x, lf.w, g);
   });
 
+  /* THE INSIDE OF A SHED-BUILT DOOR. From inside the shed these doors are not
+     painted siding: the back of the leaf is the bare OSB/LP skin with the dark
+     layout lines the crew snaps on it, a barrel bolt at the head and a cane
+     bolt at the foot of the inactive leaf (Nando's interior photos). The
+     leaf box carried the siding on all six faces, so stepping inside showed
+     the outside of the door from behind. Residential, slider, roll-up, cedar
+     and fairytale doors are finished units and keep their own faces. */
+  var shedBuiltDoor = !isResid && !isRollup && !isSlider && !isFairytale && !isCedar;
+  if(shedBuiltDoor){
+    var ZB=-0.0256;                                    // just proud of the leaf's back face
+    var boltM=metalMat(0x1c1c1c);
+    /* One canvas per leaf - OSB chips with the layout lines drawn in - so the
+       whole skin is a plane or three, not a mesh per line. */
+    function leafSkinTex(lw, li){
+      makeOSB();
+      var osb=_canvasCache['osb'], cw=256, ch=Math.max(64, Math.min(1024, Math.round(cw*dh/lw)));
+      var c=document.createElement('canvas'); c.width=cw; c.height=ch;
+      var x2=c.getContext('2d'), k=(cw*0.5/lw)/512;   // one OSB tile per 0.5 world
+      x2.save(); x2.scale(k,k); x2.fillStyle=x2.createPattern(osb,'repeat');
+      x2.fillRect(0,0,cw/k,ch/k); x2.restore();
+      x2.strokeStyle='rgba(40,38,34,0.92)'; x2.lineWidth=Math.max(2, cw*0.0055/lw);
+      x2.beginPath();
+      [0.30, 0.64].forEach(function(fx){ var px=cw*(li===0?fx:1-fx); x2.moveTo(px,ch*0.012); x2.lineTo(px,ch*0.988); });
+      [0.12, 0.25, 0.36, 0.55, 0.79].forEach(function(fy){ var py=ch*(1-fy); x2.moveTo(cw*0.02,py); x2.lineTo(cw*0.98,py); });
+      x2.stroke();
+      var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+      return t;
+    }
+    leaves.forEach(function(lf, li){
+      var g=glassRegion(), x=lf.x, lw=lf.w;
+      var sm=new THREE.MeshStandardMaterial({map:leafSkinTex(lw, li), roughness:1.0, metalness:0.0});
+      /* All of a leaf's skin pieces in ONE geometry, facing the room (-z).
+         Seen from inside, the leaf's -x is on the viewer's right, so the
+         texture's u runs right-to-left in shed coordinates. */
+      var P=[], U=[], I=[];
+      function skin(x0, x1, y0, y1){
+        if(x1-x0<0.005 || y1-y0<0.005) return;
+        var u0=((x+lw/2)-x1)/lw, u1=((x+lw/2)-x0)/lw, b=P.length/3;
+        P.push(x1,y0,ZB, x0,y0,ZB, x0,y1,ZB, x1,y1,ZB);
+        U.push(u0,y0/dh, u1,y0/dh, u1,y1/dh, u0,y1/dh);
+        I.push(b,b+1,b+2, b,b+2,b+3);
+      }
+      var solid = g ? [[0, g.y0*dh],[g.y1*dh, dh]] : [[0, dh]];
+      solid.forEach(function(sp){ skin(x-lw/2, x+lw/2, sp[0], sp[1]); });
+      if(g){
+        var st=leafStile(lw);
+        skin(x-lw/2, x-lw/2+st, g.y0*dh, g.y1*dh);
+        skin(x+lw/2-st, x+lw/2, g.y0*dh, g.y1*dh);
+      }
+      if(I.length){
+        var sg=new THREE.BufferGeometry();
+        sg.setAttribute('position', new THREE.Float32BufferAttribute(P,3));
+        sg.setAttribute('uv', new THREE.Float32BufferAttribute(U,2));
+        sg.setIndex(I); sg.computeVertexNormals();
+        var m=new THREE.Mesh(sg, sm); m.receiveShadow=true; DG.add(m);
+      }
+    });
+    if(leaves.length===2){
+      // inactive (left, seen from outside) leaf: barrel bolt at the head, cane bolt at the foot
+      var lx=leaves[0].x+leaves[0].w/2-0.035;
+      bx(0.018, 0.075, 0.010, boltM, lx, dh-0.10, ZB-0.005);          // barrel bolt body
+      bx(0.008, 0.06, 0.008, boltM, lx, dh-0.035, ZB-0.012);          // its bolt, into the head
+      bx(0.020, 0.05, 0.010, boltM, lx, 0.12, ZB-0.005);              // cane bolt bracket
+      bx(0.007, 0.16, 0.007, boltM, lx, 0.08, ZB-0.013);              // cane bolt rod to the floor
+      bx(0.030, 0.007, 0.007, boltM, lx, 0.165, ZB-0.013);            // its handle
+      // active leaf: the latch keeper at mid height
+      bx(0.03, 0.022, 0.012, boltM, leaves[1].x-leaves[1].w/2+0.03, dh*0.47, ZB-0.006);
+      DG.children.slice(-6).forEach(function(m){ m.castShadow=false; });
+    }
+  }
+
   // The centre astragal is what makes a hinged double door read as a pair of
   // leaves meeting in the middle — exactly the "French doors" look a slider
   // shouldn't have. A slider's own frame members (built into buildLeaf, plus
@@ -11094,6 +11165,295 @@ function buildInterior(){
   var sheathIn=0.055;   // panel center this far inside the wall center plane
   var studIn=0.095;     // studs sit proud of the sheathing, inside the room
   var studSpacing=studSpacingWorld();   // v487 — 16" or 12" OC
+  /* ── FRAMING, BUILT THE WAY THE CREW BUILDS IT ─────────────────────────────
+     Measured against Nando's photos of a real 3 Peak: 2x4 studs at 16in OC on
+     a bottom plate and a DOUBLE top plate; every door and window framed with
+     king studs full height, jack studs carrying a 2x6 header, cripples above
+     the header and (windows) a rough sill with cripples under it; gable-end
+     studs on the same layout up to the rafters, with a peak window framed
+     between them; 2x4 rafters at 24in with collar ties and a ridge board; the
+     roof decking showing between them.
+     Before this the studs simply SKIPPED an opening - no header, no kings, no
+     sill - and the 3 Peak, 4 Peak and Poolhouse got a flat OSB lid instead of a
+     roof. Everything below is shared by every style, so a window added
+     anywhere, on any wall, gets the same framing.
+     All of it goes into a handful of merged meshes (one per material) rather
+     than one mesh per stud: a 16x24 used to add ~150 draw calls of studs. */
+  var IN_=0.2/12;
+  var FR_T=0.03;                 // a stud's face (1.5in; drawn a touch heavy so it holds at distance)
+  var FR_D=0.05;                 // its depth into the room
+  var PL_T=1.5*IN_, PL_W=3.5*IN_;// a 2x4 laid flat (plates, rough sill)
+  var HDR_H=5.5*IN_;             // 2x6 header on edge
+  var RAF_T=0.03, RAF_D=3.5*IN_; // 2x4 rafters and ties
+  var BIG_D=5.5*IN_;             // 2x6: ridge board, valleys, hips
+  var BP_TOP=0.02+PL_T;          // top of the bottom plate
+  var _BX=new THREE.BoxGeometry(1,1,1), _BXP=_BX.attributes.position.array,
+      _BXN=_BX.attributes.normal.array, _BXI=_BX.index.array;
+  _BX.dispose();
+  function makeFramer(mat){
+    var P=[],N=[],I=[], v=new THREE.Vector3(), n=new THREE.Vector3(),
+        nm=new THREE.Matrix3(), M=new THREE.Matrix4();
+    var F={};
+    F.box=function(sx,sy,sz,m){
+      if(!(sx>0.0005 && sy>0.0005 && sz>0.0005)) return;
+      var base=P.length/3; nm.getNormalMatrix(m);
+      for(var i=0;i<_BXP.length;i+=3){
+        v.set(_BXP[i]*sx,_BXP[i+1]*sy,_BXP[i+2]*sz).applyMatrix4(m); P.push(v.x,v.y,v.z);
+        n.set(_BXN[i],_BXN[i+1],_BXN[i+2]).applyMatrix3(nm).normalize(); N.push(n.x,n.y,n.z);
+      }
+      for(var j=0;j<_BXI.length;j++) I.push(base+_BXI[j]);
+    };
+    F.at=function(sx,sy,sz,x,y,z){ M.makeTranslation(x,y,z); F.box(sx,sy,sz,M); };
+    // Same as a BoxGeometry mesh at (x,y,z) with rotation (rx,ry,rz).
+    var E=new THREE.Euler();
+    F.rot=function(sx,sy,sz,x,y,z,rx,ry,rz){ M.makeRotationFromEuler(E.set(rx||0,ry||0,rz||0)); M.setPosition(x,y,z); F.box(sx,sy,sz,M); };
+    /* A member laid from a to b. Its TOP edge lies on that line (a rafter
+       hangs under the deck line it is given); hang=false centres it instead. */
+    F.beam=function(a,b,thick,depth,hang){
+      var d=new THREE.Vector3(b[0]-a[0],b[1]-a[1],b[2]-a[2]), len=d.length();
+      if(len<0.005) return;
+      d.divideScalar(len);
+      var y=new THREE.Vector3(0,1,0).sub(d.clone().multiplyScalar(d.y));
+      if(y.lengthSq()<1e-6) y.set(1,0,0);
+      y.normalize();
+      var x=new THREE.Vector3().crossVectors(y,d).normalize();
+      M.makeBasis(x,y,d);
+      var off=(hang===false)?0:depth/2;
+      M.setPosition((a[0]+b[0])/2-y.x*off, (a[1]+b[1])/2-y.y*off, (a[2]+b[2])/2-y.z*off);
+      F.box(thick, depth, len, M);
+    };
+    F.done=function(cast){
+      if(!I.length) return null;
+      var g=new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(P,3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(N,3));
+      g.setIndex(I);
+      var m=new THREE.Mesh(g, mat);
+      m.castShadow=!!cast; m.receiveShadow=true;
+      m.userData.framing=true;
+      shedGroup.add(m);
+      return m;
+    };
+    return F;
+  }
+  var studF=makeFramer(studMat), rafF=makeFramer(rafterMat);
+  var tieF=makeFramer(applyXray(new THREE.MeshStandardMaterial({color:0xb9bec4, roughness:0.42, metalness:0.75})));
+  /* Convex polygon clip: keep the part where a*x + b*z + c >= 0. Roof planes
+     meet along straight lines (valleys, hips), so every deck panel is a
+     rectangle cut by a few of these. */
+  function clipPoly(poly, a, b, c){
+    var out=[];
+    for(var i=0;i<poly.length;i++){
+      var p=poly[i], q=poly[(i+1)%poly.length];
+      var dp=a*p[0]+b*p[1]+c, dq=a*q[0]+b*q[1]+c;
+      if(dp>=0) out.push(p);
+      if((dp>=0)!==(dq>=0)){ var t=dp/(dp-dq); out.push([p[0]+(q[0]-p[0])*t, p[1]+(q[1]-p[1])*t]); }
+    }
+    return out;
+  }
+  /* A flat roof-deck panel over a plan polygon [[x,z],...], lifted onto the
+     roof plane by yFn. UVs are world-planar, so neighbouring panels' OSB
+     flakes line up across a valley or a hip. */
+  function deckPanel(poly, yFn, mat){
+    if(!poly || poly.length<3) return;
+    var v=[], uv=[];
+    for(var t=1;t<poly.length-1;t++){
+      [poly[0],poly[t],poly[t+1]].forEach(function(p){
+        v.push(p[0], yFn(p[0],p[1]), p[1]); uv.push(p[0]*2, p[1]*2);
+      });
+    }
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(v,3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
+    g.computeVertexNormals();
+    var m=new THREE.Mesh(g, mat);
+    m.receiveShadow=true;
+    shedGroup.add(m);
+  }
+  /* ONE WALL'S FRAMING, in the wall's own coordinates: s runs along the wall
+     (0..L), y is height off the floor. The caller supplies how to place a
+     member in the world, the height of the top plate at s (it slopes on a
+     lean-to's side walls), and - on a wall with a gable over it - rake(s), the
+     underside of the rafter the gable studs run up to.
+     o = {L, top(s), rake(s)|null, sloped, holes:[{s0,s1,bot,top}],
+          vert(s,y0,y1), horiz(s0,s1,y0,y1,depth), plate(s0,s1,thick,drop)} */
+  function frameWall(o){
+    var L=o.L, sp=studSpacing;
+    function pBot(s){ return o.top(s)-2*PL_T; }
+    var fr=o.holes.map(function(hl){
+      var door = hl.bot<=0.003;
+      var s0=hl.s0, s1=hl.s1, kL=s0-1.5*FR_T, kR=s1+1.5*FR_T;
+      var plateLo=Math.min(pBot(kL), pBot(kR)), plateHi=Math.max(o.top(kL), o.top(kR));
+      var above = !!o.rake && hl.bot >= plateHi-0.002;            // all of it up in the gable
+      var straddle = !!o.rake && !above && hl.top > plateLo+0.002; // breaks through the plates
+      var floorY = above ? plateHi : BP_TOP;
+      var ceil = (above||straddle)
+        ? function(s){ var r=o.rake(s); return (r!=null) ? r : pBot(s); }
+        : pBot;
+      var hdrTop = (above||straddle)
+        ? Math.min(hl.top+HDR_H, Math.min(ceil(s0-FR_T), ceil(s1+FR_T))-0.004)
+        : Math.min(hl.top+HDR_H, plateLo);
+      var hasHdr = hdrTop-hl.top > 0.012;
+      if(!hasHdr) hdrTop=hl.top;
+      return {door:door, s0:s0, s1:s1, kL:kL, kR:kR, bot:hl.bot, top:hl.top,
+              above:above, straddle:straddle, floorY:floorY, ceil:ceil,
+              hdrTop:hdrTop, hasHdr:hasHdr, lo: door ? 0 : hl.bot-PL_T};
+    });
+    /* Nothing vertical passes through an opening: every stud, king, jack and
+       cripple is cut around every rough opening + its header + its sill. */
+    function emitV(s, y0, y1){
+      var parts=[[y0,y1]];
+      fr.forEach(function(F_){
+        if(s+FR_T/2 <= F_.s0+0.0005 || s-FR_T/2 >= F_.s1-0.0005) return;
+        var a=F_.lo, b=F_.hdrTop, nx=[];
+        parts.forEach(function(p){
+          if(b<=p[0] || a>=p[1]){ nx.push(p); return; }
+          if(a>p[0]) nx.push([p[0],a]);
+          if(b<p[1]) nx.push([b,p[1]]);
+        });
+        parts=nx;
+      });
+      parts.forEach(function(p){ if(p[1]-p[0]>0.02) o.vert(s,p[0],p[1]); });
+    }
+    // layout: 16in OC from the corner, with a stud at each end
+    var lay=[]; for(var s=0.05+FR_T/2; s<=L-0.05-FR_T/2+0.001; s+=sp) lay.push(s);
+    if(lay[lay.length-1] < L-0.05-FR_T*1.5) lay.push(L-0.05-FR_T/2);
+    // COMMON STUDS (wall band, then gable band), giving way inside an opening's
+    // footprint to that opening's own kings, jacks and cripples
+    lay.forEach(function(s){
+      var bands=[[BP_TOP, pBot(s)]];
+      if(o.rake){ var r=o.rake(s); if(r!=null && r-o.top(s)>0.03) bands.push([o.top(s), r]); }
+      bands.forEach(function(bd){
+        var parts=[bd];
+        fr.forEach(function(F_){
+          if(s <= F_.kL-FR_T || s >= F_.kR+FR_T) return;
+          var a=F_.floorY-0.001, b=F_.ceil(s)+0.001, nx=[];
+          parts.forEach(function(p){
+            if(b<=p[0] || a>=p[1]){ nx.push(p); return; }
+            if(a>p[0]) nx.push([p[0],a]);
+            if(b<p[1]) nx.push([b,p[1]]);
+          });
+          parts=nx;
+        });
+        parts.forEach(function(p){ emitV(s,p[0],p[1]); });
+      });
+    });
+    // EACH OPENING: kings, jacks, header, sill, cripples
+    fr.forEach(function(F_){
+      emitV(F_.kL, F_.floorY, F_.ceil(F_.kL));
+      emitV(F_.kR, F_.floorY, F_.ceil(F_.kR));
+      emitV(F_.s0-FR_T/2, F_.floorY, F_.top);
+      emitV(F_.s1+FR_T/2, F_.floorY, F_.top);
+      if(F_.hasHdr) o.horiz(F_.s0-FR_T, F_.s1+FR_T, F_.top, F_.hdrTop, FR_D);
+      if(!F_.door) o.horiz(F_.s0, F_.s1, F_.bot-PL_T, F_.bot, PL_W);
+      lay.forEach(function(s){
+        if(s-FR_T/2 <= F_.s0 || s+FR_T/2 >= F_.s1) return;
+        if(F_.hasHdr) emitV(s, F_.hdrTop, F_.ceil(s));          // cripples over the header
+        if(!F_.door) emitV(s, F_.floorY, F_.lo);                // and under the sill
+      });
+    });
+    // PLATES: bottom plate cut out at each doorway, double top plate cut only
+    // where a window breaks up through it into the gable
+    function runs(cuts){
+      var r=[[0.05, L-0.05]];
+      cuts.forEach(function(c){
+        var nx=[];
+        r.forEach(function(p){
+          if(c[1]<=p[0] || c[0]>=p[1]){ nx.push(p); return; }
+          if(c[0]>p[0]) nx.push([p[0],c[0]]);
+          if(c[1]<p[1]) nx.push([c[1],p[1]]);
+        });
+        r=nx;
+      });
+      return r.filter(function(p){ return p[1]-p[0]>0.01; });
+    }
+    runs(fr.filter(function(F_){ return F_.door; }).map(function(F_){ return [F_.s0, F_.s1]; }))
+      .forEach(function(p){ o.horiz(p[0], p[1], 0.02, BP_TOP, PL_W); });
+    var topRuns=runs(fr.filter(function(F_){ return F_.straddle; })
+      .map(function(F_){ return [F_.kL-FR_T/2, F_.kR+FR_T/2]; }));
+    topRuns.forEach(function(p){
+      if(o.sloped){ o.plate(p[0],p[1],PL_T,0); o.plate(p[0],p[1],PL_T,PL_T); }
+      else {
+        var t=o.top(p[0]);
+        o.horiz(p[0],p[1], t-2*PL_T, t-PL_T, PL_W);
+        o.horiz(p[0],p[1], t-PL_T, t, PL_W);
+      }
+    });
+  }
+  /* Place frameWall's members on a real wall. plane = how far inside the
+     wall's centre line the framing stands. */
+  function wallPlacer(f, axisStart, u, plane, topFn){
+    function A(s){ return axisStart+u*s; }
+    var P={};
+    P.vert=function(s,y0,y1){
+      var hh=y1-y0, a=A(s);
+      if(f.ax==='x') studF.at(FR_T, hh, FR_D, a, (y0+y1)/2, f.fixed-f.nz*plane);
+      else           studF.at(FR_D, hh, FR_T, f.fixed-f.nx*plane, (y0+y1)/2, a);
+    };
+    P.horiz=function(s0,s1,y0,y1,dep){
+      var len=Math.abs(s1-s0), a=A((s0+s1)/2), hh=y1-y0, dd=dep||FR_D;
+      if(f.ax==='x') studF.at(len, hh, dd, a, (y0+y1)/2, f.fixed-f.nz*plane);
+      else           studF.at(dd, hh, len, f.fixed-f.nx*plane, (y0+y1)/2, a);
+    };
+    // a plate laid along a sloping wall top, 'drop' below the top line
+    P.plate=function(s0,s1,thick,drop){
+      function pt(s){ var a=A(s), y=topFn(s)-drop;
+        return (f.ax==='x') ? [a, y, f.fixed-f.nz*plane] : [f.fixed-f.nx*plane, y, a]; }
+      studF.beam(pt(s0), pt(s1), PL_W, thick);
+    };
+    return P;
+  }
+  /* The roof-relative heights the walls need: rake(x) for a gable end (where
+     its studs stop under the end rafter) and the same idea for a cross gable. */
+  var _g=gableRoof();
+  var GDK=(ROOF_THK/2)/_g.cos+0.007;                 // roof deck surface below the roof's mid-plane
+  function gableDeckY(x){ return _g.yAt(Math.abs(x))-GDK; }
+  var _xg=(typeof isCrossGable==='function' && isCrossGable()) ? crossGableGeom() : null;
+  function crossDeckY(z){ return _xg.rY-Math.abs(z-_xg.zc)*_g.tan-GDK; }
+  var _bp=barnProfile();
+  function barnProfY(x){
+    var ax=Math.abs(x), W2=w/2;
+    return (ax>=_bp.kneeX) ? h+(_bp.kneeY-h)*(W2-ax)/Math.max(0.01,W2-_bp.kneeX)
+                           : _bp.kneeY+(_bp.ridgeY-_bp.kneeY)*(_bp.kneeX-ax)/Math.max(0.01,_bp.kneeX);
+  }
+  function barnCos(x){
+    var ax=Math.abs(x), W2=w/2;
+    var a=(ax>=_bp.kneeX) ? Math.atan2(_bp.kneeY-h, W2-_bp.kneeX) : Math.atan2(_bp.ridgeY-_bp.kneeY, _bp.kneeX);
+    return Math.cos(a);
+  }
+  // The barn's rafters sit 1.9 x 0.045 in from the roof plane and are 0.06 deep.
+  function barnStudTop(x){ return barnProfY(x)-(0.0855+0.03)/barnCos(x)-0.006; }
+  function gableStudTop(x){ return gableDeckY(x)-RAF_D/_g.cos-0.004; }
+  function rakeFor(wall, f, axisStart, u){
+    var gableFam=(STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak');
+    if((wall==='front'||wall==='back') && gableFam)
+      return function(s){ return gableStudTop(axisStart+u*s); };
+    if((wall==='front'||wall==='back') && STYLE==='barn')
+      return function(s){ return barnStudTop(axisStart+u*s); };
+    if(_xg && (wall==='left'||wall==='right') && crossSides().indexOf(wall==='right'?1:-1)>=0)
+      return function(s){
+        var z=axisStart+u*s, r=crossDeckY(z)-RAF_D/_g.cos-0.004;
+        return (r>h+0.03) ? r : null;
+      };
+    return null;
+  }
+  /* Holes for windows that rise into a gable end, in that gable's own shape
+     space (x across, y up from the plate). Without them a peak window looked
+     out from the inside onto a sheet of OSB. */
+  function gableHoles(wall){
+    var out=[];
+    windowsData.forEach(function(wd){
+      if(wd.wall!==wall) return;
+      var cy=(wd.cy!=null?wd.cy:52), top=(cy+wd.h/2)*IN_, bot=(cy-wd.h/2)*IN_;
+      if(top<=h+0.004) return;
+      var xc=posToAxis(wall, wd.pos, wd.w), hw=wd.w*IN_/2;
+      var y0=Math.max(0.003, bot-h), y1=top-h;
+      var hp=new THREE.Path();
+      hp.moveTo(xc-hw,y0); hp.lineTo(xc+hw,y0); hp.lineTo(xc+hw,y1); hp.lineTo(xc-hw,y1); hp.closePath();
+      out.push(hp);
+    });
+    return out;
+  }
   /* Is the inside actually finished? Drywall and paint both count; bare studs
      and house wrap do not. One test, so the wall face, the framing and the
      openings can't disagree about it. */
@@ -11211,17 +11571,16 @@ function buildInterior(){
       // and no opening reaches it.
       if(trapFinished) trapHoles.forEach(function(hl){ lineOpening(wallFrame(wall), hl); });
 
-      // Studs, each trimmed to the sloped top at its own Z position.
-      var xS = (wall==='left') ? (-w/2 + studIn) : (w/2 - studIn);
-      var zS = -l/2 + 0.1;
-      while(!trapFinished && zS <= l/2 - 0.1){
-        // roof/wall top height at this Z: linear from back (low) to front (high)
-        var topY = backTopY + ((zS + l/2)/l)*(h - backTopY);
-        var sH = topY - 0.05;
-        var stT=new THREE.Mesh(new THREE.BoxGeometry(0.05, sH, 0.035), studMat);
-        stT.position.set(xS, sH/2 + 0.02, zS);
-        shedGroup.add(stT);
-        zS += studSpacing;
+      // Framing on the sloped wall: studs, plates following the slope, and
+      // the same opening framing every other wall gets.
+      if(!trapFinished){
+        var fT=wallFrame(wall), uT=(fT.ax==='x')?fT.ux:fT.uz, aT=fT.ctr-uT*(fT.len/2);
+        // clear of the rafters that sit over this wall
+        var topT=function(s){ var z=aT+uT*s; return backTopY+((z+l/2)/l)*(h-backTopY)-0.135; };
+        var plT=wallPlacer(fT, aT, uT, studIn, topT);
+        frameWall({L:fT.len, top:topT, rake:null, sloped:true,
+          holes:trapHoles.map(function(hl){ var lc=(hl.c-aT)*uT; return {s0:lc-hl.half, s1:lc+hl.half, bot:hl.bot<=0.005?0:hl.bot, top:hl.top}; }),
+          vert:plT.vert, horiz:plT.horiz, plate:plT.plate});
       }
       return;
     }
@@ -11329,58 +11688,16 @@ function buildInterior(){
     // Wrap each opening's reveal. Only once the wall is finished — a bare-stud
     // shed is meant to show its framing, and the cavity edge IS the product.
     if(wallFinished) holes.forEach(function(hl){ lineOpening(f, hl); });
-    // 16" OC STUDS in front of the sheathing, skipping openings. Height follows the
-    // wall's TRUE height, so the lean-to's short back wall doesn't grow studs that
-    // spear up through the sloped roof.
-    var studH = wallH - 0.05;
-    // Drywall covers the framing — leaving studs standing in front of a finished
-    // wall is the giveaway that the finish is only skin deep. Skip them once the
-    // walls are hung; the sheathing layer above is doing the job now.
-    var studsVisible = !wallFinished;
-    var sPos=0.1;
-    while(studsVisible && sPos<=L_-0.1){
-      var inHole=holes.some(function(hl){ return sPos>hl.local-hl.half-0.02 && sPos<hl.local+hl.half+0.02; });
-      if(!inHole){
-        var ac3=axisStart+u*sPos;
-        var px2,pz2,sx2,sz2;
-        if(f.ax==='x'){ px2=ac3; pz2=f.fixed - f.nz*studIn; sx2=0.035; sz2=0.05; }
-        else { px2=f.fixed - f.nx*studIn; pz2=ac3; sx2=0.05; sz2=0.035; }
-        var st=new THREE.Mesh(new THREE.BoxGeometry(sx2, studH, sz2), studMat);
-        st.position.set(px2, studH/2+0.02, pz2);
-        shedGroup.add(st);
-      }
-      sPos+=studSpacing;
-    }
-
-    /* v454 — PLATES. From the reference: the studs land on a bottom plate and
-       run up into a DOUBLE top plate, and both are as prominent from inside as
-       the studs themselves — a continuous horizontal band top and bottom that
-       the whole wall reads against. Without them the studs floated between
-       sheathing and floor.
-       Laid flat (a 2x4 on its face, 3.5in wide x 1.5in thick), running the
-       wall's full length, in the same plane as the studs so they sit in front
-       of the sheathing. Drawn even where the wall is broken by a door, because
-       a bottom plate really is cut out at a doorway — but only the plate, and
-       only there, is a detail past what this view needs. */
-    if(studsVisible){
-      var PL_T=1.5*0.2/12, PL_W=3.5*0.2/12;      // 2x4 laid flat
-      var plLen=Math.max(0.05, L_-0.05);
-      function plate(cy, thick){
-        var pax=axisStart+u*(0.05+plLen/2);
-        var ppx,ppz,psx,psz;
-        if(f.ax==='x'){ ppx=pax; ppz=f.fixed - f.nz*(studIn+0.008); psx=plLen; psz=PL_W; }
-        else          { ppx=f.fixed - f.nx*(studIn+0.008); ppz=pax; psx=PL_W;  psz=plLen; }
-        // The plate sits a stud's depth inside the wall face, so on a lean-to
-        // it is under a lower roof than the wall top it was measured from.
-        var _pc=leantoCapYAt(ppz);
-        if(isFinite(_pc) && cy+thick/2 > _pc) cy=_pc-thick/2;
-        var pm=new THREE.Mesh(new THREE.BoxGeometry(psx, thick, psz), studMat);
-        pm.position.set(ppx, cy, ppz);
-        pm.castShadow=true; shedGroup.add(pm);
-      }
-      plate(0.02+PL_T/2, PL_T);                        // bottom plate
-      plate(wallH-PL_T*1.5, PL_T);                     // top plate, lower of the two
-      plate(wallH-PL_T*0.5, PL_T);                     // and the second one
+    // FRAMING: studs on layout, double top plate, bottom plate, and every
+    // opening framed (see frameWall). Drywall covers it, so not once finished.
+    if(!wallFinished){
+      var capW=(f.ax==='x') ? leantoCapYAt(f.fixed-f.nz*studIn) : Infinity;
+      var wTop=isFinite(capW) ? Math.min(wallH, capW) : wallH;
+      var topR=function(){ return wTop; };
+      var plR=wallPlacer(f, axisStart, u, studIn, topR);
+      frameWall({L:L_, top:topR, rake:rakeFor(wall, f, axisStart, u), sloped:false,
+        holes:holes.map(function(hl){ return {s0:hl.local-hl.half, s1:hl.local+hl.half, bot:hl.bot, top:hl.top}; }),
+        vert:plR.vert, horiz:plR.horiz, plate:plR.plate});
     }
   }
   interiorWall('front'); interiorWall('back');
@@ -11425,97 +11742,171 @@ function buildInterior(){
     lDeck.rotation.x=-lAng;
     shedGroup.add(lDeck);
     var lStep=24*0.2/12;
-    var tieMatL=new THREE.MeshStandardMaterial({color:0xb9bec4, roughness:0.42, metalness:0.75});
     for(var lx=-(w/2)+0.09; lx<=(w/2)-0.09; lx+=lStep){
-      var lrf=new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.07, lSlope-0.08), rafterMat);
-      lrf.position.set(lx, lMidY-lDrop-0.05, 0);
-      lrf.rotation.x=-lAng;
-      lrf.castShadow=true; shedGroup.add(lrf);
+      rafF.rot(0.035, 0.07, lSlope-0.08, lx, lMidY-lDrop-0.05, 0, -lAng);
       /* Ties at BOTH ends: a lean-to rafter lands on a plate at the tall wall
          and again at the low one, so it gets two, not one. */
       // Each tie lands where the RAFTER is, not where the wall top is: set in
       // from the wall by 0.05, the roof has already dropped below h.
       [[ l/2-0.05, leantoRoofYAt(l/2-0.05)],[-l/2+0.05, leantoRoofYAt(-l/2+0.05)]].forEach(function(e){
-        var lu=new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.055, 0.010), tieMatL);
         // e[1] is now the roof line itself, and the tie is 0.055 tall, so
         // centring it there left half of it above the deck.
         var _tc=leantoCapYAt(e[0]);
-        lu.position.set(lx, (isFinite(_tc)?_tc:e[1])-0.0275, e[0]);
-        shedGroup.add(lu);
-        var lf2=new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.010, 0.048), tieMatL);
-        lf2.position.set(lx, e[1]-0.048, e[0]-(e[0]>0?0.024:-0.024));
-        shedGroup.add(lf2);
+        tieF.at(0.042, 0.055, 0.010, lx, (isFinite(_tc)?_tc:e[1])-0.0275, e[0]);
+        tieF.at(0.042, 0.010, 0.048, lx, e[1]-0.048, e[0]-(e[0]>0?0.024:-0.024));
       });
     }
   }
-  if(STYLE==='gable'){
-    // VAULTED CEILING (like the real interior): OSB roof deck following the roof
-    // slope + rafters + ridge board. Interior lights are short-range so they can't
-    // leak past the shell.
-    var slopeLen=Math.sqrt((w/2)*(w/2)+rh*rh);
-    var ang=Math.atan2(rh, w/2);
-    var deckDrop=0.045;   // deck sits this far under the roof plane
-    for(var sdir=-1;sdir<=1;sdir+=2){
-      var deck=new THREE.Mesh(new THREE.BoxGeometry(slopeLen-0.03, 0.014, l-0.06),
-        foilOn?foilMat():osbMat(Math.max(1,slopeLen/0.5), Math.max(1,l/0.5)));
-      deck.position.set(sdir*(w/4), h+rh/2-deckDrop, 0);
-      deck.rotation.z=sdir*ang*-1;
-      shedGroup.add(deck);
-    }
-    // RAFTERS every ~24" along the length, both slopes, plus a ridge board
-    var rSpacing=24*0.2/12;
-    var zR=-l/2+0.08;
-    while(zR<=l/2-0.08){
-      for(var rdir=-1;rdir<=1;rdir+=2){
-        var rf=new THREE.Mesh(new THREE.BoxGeometry(slopeLen-0.08, 0.07, 0.035), rafterMat);
-        rf.position.set(rdir*(w/4), h+rh/2-deckDrop-0.05, zR);
-        rf.rotation.z=rdir*ang*-1;
-        shedGroup.add(rf);
-
-        /* v454 — GALVANISED RAFTER TIE at every rafter-to-plate joint. In the
-           reference these bright metal brackets are the most recognisable
-           thing in the roof: a repeating line of silver against all that
-           timber, right where each rafter lands on the top plate. Nothing else
-           inside is metal, so they read instantly.
-           An L: one leg up the side of the rafter, one down onto the plate.
-           Placed at the rafter's LOW end, which is where the joint is. */
-        /* v466 — HANG THE TIE OFF THE ROOF, not off the wall.
-           It was placed at h+0.012 and stood 0.055 tall, which put its top
-           1.08in ABOVE the roof's top face — a row of little metal rectangles
-           poking through the shingles at every rafter. Both numbers scale with
-           h, so the overshoot was identical at every wall height, which is why
-           changing the walls never helped.
-           Measuring down from the roof underside at the tie's own x fixes it at
-           every pitch and size: the tie is fastened where the rafter meets the
-           plate, and that is a roof-relative position, not a wall-relative one.
-           This only ever showed with an electrical package or a window, because
-           the interior framing does not build otherwise. */
-        var tieMat=new THREE.MeshStandardMaterial({color:0xb9bec4, roughness:0.42, metalness:0.75});
-        var tieX=rdir*(w/2-0.045);
-        var _tCos=Math.cos(ang);
-        var _roofUnder=(h+rh) - Math.abs(tieX)*(rh/(w/2)) - (ROOF_THK/2)/_tCos;
-        var TIE_H=0.055;
-        var tieTop=_roofUnder-0.006;               // tuck under the deck
-        var legU=new THREE.Mesh(new THREE.BoxGeometry(0.010, TIE_H, 0.042), tieMat);
-        legU.position.set(tieX, tieTop-TIE_H/2, zR);
-        shedGroup.add(legU);
-        var legF=new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.010, 0.042), tieMat);
-        legF.position.set(tieX-rdir*0.024, tieTop-TIE_H, zR);
-        shedGroup.add(legF);
+  if(STYLE==='gable' || STYLE==='3peak' || STYLE==='4peak'){
+    /* GABLE, 3 PEAK, 4 PEAK - one framing, because a 3 Peak IS a gable with a
+       cross gable framed into one slope (4 Peak: both slopes).
+       Decking follows the true roof planes (gableRoof / crossGableGeom), so a
+       valley sits exactly where the exterior's does: in plan it is the line
+       x = xEnd + |z - zc|, from the wall corner of the cross gable up to where
+       its ridge dies into the main roof. The main slope's decking is cut back
+       to that line and the cross gable's two slopes fill the notch - which is
+       what you see looking up into a real one: two valley rafters, a short
+       ridge, and jack rafters landing on the valleys from both sides. */
+    var tanG=_g.tan, cosG=_g.cos, W2=w/2, L2=l/2;
+    var crossS=_xg ? crossSides() : [];
+    var deckM=foilOn?foilMat():osbMat(1,1);
+    var rectP=[[0,-L2],[W2,-L2],[W2,L2],[0,L2]];
+    [1,-1].forEach(function(sx){
+      var mainY=function(x,z){ return gableDeckY(x); };
+      var flip=function(poly){ return poly.map(function(p){ return [sx*p[0], p[1]]; }); };
+      if(_xg && crossS.indexOf(sx)>=0){
+        var zc=_xg.zc, xE=_xg.xEnd;
+        // main slope, either side of the notch
+        deckPanel(flip(clipPoly(clipPoly(rectP, 0, 1,-zc), -1, 1, xE-zc)), mainY, deckM);
+        deckPanel(flip(clipPoly(clipPoly(rectP, 0,-1, zc), -1,-1, xE+zc)), mainY, deckM);
+        // the cross gable's two slopes, valley to ridge
+        var cY=function(x,z){ return crossDeckY(z); };
+        deckPanel(flip(clipPoly(clipPoly(rectP, 0, 1,-zc), 1,-1, zc-xE)), cY, deckM);
+        deckPanel(flip(clipPoly(clipPoly(rectP, 0,-1, zc), 1, 1,-xE-zc)), cY, deckM);
+      } else {
+        deckPanel(flip(rectP), mainY, deckM);
       }
-      zR+=rSpacing;
-    }
-    var ridge=new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, l-0.06), rafterMat);
-    ridge.position.set(0, h+rh-deckDrop-0.07, 0);
-    shedGroup.add(ridge);
-    // GABLE-END interior OSB (front & back triangles above the walls)
-    for(var gdir=-1;gdir<=1;gdir+=2){
+    });
+    // RIDGE BOARD
+    var ridgeHalf=RAF_T/2+0.002;
+    rafF.beam([0,gableDeckY(0)+0.004,-L2+0.04],[0,gableDeckY(0)+0.004,L2-0.04], RAF_T, BIG_D);
+    // COMMON RAFTERS at 24in, the end pair over each gable wall; jack rafters
+    // where a cross gable's valley cuts them short
+    var rStep=24*IN_, zA=-L2+0.095, zB=L2-0.095, rz=[];
+    for(var zq=zA; zq<zB-0.08; zq+=rStep) rz.push(zq);
+    rz.push(zB);
+    var yRidge=gableDeckY(0);
+    var tieTop=h+0.58*(yRidge-h);                       // collar ties about 2/3 up
+    var tieHalf=(yRidge-tieTop)/tanG;                    // where the rafter tops cross that height
+    rz.forEach(function(z, iz){
+      var reach={};
+      [1,-1].forEach(function(sx){
+        var xr=W2-0.05;
+        if(_xg && crossS.indexOf(sx)>=0){
+          var dz=Math.abs(z-_xg.zc);
+          if(dz < W2-_xg.xEnd) xr=Math.min(xr, _xg.xEnd+dz-0.02);
+        }
+        reach[sx]=xr;
+        if(xr>ridgeHalf+0.03)
+          rafF.beam([sx*ridgeHalf, gableDeckY(ridgeHalf), z],[sx*xr, gableDeckY(xr), z], RAF_T, RAF_D);
+        if(xr>=W2-0.06){                                 // a tie where it lands on the plate
+          tieF.at(0.045, 0.012, 0.042, sx*(W2-0.075), gableDeckY(W2-0.075)-RAF_D/cosG-0.006, z);
+          tieF.at(0.010, 0.05, 0.042, sx*(W2-0.075)-sx*0.022, gableDeckY(W2-0.075)-RAF_D/cosG+0.02, z);
+        }
+      });
+      // COLLAR TIE, nailed to the face of the pair - not on the end pairs,
+      // which have the gable wall under them
+      if(iz>0 && iz<rz.length-1 && reach[1]>=tieHalf && reach[-1]>=tieHalf){
+        var zt=z+RAF_T/2+0.013;
+        rafF.beam([-tieHalf,tieTop,zt],[tieHalf,tieTop,zt], 0.025, RAF_D);
+      }
+    });
+    // CROSS GABLE: ridge, two valley rafters, jack rafters, collar ties
+    crossS.forEach(function(sx){
+      var zc=_xg.zc, xE=_xg.xEnd, yCR=crossDeckY(zc);
+      rafF.beam([sx*xE, yCR+0.004, zc],[sx*(W2-0.04), yCR+0.004, zc], RAF_T, BIG_D);
+      [1,-1].forEach(function(sg){
+        var xa=W2-0.05;
+        rafF.beam([sx*xa, gableDeckY(xa), zc+sg*(xa-xE)],[sx*xE, gableDeckY(xE), zc], 0.05, BIG_D);
+      });
+      var ctTop=h+0.58*(yCR-h), ctHalf=(yCR-ctTop)/tanG;
+      var k=0;
+      for(var xk=W2-0.095; xk>xE+0.06; xk-=rStep, k++){
+        [1,-1].forEach(function(sg){
+          var zEnd=zc+sg*Math.max(ridgeHalf+0.01, xk-xE-0.03);
+          rafF.beam([sx*xk, crossDeckY(zc+sg*ridgeHalf), zc+sg*ridgeHalf],[sx*xk, crossDeckY(zEnd), zEnd], RAF_T, RAF_D);
+        });
+        if(k>0 && xk-xE-0.03>=ctHalf){
+          var xt=sx*(xk-RAF_T/2-0.013);
+          rafF.beam([xt,ctTop,zc-ctHalf],[xt,ctTop,zc+ctHalf], 0.025, RAF_D);
+        }
+      }
+      // the cross gable's end wall above the plate, sheathed
+      var hw=(yCR-h)/tanG, xw=sx*(W2-0.05);
+      var tg=new THREE.BufferGeometry();
+      tg.setAttribute('position', new THREE.Float32BufferAttribute([xw,h,zc-hw, xw,h,zc+hw, xw,yCR-0.004,zc],3));
+      tg.setAttribute('uv', new THREE.Float32BufferAttribute([(zc-hw)*2,h*2, (zc+hw)*2,h*2, zc*2,(yCR-0.004)*2],2));
+      tg.computeVertexNormals();
+      var tm=new THREE.Mesh(tg, osbMat(1,1)); tm.material.side=THREE.DoubleSide;
+      shedGroup.add(tm);
+    });
+    // GABLE-END sheathing, front and back, cut for any window up in the peak
+    [-1,1].forEach(function(gdir){
+      var wallName=(gdir>0)?'front':'back';
+      var yE=Math.max(0.002, gableDeckY(W2-0.03)-h), yP=gableDeckY(0)-0.004-h;
       var tri=new THREE.Shape();
-      tri.moveTo(-w/2+0.03, 0); tri.lineTo(w/2-0.03, 0); tri.lineTo(0, rh-0.05); tri.closePath();
-      var tg=new THREE.Mesh(new THREE.ShapeGeometry(tri),
-        wallFinished ? interiorWallMat() : osbMat(2,2));
-      tg.position.set(0, h, gdir*(l/2-0.05));
-      shedGroup.add(tg);
+      tri.moveTo(-W2+0.03,0); tri.lineTo(W2-0.03,0);
+      if(yE>0.004) tri.lineTo(W2-0.03,yE);
+      tri.lineTo(0,yP);
+      if(yE>0.004) tri.lineTo(-W2+0.03,yE);
+      tri.closePath();
+      gableHoles(wallName).forEach(function(hp){ tri.holes.push(hp); });
+      var tgm=new THREE.Mesh(new THREE.ShapeGeometry(tri), osbMat(2,2));
+      tgm.material.side=THREE.DoubleSide;
+      tgm.position.set(0, h, gdir*(L2-0.05));
+      shedGroup.add(tgm);
+    });
+  } else if(STYLE==='hip'){
+    /* POOLHOUSE / HIP. It had the flat lid too. A hip is four planes: a ridge
+       along the length, four hip rafters from the corners to the ridge ends,
+       commons off the ridge, and jack rafters landing on the hips from both
+       the long sides and the ends. Planes match buildHipRoof exactly:
+       y = ridgeY - tan * max(|x|, |z| - rz). */
+    var hW2=w/2, hL2=l/2, hTan=PITCH/12, hCos=Math.cos(Math.atan(hTan));
+    var hwOut=hW2+0.025, hlOut=hL2+0.025;
+    var hRidgeY=h+hTan*hwOut, hrz=Math.max(0.04, hlOut-hwOut);
+    var hY=function(x,z){ return hRidgeY-hTan*Math.max(Math.abs(x), Math.abs(z)-hrz)-0.007; };
+    var hDeck=foilOn?foilMat():osbMat(1,1);
+    var hRect=[[-hW2,-hL2],[hW2,-hL2],[hW2,hL2],[-hW2,hL2]];
+    deckPanel(clipPoly(clipPoly(clipPoly(hRect, 1,-1,hrz), 1, 1,hrz), 1,0,0), hY, hDeck);
+    deckPanel(clipPoly(clipPoly(clipPoly(hRect,-1,-1,hrz),-1, 1,hrz),-1,0,0), hY, hDeck);
+    deckPanel(clipPoly(clipPoly(hRect,-1, 1,-hrz), 1, 1,-hrz), hY, hDeck);
+    deckPanel(clipPoly(clipPoly(hRect,-1,-1,-hrz), 1,-1,-hrz), hY, hDeck);
+    if(hrz>0.06) rafF.beam([0,hY(0,-hrz)+0.004,-hrz],[0,hY(0,hrz)+0.004,hrz], RAF_T, BIG_D);
+    [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(function(c){
+      var cx=c[0]*(hW2-0.04), cz=c[1]*(hL2-0.04);
+      rafF.beam([cx,hY(cx,cz),cz],[0,hY(0,c[1]*hrz),c[1]*hrz], 0.045, BIG_D);
+    });
+    var hStep=24*IN_, hrh=RAF_T/2+0.002;
+    var hTieTop=h+0.58*(hY(0,0)-h), hTieHalf=(hY(0,0)-hTieTop)/hTan;
+    // long sides: commons off the ridge, jacks onto the hips beyond it
+    var hzs=[0]; for(var hk=hStep; hk<=hL2-0.12; hk+=hStep) hzs.push(hk,-hk);
+    hzs.forEach(function(hz){
+      var onRidge=Math.abs(hz)<=hrz+0.001;
+      [1,-1].forEach(function(sx){
+        var x0=onRidge ? hrh : (Math.abs(hz)-hrz+0.03), x1=hW2-0.05;
+        if(x1-x0>0.05) rafF.beam([sx*x0,hY(x0,hz),hz],[sx*x1,hY(x1,hz),hz], RAF_T, RAF_D);
+      });
+      if(onRidge && hTieHalf>0.05) rafF.beam([-hTieHalf,hTieTop,hz+RAF_T/2+0.013],[hTieHalf,hTieTop,hz+RAF_T/2+0.013], 0.025, RAF_D);
+    });
+    // ends: a centre common off each ridge end, jacks onto the hips either side
+    for(var hx=0; hx<=hW2-0.12; hx+=hStep){
+      (hx===0?[0]:[hx,-hx]).forEach(function(xx){
+        [1,-1].forEach(function(sz){
+          var z0=(xx===0) ? hrz+hrh : (Math.abs(xx)+hrz+0.03), z1=hL2-0.05;
+          if(z1-z0>0.05) rafF.beam([xx,hY(xx,z0),sz*z0],[xx,hY(xx,z1),sz*z1], RAF_T, RAF_D);
+        });
+      });
     }
   } else if(STYLE==='barn'){
     /* v457 — GAMBREL FRAMING, so you can see up into a barn's roof.
@@ -11561,10 +11952,7 @@ function buildInterior(){
       shedGroup.add(dk);
       var bStep=24*0.2/12;
       for(var bz=-l/2+0.08; bz<=l/2-0.08; bz+=bStep){
-        var brf=new THREE.Mesh(new THREE.BoxGeometry(len+bOver, 0.06, 0.035), rafterMat);
-        brf.position.set(mx+nx*1.9, my+ny*1.9, bz);
-        brf.rotation.z=a;
-        brf.castShadow=true; shedGroup.add(brf);
+        rafF.rot(len+bOver, 0.06, 0.035, mx+nx*1.9, my+ny*1.9, bz, 0, 0, a);
       }
     });
     /* v458 — KNEE PURLINS AND RIDGE BOARD. A gambrel is framed with a member
@@ -11573,19 +11961,26 @@ function buildInterior(){
        in the reference photo. Without them the rafters just changed angle in
        mid-air. Same for the ridge board at the peak. */
     [[ bKX, bKY],[-bKX, bKY]].forEach(function(k){
-      var pu=new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.10, l-0.06), rafterMat);
-      pu.position.set(k[0]-(k[0]>0?0.035:-0.035), k[1]-0.075, 0);
-      pu.castShadow=true; shedGroup.add(pu);
+      rafF.at(0.05, 0.10, l-0.06, k[0]-(k[0]>0?0.035:-0.035), k[1]-0.075, 0);
     });
-    var bRidge=new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.11, l-0.06), rafterMat);
-    bRidge.position.set(0, bRY-0.10, 0);
-    bRidge.castShadow=true; shedGroup.add(bRidge);
+    rafF.at(0.035, 0.11, l-0.06, 0, bRY-0.10, 0);
+    /* COLLAR TIES across the upper rafters, the way a gambrel is tied: about
+       halfway up the top section, on every pair but the two end ones. */
+    var bCosU=Math.cos(Math.atan2(bRY-bKY, bKX));
+    var bTieTop=bKY+0.45*(bRY-bKY);
+    var bTieX=bKX-((bTieTop+(0.0855-0.03)/bCosU)-bKY)*bKX/Math.max(0.01,bRY-bKY);
+    var bzs=[]; for(var bzz=-l/2+0.08; bzz<=l/2-0.08; bzz+=24*IN_) bzs.push(bzz);
+    bzs.forEach(function(bz, i){
+      if(i===0 || i===bzs.length-1 || !(bTieX>0.05)) return;
+      rafF.beam([-bTieX,bTieTop,bz+0.0175+0.013],[bTieX,bTieTop,bz+0.0175+0.013], 0.025, RAF_D);
+    });
 
     for(var bd=-1;bd<=1;bd+=2){
       var btri=new THREE.Shape();
       btri.moveTo(-w/2+0.03, 0); btri.lineTo(-bKX, bKY-h);
       btri.lineTo(0, bRY-h);     btri.lineTo(bKX, bKY-h);
       btri.lineTo(w/2-0.03, 0);  btri.closePath();
+      gableHoles(bd>0?'front':'back').forEach(function(hp){ btri.holes.push(hp); });
       var btg=new THREE.Mesh(new THREE.ShapeGeometry(btri),
         wallFinished ? interiorWallMat() : osbMat(2,2));
       btg.position.set(0, h, bd*(l/2-0.05));
@@ -11601,6 +11996,7 @@ function buildInterior(){
     shedGroup.add(ceil);
   }
   }   // end of the v460 drywall / open-framing branch
+  studF.done(false); rafF.done(true); tieF.done(false);
   } // end if(!WALLS_XRAY) — interior framing skipped during loft/shelf editing
 
   // LOFT — real plywood storage platform(s). Sits high, just below the top plate
