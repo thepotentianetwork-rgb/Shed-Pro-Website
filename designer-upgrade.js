@@ -136,6 +136,7 @@ DU.specRows = function(){
   var roof=(S.ROOFTYPE==='metal'?'Metal':'Shingle')+' · '+(S.rn||'');
   if(S.STYLE!=='barn' && S.STYLE!=='leanto' && S.PITCH) roof+=' · '+S.PITCH+'/12 pitch';
   if(S.OVH) roof+=' · '+S.OVH+'" overhang';
+  if(S.STYLE==='leanto' && S.LEANTO_FRONT_OVH!=null && S.LEANTO_FRONT_OVH!=='match') roof+=' · '+S.LEANTO_FRONT_OVH+'" front eave';
   rows.push(['Roof', roof, 'Roof']);
   rows.push(['Doors', (S.doorsData||[]).length ? countBy(S.doorsData, doorName).join(', ') : 'None', 'Doors']);
   rows.push(['Windows', (S.windowsData||[]).length ? countBy(S.windowsData, function(w){ return w.type||(w.w+'×'+w.h); }).join(', ') : 'None', 'Windows & Vents']);

@@ -862,6 +862,7 @@ textarea.inp{resize:vertical}
           <div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px">
             <div class="pitch-btn leanto-fovh-btn on" data-fovh="match" onclick="setLeantoFrontOvh('match',this)">Same as overhang above</div>
             <div class="pitch-btn leanto-fovh-btn" data-fovh="12" onclick="setLeantoFrontOvh(12,this)">1 ft</div>
+            <div class="pitch-btn leanto-fovh-btn" data-fovh="18" onclick="setLeantoFrontOvh(18,this)">1&frac12; ft</div>
             <div class="pitch-btn leanto-fovh-btn" data-fovh="24" onclick="setLeantoFrontOvh(24,this)">2 ft</div>
           </div>
         </div>
@@ -1161,7 +1162,7 @@ var W=8, L=12, H=8, PITCH=6;
     // entry) eave can also stick out further than the general Overhang
     // control, independent of it — 'match' just reuses whatever that is.
     var LEANTO_DROP=1;          // feet the back wall sits below the front
-    var LEANTO_FRONT_OVH='match'; // 'match' | 12 | 24 (inches)
+    var LEANTO_FRONT_OVH='match'; // 'match' | 12 | 18 | 24 (inches)
     var SIDING="vertical";  // "vertical" | "horizontal" | "board-batten" | "pine"
     var PINE_DIR="vertical";  // 1x6 pine T&G can run either way
     var DOOR="basic";  // 5ft double door style: basic, craftsman, xtrim, arch, panel4
@@ -2906,7 +2907,7 @@ var STARTER_BUILDS = [
    sidingColor:0xF2F0EC, trimColor:0x1A1A1A, roofColor:0x28282A, roofType:'shingle', ovh:4, ovType:'all4', soffit:'black',
    foundation:'pad', elec:'core',
    doors:[{wall:'front',pos:0.5,style:'craftsman',w:60,h:76}],
-   windows:[{wall:'right',pos:0.5,w:24,h:36,type:'Black Vinyl 24x36'},{wall:'left',pos:0.5,w:24,h:36,type:'Black Vinyl 24x36'}],
+   windows:[{wall:'right',pos:0.5,w:24,h:36,cy:58,type:'Black Vinyl 24x36'},{wall:'left',pos:0.5,w:24,h:36,cy:58,type:'Black Vinyl 24x36'}],
    porchLights:[{wall:'front',pos:0.17,style:'modern'},{wall:'front',pos:0.83,style:'modern'}],
    addons:{flowerboxes:true, fbColor:'black'}}},
  {k:'signature-gable', name:'Signature Gable', sub:'12×16 Gable / A-Frame · Cupola, shutters & power', badge:'Popular',
@@ -2915,7 +2916,7 @@ var STARTER_BUILDS = [
    sidingColor:0x3C3F43, trimColor:0xF2F0EC, roofColor:0x28282A, roofType:'shingle', ovh:4, ovType:'all4', soffit:'white',
    foundation:'pad', elec:'core',
    doors:[{wall:'front',pos:0.5,style:'craftsman',w:72,h:76}],
-   windows:[{wall:'right',pos:0.3,w:24,h:30,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,type:'White Vinyl 24x30'},{wall:'left',pos:0.5,w:24,h:30,type:'White Vinyl 24x30'}],
+   windows:[{wall:'right',pos:0.3,w:24,h:30,cy:61,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,cy:61,type:'White Vinyl 24x30'},{wall:'left',pos:0.5,w:24,h:30,cy:61,type:'White Vinyl 24x30'}],
    porchLights:[{wall:'front',pos:0.18,style:'modern'},{wall:'front',pos:0.82,style:'modern'}],
    addons:{shutters:true, shutterColor:'white', flowerboxes:true, fbColor:'white', cupola:'black', ridgeVent:true}}},
  {k:'estate-porch', name:'Estate Porch Gable', sub:'16×24 Gable / A-Frame · Covered front porch, 9 ft walls', badge:'Luxury', tier:'luxury',
@@ -2925,8 +2926,8 @@ var STARTER_BUILDS = [
    porchLoc:'front', porchDepth:6, porchDeck:'composite', deckColor:'brown', porchTier:'standard',
    foundation:'pad', elec:'core',
    doors:[{wall:'front',pos:0.5,style:'resfull',w:36,h:82.5}],
-   windows:[{wall:'front',pos:0.17,w:36,h:36,type:'White Vinyl 36x36'},{wall:'front',pos:0.83,w:36,h:36,type:'White Vinyl 36x36'},
-            {wall:'right',pos:0.5,w:36,h:36,type:'White Vinyl 36x36'},{wall:'left',pos:0.5,w:36,h:36,type:'White Vinyl 36x36'}],
+   windows:[{wall:'front',pos:0.17,w:36,h:36,cy:64.5,type:'White Vinyl 36x36'},{wall:'front',pos:0.83,w:36,h:36,cy:64.5,type:'White Vinyl 36x36'},
+            {wall:'right',pos:0.5,w:36,h:36,cy:64.5,type:'White Vinyl 36x36'},{wall:'left',pos:0.5,w:36,h:36,cy:64.5,type:'White Vinyl 36x36'}],
    porchLights:[{wall:'front',pos:0.38,style:'modern'},{wall:'front',pos:0.62,style:'modern'}],
    addons:{flowerboxes:true, fbColor:'white', ridgeVent:true}}},
  {k:'heritage-barn', name:'Heritage Barn', sub:'10×20 · Copper cupola & power', badge:'Most space',
@@ -2935,14 +2936,22 @@ var STARTER_BUILDS = [
    sidingColor:0x7C8A6E, trimColor:0xF2F0EC, roofColor:0x28282A, roofType:'shingle',
    foundation:'pad', elec:'core',
    doors:[{wall:'front',pos:0.5,style:'xtrim',w:72,h:76}],
-   windows:[{wall:'right',pos:0.3,w:24,h:30,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,type:'White Vinyl 24x30'}],
+   windows:[{wall:'right',pos:0.3,w:24,h:30,cy:61,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,cy:61,type:'White Vinyl 24x30'}],
    porchLights:[{wall:'front',pos:0.12,style:'modern'},{wall:'front',pos:0.88,style:'modern'}],
    addons:{flowerboxes:true, fbColor:'white', cupola:'copper'}}},
- {k:'modern-studio', name:'Modern Studio', sub:'16×12 Lean-To · Cedar doors, big vertical window & 2 porch lights', badge:'Modern',
+ {k:'modern-studio', name:'Modern Studio', sub:'16×12 Lean-To · Deep eave, full power-ready electrical, 2 porch lights', badge:'Modern',
   img:'designer-starters/modern-studio.webp',
   cfg:{style:'leanto', w:16, l:12, h:9, siding:'horizontal',
    sidingColor:0x3C3F43, trimColor:0x1A1A1A, roofColor:0x1A1A1A, roofType:'metal', ovh:6, ovType:'all4', soffit:'cedar',
-   foundation:'pad', elec:'core',
+   /* Deep modern front eave: 18in at the front (the 6in all-round overhang
+      plus a foot), cedar soffit underneath. Starter-only; any lean-to can pick
+      it on the Roof step (Front overhang: 1 1/2 ft). */
+   leantoFrontOvh:18,
+   /* Essential = the most complete package: (4) 6" lights, porch light,
+      exterior soffit lights, multiple switch locations, (6) outlets, GFCI,
+      120V power inlet. Power-ready; a licensed electrician makes the final
+      hookup. */
+   foundation:'pad', elec:'essential',
    doors:[{wall:'front',pos:0.279,style:'cedar',w:60,h:76}],
    /* Front: the 16ft side (192in) faces you, the roof slopes back over the
       12ft depth - same 192 sqft as a 12x16. On the 12ft side there was no
@@ -2955,8 +2964,8 @@ var STARTER_BUILDS = [
       left to the auto-placer: one each side of the door, the same 8in of
       siding from each casing, centred ~6ft up (the door's upper third). */
    windows:[{wall:'front',pos:0.852,w:24,h:36,cy:58,type:'Black Vinyl 24x36'},
-            {wall:'right',pos:0.5,w:36,h:36,type:'Black Vinyl 36x36'},
-            {wall:'left',pos:0.3,w:14,h:36,type:'Black Transom 14x36'},{wall:'left',pos:0.7,w:14,h:36,type:'Black Transom 14x36'}],
+            {wall:'right',pos:0.5,w:36,h:36,cy:58,type:'Black Vinyl 36x36'},
+            {wall:'left',pos:0.3,w:14,h:36,cy:58,type:'Black Transom 14x36'},{wall:'left',pos:0.7,w:14,h:36,cy:58,type:'Black Transom 14x36'}],
    porchLights:[{wall:'front',pos:0.1,style:'modern'},{wall:'front',pos:0.6,style:'modern'}],
    addons:{}}}
 ];
@@ -17201,7 +17210,7 @@ function consultNudgeInit(sharedDesign){
     <h2>How it works</h2>
     <ol class="dinfo-steps"><li>Start from a ShedPro favorite or pick a style.</li><li>Pick your size: width, length and wall height.</li><li>Choose your foundation.</li><li>Pick siding and colors.</li><li>Choose your roof.</li><li>Add doors, then windows and vents.</li><li>Plan the interior, power-ready electrical and add-ons.</li><li>Review your design and request your free quote.</li></ol>
     <h2>ShedPro favorites: 5 starter builds</h2>
-    <ul><li><strong>Classic Gable</strong> (10×12): Gable / A-frame with power, porch lights and a concrete pad</li><li><strong>Signature Gable</strong> (12×16): Gable / A-frame with a cupola, shutters and power</li><li><strong>Estate Porch Gable</strong> (16×24): Gable / A-frame with a covered front porch and 9 ft walls</li><li><strong>Heritage Barn</strong> (10×20): Barn (gambrel) roof with a copper cupola and power</li><li><strong>Modern Studio</strong> (12×16): Lean-to (single slope) with cedar doors, a metal roof and power</li></ul>
+    <ul><li><strong>Classic Gable</strong> (10×12): Gable / A-frame with power, porch lights and a concrete pad</li><li><strong>Signature Gable</strong> (12×16): Gable / A-frame with a cupola, shutters and power</li><li><strong>Estate Porch Gable</strong> (16×24): Gable / A-frame with a covered front porch and 9 ft walls</li><li><strong>Heritage Barn</strong> (10×20): Barn (gambrel) roof with a copper cupola and power</li><li><strong>Modern Studio</strong> (16×12): Lean-to (single slope) with a deep front eave, cedar doors, a metal roof and full power-ready electrical</li></ul>
     <h2>Shed styles</h2>
     <ul><li><strong>Gable / A-Frame</strong>: our most popular style: a classic peaked roof, with the option of a covered front or side porch (cabin style)</li><li><strong>Barn</strong>: a gambrel roof for maximum loft space</li><li><strong>Lean-To</strong>: a modern single-slope roof</li><li><strong>Poolhouse</strong>: a hip roof that slopes on all four sides</li><li><strong>3 Peak</strong>: a gable with one cross gable</li><li><strong>4 Peak</strong>: a gable with cross gables on both sides</li></ul>
     <p>Searching for an A-frame shed? It's the same build as our gable shed: same peaked roof, same pricing, same options.</p>

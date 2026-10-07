@@ -91,7 +91,27 @@ test('Modern Studio lean-to: one big vertical window, head level with the door h
   assert.ok(winR <= len - 3.6 - 12, 'a foot or more of siding between the window casing and the corner');
   assert.ok(winL - doorR >= 30, 'room for the porch light between door and window');
   assert.equal(u.cfg.porchLights.length, 2, 'two porch lights');
-  assert.match(u.sub, /^16×12 Lean-To · Cedar doors, big vertical window & 2 porch lights/);
+  assert.match(u.sub, /^16×12 Lean-To · Deep eave, full power-ready electrical, 2 porch lights/);
+  assert.equal(u.cfg.leantoFrontOvh, 18, 'front eave = 6in overhang + 1 ft');
+  assert.ok(DESIGNER.includes('data-fovh="18"'), 'the 1 1/2 ft front overhang is a real Roof-step option');
+  assert.equal(u.cfg.elec, 'essential', 'the most complete electrical package');
+});
+
+test('every starter: window heads share one line, level with the door head', () => {
+  const re = /\{k:'([a-z-]+)', name:[\s\S]*?addons:\{[^}]*\}\s*\}\s*\}/g;
+  const block = DESIGNER.slice(DESIGNER.indexOf('var STARTER_BUILDS = ['));
+  let m, n = 0;
+  while ((m = re.exec(block))) {
+    const u = vm.runInNewContext('(' + m[0] + ')');
+    if (!u.cfg.windows || !u.cfg.windows.length) continue;
+    n++;
+    const head = Math.max.apply(null, u.cfg.doors.map(d => d.h));
+    u.cfg.windows.forEach(w => {
+      assert.ok(w.cy != null, u.k + ': ' + w.type + ' has an explicit height');
+      assert.equal(w.cy + w.h / 2, head, u.k + ': ' + w.wall + ' ' + w.type + ' head at the door head');
+    });
+  }
+  assert.equal(n, 5, 'all five starters checked');
 });
 
 test('the two porch lights flank the door symmetrically at fixture height, clear of the window', () => {
