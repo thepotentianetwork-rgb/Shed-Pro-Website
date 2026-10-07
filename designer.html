@@ -2938,15 +2938,23 @@ var STARTER_BUILDS = [
    windows:[{wall:'right',pos:0.3,w:24,h:30,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,type:'White Vinyl 24x30'}],
    porchLights:[{wall:'front',pos:0.12,style:'modern'},{wall:'front',pos:0.88,style:'modern'}],
    addons:{flowerboxes:true, fbColor:'white', cupola:'copper'}}},
- {k:'modern-studio', name:'Modern Studio', sub:'12×16 · Cedar doors, metal roof & power', badge:'Modern',
+ {k:'modern-studio', name:'Modern Studio', sub:'12×16 Lean-To · Cedar doors, vertical transoms & power', badge:'Modern',
   img:'designer-starters/modern-studio.webp',
   cfg:{style:'leanto', w:12, l:16, h:9, siding:'horizontal',
    sidingColor:0x3C3F43, trimColor:0x1A1A1A, roofColor:0x1A1A1A, roofType:'metal', ovh:6, ovType:'all4', soffit:'cedar',
    foundation:'pad', elec:'core',
-   doors:[{wall:'front',pos:0.21,style:'cedar',w:60,h:76}],
-   windows:[{wall:'front',pos:0.92,w:36,h:36,type:'Black Vinyl 36x36'},{wall:'right',pos:0.5,w:36,h:36,type:'Black Vinyl 36x36'},
+   doors:[{wall:'front',pos:0.04,style:'cedar',w:60,h:76}],
+   /* Front: a row of three tall, narrow vertical transoms (the existing
+      "Vertical Transom 12x30" option, priced like any other transom) set high
+      under the roofline, evenly spaced across the wall beside the door. cy is
+      explicit so they sit up under the plate instead of at window height.
+      ONE porch light: the auto-placer centres it over the door head. */
+   windows:[{wall:'front',pos:0.611,w:12,h:30,cy:84,type:'Black Transom 12x30'},
+            {wall:'front',pos:0.793,w:12,h:30,cy:84,type:'Black Transom 12x30'},
+            {wall:'front',pos:0.976,w:12,h:30,cy:84,type:'Black Transom 12x30'},
+            {wall:'right',pos:0.5,w:36,h:36,type:'Black Vinyl 36x36'},
             {wall:'left',pos:0.3,w:14,h:36,type:'Black Transom 14x36'},{wall:'left',pos:0.7,w:14,h:36,type:'Black Transom 14x36'}],
-   porchLights:[{wall:'front',pos:0.0,style:'modern'},{wall:'front',pos:0.64,style:'modern'}],
+   porchLights:[{wall:'front',pos:0.04,style:'modern'}],
    addons:{}}}
 ];
 var SHED_USES = STARTER_BUILDS.concat([
@@ -16451,6 +16459,7 @@ function openQ(){
         '<div class="sqbox-s">'+(PRICE_LOCKED?'A ShedPro rep calls within 24 hours to finalize your quote':(W+'x'+L+' ft &middot; estimated price'))+'</div>'+
       '</div>'
     ):'')+
+    ((window.DT && DT.promoHTML) ? DT.promoHTML('quote') : '')+
     '<div class="qsec-lbl">Contact Info</div>'+
     /* The asterisks are not decoration. Nothing on this form said which fields
        were needed, so the first a customer heard of it was the submit button
@@ -17174,6 +17183,7 @@ function consultNudgeInit(sharedDesign){
 </script>
 <script src="designer-upgrade.js"></script>
 <script src="paint-codes.js"></script>
+<script src="designer-trust.js"></script>
 <script src="designer-realism.js"></script>
 <!-- SEO / help panel: real, crawlable copy about the designer, kept OUT of the
      app's way. It is in the HTML so search engines read it, but it only shows
