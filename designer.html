@@ -17473,7 +17473,7 @@ function submitConsult(){
         website: (document.getElementById('cWebsite')||{}).value || '',
         contact: contact,
         bestTime: g('cTime'),
-        question: g('cQ'),
+        question: ['Kind: Designer', g('cQ')].filter(Boolean).join('\n'),
         step: step,
         stepIndex: (typeof wizStep === 'number') ? wizStep : null,
         trigger: CONSULT_TRIGGER,

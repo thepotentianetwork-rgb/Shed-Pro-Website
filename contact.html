@@ -221,7 +221,7 @@
     if(phone.replace(/\D/g,'').length<10) return fail('Please add a 10-digit phone number.',$('phone'));
     if(!city) return fail('Please add your city.',$('location'));
     var btn=$('formSend'); if(btn){btn.disabled=true;btn.textContent='Sending...'}
-    var question='City: '+city+(note?'\nNote: '+note:'');
+    var question='Kind: Info request\nCity: '+city+(note?'\nNote: '+note:'');
     var smsEl=$('smsConsent'),sms=!!(smsEl&&smsEl.checked),smsAt=sms?new Date().toISOString():null;
     /* sms_consent rides top-level for the Worker, and inside page (which the Worker stores verbatim) so it is kept today. */
     var payload={website:val('cfWebsite'),contact:{name:name,phone:phone,email:'',city:city},bestTime:'',question:question,
@@ -230,6 +230,8 @@
       page:{url:location.href,sms_consent:sms,sms_consent_at:smsAt,sms_consent_source:'contact-page'}};
     return fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       .then(function(r){ if(!r||!r.ok) throw new Error('send failed');
+        var first=(name.split(' ')[0]||'there');
+        var msg=$('successMsg'); if(msg) msg.textContent='Thank you for your submission, '+first+'. A representative will reach out shortly to discuss your project with you.';
         $('contactFormInner').style.display='none'; var ok=$('formSuccess'); if(ok){ok.style.display='block'; try{ok.scrollIntoView({block:'center'})}catch(x){}}
         try{ if(window.gtag) gtag('event','generate_lead',{form:'contact-lite'}) }catch(x){}
       })
