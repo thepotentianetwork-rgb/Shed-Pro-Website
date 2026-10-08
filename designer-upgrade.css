@@ -136,3 +136,7 @@ body.du-last .sum > .cta{display:none}
 .du-fast-a{display:inline-flex;align-items:center;gap:4px;color:var(--blue);font-weight:700;text-decoration:none;white-space:nowrap}
 .du-fast-a svg{flex:none;position:relative;top:1px}
 .du-fast-a:hover span,.du-fast-a:focus-visible span{text-decoration:underline}
+.du-fast-row{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 18px;margin:6px 0 16px}
+.du-fast-num{display:inline-flex;align-items:center;gap:8px}
+.du-fast-sms{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;border:1px solid var(--blue);color:var(--blue)}
+.du-fast-sms:hover,.du-fast-sms:focus-visible{background:rgba(56,182,255,.12)}
