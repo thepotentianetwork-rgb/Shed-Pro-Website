@@ -286,9 +286,12 @@ DU.renderSuccess = function(o){
     '<div class="du-ok" aria-hidden="true">&#10003;</div>'+
     '<h2 class="du-success-h">Thank you for your submission, '+first+'.</h2>'+
     '<p class="du-sheet-p">A representative will reach out shortly to discuss your estimate with you.</p>'+
-    '<p class="du-sheet-p du-fast">If you would like faster service, feel free to give us a '+
-      '<a class="du-fast-a" href="tel:4352770764"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span>call</span></a> or a '+
-      '<a class="du-fast-a" href="sms:+14352770764"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>text</span></a>.</p>'+
+    '<p class="du-sheet-p du-fast">If you would like help with this sooner, contact us.</p>'+
+    '<p class="du-fast-row">'+
+      '<span class="du-fast-num"><a class="du-fast-a" href="tel:+14352770764" aria-label="Call 435-277-0764"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span>435-277-0764</span></a>'+
+      '<a class="du-fast-sms" href="sms:+14352770764" aria-label="Text 435-277-0764" title="Text us"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></a></span>'+
+      '<a class="du-fast-a" href="mailto:info@shedpro-utah.com"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg><span>info@shedpro-utah.com</span></a>'+
+    '</p>'+
     (img?'<img class="du-rv-img" src="'+img+'" alt="The shed you sent us">':'')+
     '<dl class="du-rv du-rv-compact">'+rows.map(function(r){ return '<div class="du-rv-row"><dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd></div>'; }).join('')+'</dl>'+
     (aiRenderOn()?'<div class="du-ai" id="duAi" aria-live="polite"><div class="du-ai-h">Artist\'s rendering</div>'+
