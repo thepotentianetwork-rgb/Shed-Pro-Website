@@ -284,8 +284,8 @@ DU.renderSuccess = function(o){
   var first=esc(String(o.name||'').split(' ')[0]);
   var html='<div class="du-success">'+
     '<div class="du-ok" aria-hidden="true">&#10003;</div>'+
-    '<h2 class="du-success-h">Thanks, '+first+'! Your design is in.</h2>'+
-    '<p class="du-sheet-p">A copy is on its way to '+esc(o.email)+'.</p>'+
+    '<h2 class="du-success-h">Thank you for your submission, '+first+'.</h2>'+
+    '<p class="du-sheet-p">A representative will reach out shortly to discuss your estimate with you.</p>'+
     (img?'<img class="du-rv-img" src="'+img+'" alt="The shed you sent us">':'')+
     '<dl class="du-rv du-rv-compact">'+rows.map(function(r){ return '<div class="du-rv-row"><dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd></div>'; }).join('')+'</dl>'+
     (aiRenderOn()?'<div class="du-ai" id="duAi" aria-live="polite"><div class="du-ai-h">Artist\'s rendering</div>'+
