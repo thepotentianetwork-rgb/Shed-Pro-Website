@@ -131,3 +131,8 @@ body.du-last .sum > .cta{display:none}
 .du-ai-fig img{display:block;width:100%;height:auto;border-radius:8px}
 .du-ai-fig figcaption{font-size:12px;opacity:.8;margin-top:6px}
 .du-ai-mock{color:#f0b429}
+
+/* faster-service line on the success screen */
+.du-fast-a{display:inline-flex;align-items:center;gap:4px;color:var(--blue);font-weight:700;text-decoration:none;white-space:nowrap}
+.du-fast-a svg{flex:none;position:relative;top:1px}
+.du-fast-a:hover span,.du-fast-a:focus-visible span{text-decoration:underline}
