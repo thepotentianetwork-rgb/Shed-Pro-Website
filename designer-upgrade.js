@@ -310,6 +310,99 @@ DU.renderSuccess = function(o){
   try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
   var t=$('duTextDesign'); if(t) t.addEventListener('click', function(){ DU.shareDesign('success', o.link); });
   if(aiRenderOn()) DU.startAiRender(o);
+  try{ DU.celebrate(); }catch(e){}
+};
+
+/* ── celebration: one 360° orbit of the shed, then a burst of confetti ──
+   Runs once per submission when the success screen opens. Animates the
+   designer's own orbit state (window.theta, read by updateCamera and written
+   by the drag handlers), so the render loop and drag-to-rotate stay in step:
+   a press on the canvas mid-spin simply stops it where it is and the drag
+   carries on from there. Distance (radius), height (phi) and target are left
+   alone. Confetti (canvas-confetti, pinned) is fetched only now, never on page
+   load; if it fails to load there is just no confetti. Reduced motion: neither. */
+var CONFETTI_SRC = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js';
+var SPIN_MS = 1500, SPIN_DELAY = 250;
+var celebrateAt = 0, confettiP = null;
+function reducedMotion(){ try{ return matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return false; } }
+function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+function loadConfetti(){
+  if(confettiP) return confettiP;
+  confettiP = new Promise(function(res){
+    if(typeof window.confetti==='function') return res(window.confetti);
+    var s=document.createElement('script');
+    s.src=CONFETTI_SRC; s.async=true; s.crossOrigin='anonymous';
+    s.onload=function(){ res(typeof window.confetti==='function' ? window.confetti : null); };
+    s.onerror=function(){ confettiP=null; res(null); };   // allow a retry on a later submission
+    document.head.appendChild(s);
+  });
+  return confettiP;
+}
+function spinShed(done){
+  var W=window, cv=W.renderer && W.renderer.domElement;
+  if(typeof W.updateCamera!=='function' || typeof W.theta!=='number' || !cv || W.INSIDE_VIEW){ done(); return; }
+  var t0=null, start=W.theta, prevAuto=W.autoR, over=false;
+  function stop(cancelled){
+    if(over) return; over=true;
+    cv.removeEventListener('mousedown', onPress, true);
+    cv.removeEventListener('touchstart', onPress, true);
+    // Finished: land exactly where it started and give the idle sway back if it
+    // was running. Cancelled: leave theta alone, the drag owns it now.
+    if(!cancelled){ W.theta=start; W.autoR=prevAuto; try{ W.updateCamera(); }catch(e){} }
+    done();
+  }
+  function onPress(){ stop(true); }
+  cv.addEventListener('mousedown', onPress, true);
+  cv.addEventListener('touchstart', onPress, true);
+  W.autoR=false;                       // the idle sway would overwrite theta every frame
+  requestAnimationFrame(function step(now){
+    if(over) return;
+    if(W.drag){ stop(true); return; }
+    if(t0===null) t0=now;
+    var p=Math.min(1,(now-t0)/SPIN_MS);
+    W.theta=start+2*Math.PI*easeInOutCubic(p);
+    try{ W.updateCamera(); }catch(e){ stop(false); return; }
+    if(p<1) requestAnimationFrame(step); else stop(false);
+  });
+}
+function fireConfetti(confetti){
+  var vp=document.querySelector('.vp');
+  if(!confetti || !vp || !vp.clientWidth || !vp.clientHeight) return;
+  var sp=$('subPage'); if(sp && sp.style.display==='none') return;   // they already left the screen
+  var cv=document.createElement('canvas');
+  cv.className='du-confetti'; cv.setAttribute('aria-hidden','true');
+  cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:30';
+  vp.appendChild(cv);
+  var fire;
+  try{ fire=confetti.create(cv,{resize:true, useWorker:false}); }catch(e){ cv.remove(); return; }
+  var blue='#2BB5E8';
+  try{ blue=(getComputedStyle(document.documentElement).getPropertyValue('--blue')||'').trim()||blue; }catch(e){}
+  var colors=[blue, blue, '#ffffff', '#c9ced3', '#8a9097'];
+  var small=vp.clientWidth<600;
+  var base={colors:colors, particleCount:small?45:80, spread:small?55:65, startVelocity:small?38:52,
+            ticks:small?170:210, gravity:1, scalar:small?0.8:1, zIndex:30, disableForReducedMotion:true};
+  function burst(o){ try{ fire(Object.assign({}, base, o)); }catch(e){} }
+  burst({angle:60,  origin:{x:0, y:0.85}});
+  burst({angle:120, origin:{x:1, y:0.85}});
+  // a small follow-up so it settles rather than stops
+  setTimeout(function(){
+    burst({angle:55,  origin:{x:0, y:0.7}, particleCount:small?18:30, startVelocity:small?30:40});
+    burst({angle:125, origin:{x:1, y:0.7}, particleCount:small?18:30, startVelocity:small?30:40});
+  }, 260);
+  setTimeout(function(){ try{ fire.reset(); }catch(e){} cv.remove(); }, 5000);
+}
+DU.celebrate = function(){
+  if(reducedMotion()) return;
+  var now=Date.now();
+  if(now-celebrateAt<6000) return;     // once per submission, even if a fallback calls again
+  celebrateAt=now;
+  var lib=loadConfetti();              // fetch in parallel with the spin
+  setTimeout(function(){
+    spinShed(function(){
+      var waited=Date.now();
+      lib.then(function(c){ if(c && Date.now()-waited<4000) fireConfetti(c); });
+    });
+  }, SPIN_DELAY);
 };
 
 /* ── artist's rendering (TEST — off unless ?airender=1 or window.SP_AI_RENDER,
