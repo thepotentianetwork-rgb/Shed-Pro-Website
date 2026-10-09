@@ -9,8 +9,10 @@
       session. It steps aside whenever another overlay needs that corner (the
       resume card, the consult nudge, the wall picker, edit mode, a dialog).
    2. The "$500 off a concrete pad" promo from the home page (same wording,
-      same end date, same auto-hide on Nov 4, 2026). Display only: it does not
-      touch the price, the same as on the home page.
+      same end date, same auto-hide on Nov 4, 2026). The banner itself is
+      display only; the discount is in the price now (Oct 2026): the worker
+      lists the pad at $3,500 with a $500 promo, and the Foundation step's pad
+      tile shows the list price struck through and the promo by name.
    If this file fails to load, the designer works exactly as before. */
 (function(){
 'use strict';

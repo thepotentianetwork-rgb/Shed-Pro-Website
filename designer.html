@@ -2102,6 +2102,10 @@ var FOUNDATION='blocks'; // 'pad' (concrete) | 'blocks' (levelled, complimentary
 var FOUNDATION_LIFT=0;   // world-units the shed is raised (blocks foundation)
 var FOUNDATION_STAIN='none';   // 'none' or a Behr PFC stain color key
 var FOUNDATION_FINISH='plain'; // 'plain' ($0) | 'broom' (tiered) | 'coated' (flat, colored)
+/* Sprinkler heads to relocate before the pad: one entry per head, the most
+   feet it moves (5 = "up to 5 ft", the default). Priced by the worker
+   (SELL.sprinkler); optionPrices.sprinkler.byFt gives the price per distance. */
+var SPRINKLERS=[];
 /* Foundation & finish PRICES are computed server-side (worker/pricing.js) and
    returned in quoteCache.optionPrices — this file has no rate tables to read,
    just the already-computed dollar amount for the shed's own current size.
@@ -2114,6 +2118,30 @@ function foundationFinishPrice(kind, sqft){
 function foundationBasePrice(kind){
   var fp = quoteCache.optionPrices && quoteCache.optionPrices.foundation;
   return (fp && fp[kind]!=null) ? fp[kind] : 0;
+}
+/* The concrete pad tile. foundation.pad is what the customer PAYS; when the
+   server also sends a list price and a promo (the $500-off promo), the list
+   price is struck through beside it and the promo named, so the saving is
+   visible on the tile and not only in a banner. An older worker sends pad
+   alone and the tile reads exactly as before. */
+function padPromoParts(){
+  var fp = quoteCache.optionPrices && quoteCache.optionPrices.foundation;
+  if(!fp || !(fp.padPromo>0) || !(fp.padList>fp.pad)) return null;
+  return {list:fp.padList, promo:fp.padPromo, pay:fp.pad};
+}
+/* Nando, 9 Oct 2026: concrete and sprinkler relocation "may vary depending
+   on conditions of the site" — both read as estimates wherever they are priced. */
+var SITE_ESTIMATE_NOTE='Estimate. Final price may vary based on site conditions.';
+function padPriceHTML(pr){
+  var base=pr(foundationBasePrice('pad'));
+  var pp=padPromoParts();
+  if(!pp) return base;
+  /* With prices hidden (the customer default) the tile still says the promo
+     is applied — the $500 is advertised on the home page anyway — but shows
+     no list or pay figure, same as every other tile. */
+  var pill='<div class="pad-promo" style="margin-top:3px;font-size:10px;font-weight:800;letter-spacing:.04em;color:#06222e;background:#2BB5E8;border-radius:999px;padding:2px 7px;display:inline-block">$'+Math.round(pp.promo).toLocaleString()+' promo'+(PRICE_LOCKED?' applied':'')+'</div>';
+  if(PRICE_LOCKED) return pill;
+  return '<span class="pad-was" style="text-decoration:line-through;opacity:.55;font-weight:600;margin-right:5px">$'+Math.round(pp.list).toLocaleString()+'</span>'+base+pill;
 }
 /* The pad is drawn from the ENCLOSURE, not the full footprint — buildFoundation
    sizes it w+0.10 x l+0.10 off encWft/encLft — so the area that gets broomed is
@@ -15221,7 +15249,7 @@ function renderFoundation(){
     {k:'blocks',   name:'Leveled on Cinder Blocks', desc:'We level and set your shed on block piers \u2014 complimentary', price:'Included', visual:true},
     {k:'gravel',   name:'Gravel Pad + Leveled on Blocks', desc:'We pour and level gravel over the site, then set your shed on block piers',
      price:pr(foundationBasePrice('gravel'))+' <span style="opacity:.6;font-weight:600">'+padSqft()+' sqft</span>', visual:true},
-    {k:'pad',      name:'Concrete Pad \u2014 Poured by Us', desc:'4\u2033 level slab, same size as your shed', price:pr(foundationBasePrice('pad')), visual:true}
+    {k:'pad',      name:'Concrete Pad \u2014 Poured by Us', desc:'4\u2033 level slab, same size as your shed. '+SITE_ESTIMATE_NOTE, price:padPriceHTML(pr), visual:true}
   ];
   /* The foundation cards go in an .optrow so they scroll side by side on a
      phone like every other option set. The finish block below stays stacked.
@@ -15368,8 +15396,88 @@ var ADDON_ITEMS=[
   {k:'weatherGuard',name:'Floor Weather Guard',    sec:'envelope'},
   {k:'hurricaneTies',name:'Hurricane Ties',        sec:'envelope'},
   {k:'shedRemoval',    name:'Remove Existing Shed',     sec:'site'},
-  {k:'concreteRemoval',name:'Remove Existing Concrete', sec:'site'}
+  {k:'concreteRemoval',name:'Remove Existing Concrete', sec:'site'},
+  /* Not a yes/no like the rest: a head count and a distance per head. Hidden
+     until the server prices it (optionPrices.sprinkler), so this page can
+     never offer something the quote would then leave out. */
+  {k:'sprinklers',     name:'Relocate Sprinkler Heads', sec:'site', sprinkler:true}
 ];
+/* ---- SPRINKLER RELOCATION ----
+   Count first, distance optional: every head starts at "up to 5 ft", which is
+   most of them, and "Set the distance for each head" opens one picker per
+   head for the ones that move further. The distances offered are the steps
+   the price moves in (optionPrices.sprinkler.byFt: 5 -> $300, 7 -> $400 ...),
+   so each choice names its own price. Staff can still change it in the CRM. */
+var SPRINKLER_MAX=20, _sprDetail=false;
+function sprinklerPrices(){ return quoteCache.optionPrices && quoteCache.optionPrices.sprinkler; }
+function sprinklerBuckets(){
+  var sp=sprinklerPrices(); if(!sp || !sp.byFt) return [];
+  return Object.keys(sp.byFt).map(Number).sort(function(a,b){return a-b;})
+    .map(function(ft, i, arr){ return {ft:ft, lo:i?arr[i-1]+1:0, price:sp.byFt[ft]}; });
+}
+function sprinklerBucketLabel(b){ return b.lo ? (b.lo+'\u2013'+b.ft+' ft') : ('Up to '+b.ft+' ft'); }
+function sprinklerHeadPrice(ft){
+  var bs=sprinklerBuckets(); if(!bs.length) return 0;
+  for(var i=0;i<bs.length;i++){ if(ft<=bs[i].ft) return bs[i].price; }
+  return bs[bs.length-1].price;
+}
+function sprinklerTotal(){ return SPRINKLERS.reduce(function(t,ft){ return t+sprinklerHeadPrice(ft); }, 0); }
+function sprinklerDefaultFt(){ var sp=sprinklerPrices(); return (sp && sp.includedFt) || 5; }
+function setSprinklerCount(n){
+  n=Math.max(0, Math.min(SPRINKLER_MAX, n|0));
+  while(SPRINKLERS.length<n) SPRINKLERS.push(sprinklerDefaultFt());
+  SPRINKLERS.length=n;
+  if(!n) _sprDetail=false;
+  renderAddons(); buildShed();
+}
+function toggleSprinklers(){ setSprinklerCount(SPRINKLERS.length ? 0 : 1); }
+function setSprinklerFt(i, ft){ if(i>=0 && i<SPRINKLERS.length){ SPRINKLERS[i]=+ft||sprinklerDefaultFt(); renderAddons(); buildShed(); } }
+function toggleSprinklerDetail(){ _sprDetail=!_sprDetail; renderAddons(); }
+function sprinklerRowHTML(it){
+  var on=SPRINKLERS.length>0, sp=sprinklerPrices();
+  var sub = PRICE_LOCKED ? 'Per head, by distance moved'
+    : ('Estimate \u00b7 $'+Math.round(sp.base).toLocaleString()+' per head up to '+sp.includedFt+' ft \u00b7 +$'+Math.round(sp.stepAmt).toLocaleString()+' each extra '+sp.stepFt+' ft');
+  var h='<div style="margin-bottom:6px" id="sprinklerAddon">';
+  h+='<div onclick="toggleSprinklers()" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:'+(on?'8px 8px 0 0':'8px')+';cursor:pointer;background:'+(on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+'">'+
+    '<div><div style="font-size:12px;font-weight:700;color:var(--w)">'+it.name+itemBadgeHTML('addon:'+it.k)+'</div><div style="font-size:11px;color:var(--mu)">'+sub+'</div></div>'+
+    '<div style="width:22px;height:22px;border-radius:6px;flex-shrink:0;background:'+(on?'#2BB5E8':'transparent')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+';color:#06222e;font-weight:800;text-align:center;line-height:22px">'+(on?'\u2713':'')+'</div></div>';
+  if(on){
+    var n=SPRINKLERS.length, btn='width:28px;height:28px;border-radius:7px;border:1px solid var(--br);background:var(--d3);color:var(--w);font-weight:800;font-size:15px;cursor:pointer;line-height:1';
+    var anyFar=SPRINKLERS.some(function(ft){ return ft>sprinklerDefaultFt(); });
+    var detail=_sprDetail || anyFar;
+    h+='<div style="padding:10px;border:1px solid #2BB5E8;border-top:none;border-radius:0 0 8px 8px;background:rgba(43,181,232,.07)">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mu)">Heads to move</span>'+
+      '<span style="display:flex;align-items:center;gap:8px">'+
+        '<button type="button" aria-label="One fewer sprinkler head" onclick="event.stopPropagation();setSprinklerCount('+(n-1)+')" style="'+btn+'">\u2212</button>'+
+        '<span id="sprinklerCount" style="min-width:20px;text-align:center;font-size:15px;font-weight:800;color:var(--w)">'+n+'</span>'+
+        '<button type="button" aria-label="One more sprinkler head" onclick="event.stopPropagation();setSprinklerCount('+(n+1)+')" style="'+btn+'"'+(n>=SPRINKLER_MAX?' disabled':'')+'>+</button>'+
+      '</span></div>';
+    if(!detail){
+      h+='<div style="font-size:11px;color:var(--mu);margin-top:8px">Each head moved up to '+sprinklerDefaultFt()+' ft. '+
+        '<a href="javascript:void(0)" onclick="event.stopPropagation();toggleSprinklerDetail()" style="color:var(--blue);font-weight:700">Set the distance for each head</a></div>';
+    } else {
+      var bs=sprinklerBuckets();
+      h+='<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">';
+      SPRINKLERS.forEach(function(ft, i){
+        h+='<label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--w)">Head '+(i+1)+
+          '<select class="spr-ft" data-i="'+i+'" onclick="event.stopPropagation()" onchange="setSprinklerFt('+i+',this.value)" style="background:var(--d3);color:var(--w);border:1px solid var(--br);border-radius:7px;padding:5px 6px;font-size:12px">'+
+          bs.map(function(b){
+            var sel=(ft<=b.ft && ft>b.lo-1) || (ft>bs[bs.length-1].ft && b===bs[bs.length-1]);
+            return '<option value="'+b.ft+'"'+(sel?' selected':'')+'>'+sprinklerBucketLabel(b)+(PRICE_LOCKED?'':' \u2014 $'+Math.round(b.price).toLocaleString())+'</option>';
+          }).join('')+'</select></label>';
+      });
+      h+='</div>';
+      if(!anyFar) h+='<div style="margin-top:6px"><a href="javascript:void(0)" onclick="event.stopPropagation();toggleSprinklerDetail()" style="font-size:11px;color:var(--blue);font-weight:700">All up to '+sprinklerDefaultFt()+' ft</a></div>';
+    }
+    h+='<div style="display:flex;justify-content:space-between;margin-top:9px;font-size:12px;font-weight:800;color:var(--w)">'+
+      '<span>Sprinkler relocation \u2014 '+n+' head'+(n===1?'':'s')+(PRICE_LOCKED?'':' (estimate)')+'</span><span id="sprinklerTotal">'+(PRICE_LOCKED?'':'$'+Math.round(sprinklerTotal()).toLocaleString())+'</span></div>';
+    h+='<div style="font-size:10.5px;color:var(--mu);margin-top:4px;line-height:1.4"><b class="spr-est" style="color:var(--w);font-weight:700">'+SITE_ESTIMATE_NOTE+'</b> Measured from where the head is now to where it needs to go. We confirm on site before the pad goes in.</div>';
+    h+='</div>';
+  }
+  h+='</div>';
+  return h;
+}
 function addonPriceText(it){
   if(it.price) return it.price;   // doorAwning's fixed "TBD" note
   if(PRICE_LOCKED) return '';
@@ -15391,6 +15499,7 @@ function renderAddons(){
     // Barn and Lean-To: gambrel has its own cap builder and the lean-to has no
     // ridge at all, so the vent geometry (built in the gable roof block) would
     // never appear.
+    if(it.sprinkler) return !sprinklerPrices();
     return !!(it.needsRidge && !(STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak'));
   }
   var _shown=ADDON_ITEMS.filter(function(it){ return !itemHidden(it); });
@@ -15416,6 +15525,7 @@ function renderAddons(){
       return;
     }
     var it=row.item;
+    if(it.sprinkler){ html+=sprinklerRowHTML(it); return; }
     var on=ADDONS[it.k];
     // Flower boxes + shutters get a finish picker once they're switched on.
     var colorKey=(it.k==='flowerboxes')?'fbColor':(it.k==='shutters')?'shutterColor':null;
@@ -17597,6 +17707,9 @@ function getDesignConfig(){
     doors:doorsData, windows:windowsData, vents:ventsData, shelves:shelvesData,
     porchLights:porchLightsData
   };
+  /* Only when there are any, so every design saved without sprinklers keeps
+     exactly the config (and the share code) it always had. */
+  if(SPRINKLERS.length) cfg.sprinklers=SPRINKLERS.slice();
   // Brand paint picks (paint, colorNames, doorColor, intColor) - paint-codes.js.
   if(window.PC && PC.decorateConfig) PC.decorateConfig(cfg);
   return cfg;
@@ -17778,6 +17891,10 @@ function applyDesignConfig(c){
     // "no add-ons selected" rather than throwing — same "missing = leave
     // default" treatment every other field here already gets.
     if(c.addons && typeof c.addons==='object')ADDONS=c.addons;
+    /* Absent = none: a design saved before sprinkler relocation existed, or
+       one without it, must not inherit the heads from the last build. */
+    SPRINKLERS = Array.isArray(c.sprinklers)
+      ? c.sprinklers.slice(0, 20).map(function(v){ var n=+v; return n>0 ? n : 5; }) : [];
     if(Array.isArray(c.doors))doorsData=c.doors;
     if(Array.isArray(c.windows))windowsData=c.windows;
     /* DESIGNS SAVED BEFORE addShelf/addVent STAGGERED ANYTHING.

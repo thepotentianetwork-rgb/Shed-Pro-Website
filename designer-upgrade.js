@@ -98,6 +98,8 @@ function addonList(){
   if(a.flowerboxes) out.push((a.fbColor?cap(a.fbColor)+' ':'')+'flower boxes');
   if(a.cupola && a.cupola!=='none') out.push(cap(a.cupola)+' cupola');
   if(a.ridgeVent) out.push('Ridge vent');
+  var spr=window.SPRINKLERS||[];
+  if(spr.length) out.push('Sprinkler relocation ('+spr.length+' head'+(spr.length===1?'':'s')+')');
   Object.keys(a).forEach(function(k){
     if(['shutters','flowerboxes','cupola','ridgeVent','shutterColor','fbColor'].indexOf(k)>=0) return;
     if(a[k]===true) out.push(cap(k.replace(/([A-Z])/g,' $1').toLowerCase()));

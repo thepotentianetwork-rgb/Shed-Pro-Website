@@ -21,7 +21,10 @@ const sink = { innerHTML: '' };
 c.document.getElementById = (id) => (id === 'addonList' ? sink : null);
 c.ADDONS = {};
 c.PRICE_LOCKED = false;
-c.quoteCache = { optionPrices: { addons: {} } };
+/* With the sprinkler rule served, so Relocate Sprinkler Heads is shown (it is
+   hidden until the server prices it). */
+c.quoteCache = { optionPrices: { addons: {},
+  sprinkler: { base: 300, includedFt: 5, stepFt: 2, stepAmt: 100, byFt: { 5: 300, 7: 400, 9: 500 } } } };
 const ORIGINAL = c.ADDON_ITEMS.slice();
 
 function render(style) {
@@ -34,12 +37,13 @@ function render(style) {
 // The rendered list as [{head, items:[key,…]}, …], in document order.
 function groups(html) {
   const out = []; let cur = null;
-  const re = /(class="addon-sec">([^<]+)<)|(toggleAddon\('([^']+)'\))/g;
+  const re = /(class="addon-sec">([^<]+)<)|(toggleAddon\('([^']+)'\))|(toggleSprinklers\(\))/g;
   let m;
   while ((m = re.exec(html))) {
+    const k = m[5] ? 'sprinklers' : m[4];
     if (m[2]) { cur = { head: m[2], items: [] }; out.push(cur); }
-    else if (cur) cur.items.push(m[4]);
-    else out.push({ head: null, items: [m[4]] });
+    else if (cur) cur.items.push(k);
+    else out.push({ head: null, items: [k] });
   }
   return out;
 }
