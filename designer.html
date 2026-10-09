@@ -1489,11 +1489,66 @@ function renderPlacedPorchLights(){
   host.innerHTML='<div class="wstep-sub" style="margin-bottom:6px">Tap one to select it, then drag it in the 3D view — or tap another style to swap it.</div>'+
     porchLightsData.map(function(pld,i){
       var sel=(selectedKind==='plight' && selectedPorchLight===i);
-      return '<div class="placed-row" onclick="editPorchLightIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-        '<span>'+(byKey[pld.style]||'Porch Light')+' &middot; '+pld.wall+
+      var surfs=(typeof plSurfaces==='function')?plSurfaces(pld.wall):[];
+      var cur=pld.ret||'main', curLbl=(surfs.filter(function(x){ return x.id===cur; })[0]||{}).label;
+      var where=(pld.ret && curLbl) ? curLbl.toLowerCase() : pld.wall;
+      var row='<div class="placed-row" onclick="editPorchLightIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
+        '<span>'+(byKey[pld.style]||'Porch Light')+' &middot; '+where+
         ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
         '<span class="placed-x" onclick="event.stopPropagation();removePorchLightIdx('+i+')">&times;</span></div>';
+      if(!sel) return row;
+      /* Selected: which porch wall it hangs on, and a nudge either way — the
+         same moves the drag makes, for a phone where a 2-inch fixture is a
+         small thing to grab. */
+      var chip='display:inline-block;margin:0 4px 4px 0;padding:3px 8px;border-radius:6px;border:1px solid var(--br);font-size:11px;cursor:pointer';
+      var ctl='<div class="pl-ctl" style="margin:-2px 0 8px;padding:6px 8px;border:1px solid var(--br);border-radius:8px">';
+      if(surfs.length>1){
+        ctl+='<div style="font-size:10px;color:var(--mu);margin-bottom:4px">Hang it on</div>'+surfs.map(function(x){
+          var on=(x.id===cur);
+          return '<span class="pl-surf" data-surf="'+x.id+'" onclick="event.stopPropagation();setPorchLightSurface('+i+',\''+x.id+'\')" style="'+chip+(on?';border-color:#2BB5E8;background:rgba(43,181,232,.15);color:#fff':'')+'">'+x.label+'</span>';
+        }).join('');
+      }
+      ctl+='<div style="margin-top:2px"><span class="pl-nudge" onclick="event.stopPropagation();nudgePorchLight('+i+',-3)" style="'+chip+'">&#9664; 3in</span>'+
+           '<span class="pl-nudge" onclick="event.stopPropagation();nudgePorchLight('+i+',3)" style="'+chip+'">3in &#9654;</span>'+
+           '<span style="font-size:10px;color:var(--mu)">or drag it in the 3D view</span></div></div>';
+      return row+ctl;
     }).join('');
+}
+/* Move a light onto another surface of its porch: a return wall (middle of
+   it), or back to the door wall at that end of the porch. */
+function setPorchLightSurface(i, id){
+  var pld=porchLightsData[i]; if(!pld) return;
+  var ok;
+  if(id==='main'){
+    var info=plAxisInfo(pld.wall), r=porchRect && porchRect(), want;
+    if(pld.ret && r && r.wall===pld.wall) want=plSofAxis(info, pld.ret==='start'?r.a0:r.a1)+(pld.ret==='start'?1:-1)*0.3;
+    else want=plSOfPos(pld.wall, pld.pos||0.5);
+    ok=plPlace(pld, 'main', want);
+  } else {
+    var q=plReturnFor(pld.wall, id); ok=q && plPlace(pld, id, q.d/2);
+  }
+  if(ok===false && !pld.ret && id!=='main') showToast('No room for the light there.');
+  buildShed(); renderPlacedPorchLights();
+}
+/* Slide a light dIn inches along whatever it hangs on (toward the wall's
+   end corner for +, start for -; on a return wall + is out toward the edge). */
+function nudgePorchLight(i, dIn){
+  var pld=porchLightsData[i]; if(!pld) return;
+  var d=dIn*PL_IN;
+  if(pld.ret){
+    var q=plReturnFor(pld.wall, pld.ret);
+    if(q) plPlace(pld, pld.ret, (pld.pos||0)*q.d+d);
+  } else {
+    var sNow=plSOfPos(pld.wall, pld.pos);
+    if(!pld.manual && porchLightPlacement[i]) sNow=porchLightPlacement[i].s;
+    // jump an opening rather than stop at it: aim past it if resolve pulls back
+    var sv=plResolveMain(pld.wall, sNow+d, pld.style);
+    if(sv!=null && Math.abs(sv-sNow)<Math.abs(d)/4){
+      for(var k=2;k<200;k++){ var t=plResolveMain(pld.wall, sNow+d*k, pld.style); if(t!=null && Math.abs(t-sNow)>Math.abs(d)/4 && (t-sNow)*d>0){ sv=t; break; } }
+    }
+    if(sv!=null){ pld.pos=plPosOfS(pld.wall, sv); pld.manual=true; }
+  }
+  buildShed(); renderPlacedPorchLights();
 }
 function editPorchLightIdx(i){
   if(!porchLightsData[i]) return;
@@ -2775,6 +2830,11 @@ function init(){
            won — tapping the front of the shed selected the back door. */
         var wl=wm.group && wm.group.userData && wm.group.userData.wall;
         if(wl && !wallFacesCamera(wl)) return;
+        var fn=wm.group && wm.group.userData && wm.group.userData.faceN;
+        if(fn){                                       // a porch return-wall light
+          var gp=wm.group.position, cp=camera.position;
+          if(fn[0]*(cp.x-gp.x)+fn[2]*(cp.z-gp.z)<=0) return;
+        }
         var objs=[];
         wm.group.traverse(function(o){ if(o.isMesh) objs.push(o); });
         var inter=raycaster.intersectObjects(objs, false);
@@ -2928,13 +2988,20 @@ function init(){
       sd.pos=r4.pos; sd.cy=r4.cyIn;
       buildShed(); syncEditorPanel();
     } else if(selectedKind==='plight' && selectedPorchLight>=0 && porchLightsData[selectedPorchLight]){
-      // isDoor=true -> fixed mount height, only slides along the wall.
+      // Fixed mount height; slides along the wall, round the porch's inside
+      // corners onto its return walls, never over an opening.
       var pld=porchLightsData[selectedPorchLight];
-      var r5=pointerOnWall(pld.wall, 6, null, true);
-      if(!r5) return;
-      if(Math.abs(pld.pos-r5.pos)<1e-4 && pld.manual) return;
-      pld.pos=r5.pos; pld.manual=true;
-      buildShed();
+      raycaster.setFromCamera(ndc, camera);
+      var hitS=plRayToSurface(pld.wall, raycaster.ray.origin, raycaster.ray.direction);
+      var moved;
+      if(hitS){ moved=plPlace(pld, hitS.surface, hitS.s); }
+      else {
+        var r5=pointerOnWall(pld.wall, 6, null, true);
+        if(!r5 || pld.ret) return;
+        moved=plPlace(pld, 'main', plSOfPos(pld.wall, r5.pos));
+      }
+      if(!moved) return;
+      buildShed(); renderPlacedPorchLights();
     }
   }
 
@@ -11451,10 +11518,161 @@ function plPrimaryDoor(obs, f){
   });
   return best;
 }
+/* ── PORCH LIGHTS ANYWHERE ON THE PORCH (Nando, 9 Oct 2026) ─────────────────
+   "I can't put a porch light where I want it closer to the outside wall, and
+   I also can't put it on the opposite side of the porch."
+
+   A light hand-placed on a wall now goes anywhere along it, 3in of siding
+   from the corner trim (it used to stop ~8in off the corner), never over a
+   door, window or vent. On a PARTIAL porch it can also go on the short
+   return walls that close the porch's ends: they face into the porch, so a
+   light there lights the porch, and dragging round the inside corner carries
+   it from the stepped-in wall onto them. A full-width porch is open at its
+   ends (posts), so it only has its door wall.
+
+   A light on a return wall is {wall:<porch wall>, ret:'start'|'end', pos},
+   pos running 0 at the stepped-in wall to 1 at the porch's outer edge.
+   'start'/'end' are the porch's two ends along its wall's axis. */
+var PL_CORNER=0.06+3*PL_IN;                      // corner trim + 3in of siding to the fixture edge
+function plAxisInfo(wall){
+  var f=wallFrame(wall); if(!f) return null;
+  var u=(f.ax==='x')?f.ux:f.uz;
+  return {f:f, u:u, start:f.ctr-u*(f.len/2)};
+}
+function plSofAxis(info, axisC){ return (axisC-info.start)*info.u; }
+function plAxisOfS(info, sv){ return info.start+info.u*sv; }
+/* Which return walls this wall's porch has, with their geometry. */
+function plReturns(wall){
+  var r=(typeof porchRect==='function')?porchRect():null;
+  if(!r || r.wall!==wall) return [];
+  var front=(r.wall==='front'), out=[];
+  var pIn=front?r.z0:r.x0, pOut=front?r.z1:r.x1;
+  if(!r.atStart) out.push({ret:'start', a:r.a0, n:+1, pIn:pIn, pOut:pOut, d:r.d, front:front});
+  if(!r.atEnd)   out.push({ret:'end',   a:r.a1, n:-1, pIn:pIn, pOut:pOut, d:r.d, front:front});
+  return out;
+}
+function plReturnFor(wall, ret){
+  return plReturns(wall).filter(function(q){ return q.ret===ret; })[0]||null;
+}
+/* Allowed centre positions along the main wall, as [lo,hi] runs of s, for a
+   fixture half-width hw: off the corner trim, and on a partial porch off the
+   inside corners where the stepped-in wall meets a return (or the open end
+   of a corner porch, where the post stands). */
+function plMainRuns(wall, hw){
+  var info=plAxisInfo(wall); if(!info) return [];
+  var len=info.f.len, m=PL_CORNER+hw, runs=[];
+  var r=(typeof porchRect==='function')?porchRect():null;
+  if(!r || r.wall!==wall){ runs.push([m, len-m]); }
+  else {
+    var s0=plSofAxis(info, r.a0), s1=plSofAxis(info, r.a1);
+    if(s0>s1){ var t=s0; s0=s1; s1=t; }
+    if(s0>1e-4) runs.push([m, s0-m]);              // outer wall before the porch
+    runs.push([s0+m, s1-m]);                      // the stepped-in wall
+    if(s1<len-1e-4) runs.push([s1+m, len-m]);      // outer wall after it
+  }
+  return runs.filter(function(q){ return q[1]>=q[0]; });
+}
+/* Nearest spot to sWant that is in an allowed run and clear of every door,
+   window and vent the fixture would overlap at its mount height. */
+function plResolveMain(wall, sWant, style){
+  var dims=plFixtureDims(style), hw=dims.hw, hh=dims.hh;
+  var top=plWallTop(wall), cy=Math.min(PL_Y_FT*0.2, top-0.10-hh);
+  var runs=plMainRuns(wall, hw);
+  plObstacles(wall).forEach(function(o){
+    if(!(o.y1>cy-hh-0.01 && o.y0<cy+hh+0.01)) return;
+    var a=o.a-PL_CLEAR-hw, b=o.b+PL_CLEAR+hw, next=[];
+    runs.forEach(function(q){
+      if(b<=q[0] || a>=q[1]){ next.push(q); return; }
+      if(a>q[0]) next.push([q[0], a]);
+      if(b<q[1]) next.push([b, q[1]]);
+    });
+    runs=next;
+  });
+  var best=null, bd=Infinity;
+  runs.forEach(function(q){
+    var v=Math.max(q[0], Math.min(q[1], sWant)), dd=Math.abs(v-sWant);
+    if(dd<bd-1e-9){ bd=dd; best=v; }
+  });
+  return best;                                    // null: no room anywhere on this wall
+}
+function plResolveRet(q, sWant, style){
+  var hw=plFixtureDims(style).hw, lo=PL_CORNER+hw, hi=q.d-PL_CORNER-hw;
+  if(hi<lo) return q.d/2;
+  return Math.max(lo, Math.min(hi, sWant));
+}
+/* pos <-> s on the main wall, the same mapping applyWallTransform uses for a
+   6in-wide item. Lights may go past 0..1 now: the old clamp was the margin
+   every other item keeps from the corner, which is what held them off it. */
+function plPosOfS(wall, sv){
+  var f=wallFrame(wall), margin=6*PL_IN/2+0.12;
+  return (sv-margin)/Math.max(1e-6, f.len-margin*2);
+}
+function plSOfPos(wall, pos){
+  var f=wallFrame(wall), margin=6*PL_IN/2+0.12;
+  return margin+pos*(f.len-margin*2);
+}
+/* The surfaces a light on this wall may be moved between, for the panel. */
+function plSurfaces(wall){
+  var out=[{id:'main', label:(porchWall()===wall)?'Door wall':'This wall'}];
+  plReturns(wall).forEach(function(q){
+    var lbl;
+    if(q.front) lbl=(q.ret==='start')?'Left end of porch':'Right end of porch';
+    else        lbl=(q.ret==='start')?'Back end of porch':'Front end of porch';
+    out.push({id:q.ret, label:lbl});
+  });
+  return out;
+}
+/* Ray -> the porch surface it lands on, for dragging. Tests the outer wall,
+   the stepped-in wall and the return walls as finite panels and takes the
+   nearest one the camera is on the face side of. {surface, s} or null. */
+function plRayToSurface(wall, ro, rd){
+  var info=plAxisInfo(wall); if(!info) return null;
+  var f=info.f, A=(f.ax==='x')?'x':'z', P=(A==='x')?'z':'x';
+  var n=(f.ax==='x')?f.nz:f.nx;
+  var hTop=f.height+0.3, best=null;
+  function consider(t, surface, sv){
+    if(!(t>0) || (best && t>=best.t)) return;
+    var y=ro.y+rd.y*t; if(y<-0.1 || y>hTop) return;
+    best={t:t, surface:surface, s:sv};
+  }
+  var r=(typeof porchRect==='function')?porchRect():null, mine=(r && r.wall===wall);
+  // main wall: outer plane, and the stepped-in plane where the porch is
+  [f.fixed].concat(mine?[f.fixed-n*r.d]:[]).forEach(function(plane, k){
+    if(Math.abs(rd[P])<1e-6) return;
+    if((ro[P]-plane)*n<=0) return;                 // looking at its back
+    var t=(plane-ro[P])/rd[P], a=ro[A]+rd[A]*t;
+    var inPorch=mine && a>r.a0 && a<r.a1;
+    if(mine && (k===0)===inPorch) return;           // outer plane only off the porch, inset only on it
+    var sv=plSofAxis(info, a); if(sv<0 || sv>f.len) return;
+    consider(t, 'main', sv);
+  });
+  plReturns(wall).forEach(function(q){
+    if(Math.abs(rd[A])<1e-6) return;
+    if((ro[A]-q.a)*q.n<=0) return;
+    var t=(q.a-ro[A])/rd[A], p=ro[P]+rd[P]*t;
+    var lo=Math.min(q.pIn,q.pOut), hi=Math.max(q.pIn,q.pOut);
+    if(p<lo || p>hi) return;
+    consider(t, q.ret, Math.abs(p-q.pIn));
+  });
+  return best;
+}
+/* Put light i on a surface at s (unresolved). Returns true if it moved. */
+function plPlace(pld, surface, sWant){
+  if(surface==='main'){
+    var sv=plResolveMain(pld.wall, sWant, pld.style); if(sv==null) return false;
+    var np=plPosOfS(pld.wall, sv);
+    if(!pld.ret && pld.manual && Math.abs((pld.pos||0)-np)<1e-5) return false;
+    delete pld.ret; pld.pos=np; pld.manual=true; return true;
+  }
+  var q=plReturnFor(pld.wall, surface); if(!q) return false;
+  var rp=plResolveRet(q, sWant, pld.style)/q.d;
+  if(pld.ret===surface && Math.abs((pld.pos||0)-rp)<1e-5) return false;
+  pld.ret=surface; pld.pos=rp; pld.manual=true; return true;
+}
 function computePorchLightPlacement(){
   var place=[], byWall={};
   porchLightsData.forEach(function(pld, idx){
-    if(pld.manual) return;
+    if(pld.manual || pld.ret) return;
     (byWall[pld.wall]=byWall[pld.wall]||[]).push(idx);
   });
   Object.keys(byWall).forEach(function(wall){
@@ -11559,8 +11777,11 @@ function buildPorchLights(){
     // whether you are looking at it. Without this the filter there skips the
     // check and a light on the far side stays tappable.
     grp.userData={isPorchLight:true, index:idx, wall:pld.wall, mount:auto?auto.mount:'manual'};
-    var WALL_FACE=0.025, BAT=bb?0.0125:0;          // battens stand proud of the boards
-    if(bb){
+    // On a porch return wall: faces into the porch, plain siding behind it.
+    var q=pld.ret ? plReturnFor(pld.wall, pld.ret) : null;
+    var onRet=!!q, bbHere=bb && !onRet;
+    var WALL_FACE=onRet?0:0.025, BAT=bbHere?0.0125:0;   // battens stand proud of the boards
+    if(bbHere){
       // Mounting block so the fixture seats on a flat face, not half on a batten.
       var blk=new THREE.Mesh(new THREE.BoxGeometry(dims.hw*2+0.03, dims.hh*2+0.04, BAT),
         new THREE.MeshStandardMaterial({color:(typeof sc!=='undefined'?sc:0x888888), roughness:0.8}));
@@ -11574,6 +11795,30 @@ function buildPorchLights(){
       grp.add(mk(new THREE.BoxGeometry(0.16,0.22,0.006),
         new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.5, side:THREE.DoubleSide}), 0, cy, 0.09));
     }
+    if(onRet){
+      var sR=plResolveRet(q, (pld.pos||0)*q.d, pld.style), pR=q.pIn+(q.pOut>q.pIn?1:-1)*sR;
+      // front porch: returns face +x / -x; side porch: +z / -z
+      grp.rotation.y = q.front ? (q.n>0 ? Math.PI/2 : -Math.PI/2) : (q.n>0 ? 0 : Math.PI);
+      if(q.front) grp.position.set(q.a, 0, pR); else grp.position.set(pR, 0, q.a);
+      grp.userData.wall=null;                        // not one of the four walls
+      grp.userData.faceN = q.front ? [q.n,0,0] : [0,0,q.n];
+      shedGroup.add(grp);
+      porchLightMeshes.push({group:grp, index:idx});
+      return;
+    }
+    if(pld.ret){
+      // Its return wall is gone (porch made full-length or moved): hang it on
+      // the porch's own wall instead, at that end of the porch.
+      var _info=plAxisInfo(pld.wall), _r=porchRect && porchRect();
+      var _sW=_info ? (_r && _r.wall===pld.wall ? plSofAxis(_info, pld.ret==='start'?_r.a0:_r.a1) : (pld.ret==='start'?0:_info.f.len)) : 0;
+      var _sv=plResolveMain(pld.wall, _sW, pld.style);
+      applyWallTransform(grp, pld.wall, _sv==null?0.5:plPosOfS(pld.wall, _sv), 6);
+    } else if(!auto){
+      // Hand-placed: where it was put, unless a door, window, corner or the
+      // porch has since moved onto that spot - then the nearest clear one.
+      var _mv=plResolveMain(pld.wall, plSOfPos(pld.wall, pld.pos), pld.style);
+      applyWallTransform(grp, pld.wall, _mv==null ? pld.pos : plPosOfS(pld.wall, _mv), 6);
+    } else
     applyWallTransform(grp, pld.wall, pld.pos, 6);
     if(auto){
       var startA=(f.ax==='x') ? f.ctr-f.ux*(f.len/2) : f.ctr-f.uz*(f.len/2);
