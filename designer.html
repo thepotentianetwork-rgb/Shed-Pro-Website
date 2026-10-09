@@ -5694,7 +5694,8 @@ function buildShed(){
   // Straight run the full roof depth, square ends into the rake — no mitre.
   CAPg.run([ridgeX, gRidgeY, -roofEdgeZ], [ridgeX, gRidgeY, zFront], fL, fR, 0, null, null);
 
-  /* ROOF RIDGE VENT — a raised strip sitting on top of the ridge cap.
+  /* ROOF RIDGE VENT — a shingle-over (or metal) ridge vent: a low baffle
+     that hugs the ridge, with the cap carried over the top of it.
      Built here because this is where the ridge's real extent is known:
      -roofEdgeZ to zFront, which already accounts for a front porch pushing the
      roof out past the enclosure.
@@ -5705,14 +5706,25 @@ function buildShed(){
      penetrates the ridge.
      Held back INSET from each rake so it does not poke out over the gable end,
      which is how it is actually installed — the vent stops short and the last
-     course of cap closes the end. */
+     course of cap closes the end.
+     v2 — IT USED TO FLOAT. The old vent was a flat-bottomed 4.5in x 1.8in box
+     whose underside sat 0.026 (~1.6in) above the deck at the ridge line, i.e.
+     about an inch clear of the cap, and because its bottom was flat while the
+     roof falls away both sides, the gap opened to 2-3in at its edges. From the
+     gable end it read as a black plank hovering over the peak, and it was
+     narrower than the cap it sat on and painted with the roof texture at a
+     1x1 repeat (smeared). Now the vent is built the way it is installed:
+       - the BODY is an inverted-V baffle whose underside lies exactly on the
+         cap's top surface on both slopes (no gap anywhere along its width),
+         about 3/4in thick, a dark louvre colour;
+       - a second run of the SAME cap (same builder, same texture scale) is
+         laid over the body, a touch wider than it, so the cap is what you see
+         from above and a thin dark vent line shows along each edge, exactly
+         like a shingle-over ridge vent;
+       - the ends are the V profile closed off, not a square slab. */
   if(typeof ADDONS!=='undefined' && ADDONS.ridgeVent && !WALLS_XRAY){
     var rvInset=0.10;                                  // ~6in shy of each rake
     var rvZ0=-roofEdgeZ+rvInset, rvZ1=zFront-rvInset;
-    var rvW=0.075;                                     // ~4.5in wide
-    var rvH=0.030;                                     // ~1.8in proud of the cap
-    var rvY=gRidgeY+0.026;                             // clear of the cap itself
-    var rvMat=roofMat(rc, roofTex(rc));
     var rvSegs=[];
     var cupR=(ADDONS.cupola && ADDONS.cupola!=='none') ? 0.21 : 0;   // half base + margin
     if(cupR>0){
@@ -5721,19 +5733,33 @@ function buildShed(){
     } else {
       rvSegs.push([rvZ0, rvZ1]);
     }
+    var rvTan=Math.tan(roofAng);
+    // The cap's top face at the ridge line: panel top + the builder's 0.002
+    // normal lift + the cap stock, all measured vertically on the slope.
+    var rvCapTopY=gRidgeY+(0.002+CAPg.capT)/cosA;
+    var rvH=0.0125;                                    // ~3/4in baffle
+    // Half-width measured DOWN EACH SLOPE: a hair narrower than the cap's own
+    // reach (capW-capLap ~ legs past the ridge) so the raised cap overhangs it.
+    var rvLeg=(CAPg.capW-CAPg.capLap)*0.88;
+    var rvHX=rvLeg*cosA;                               // same, horizontal
+    var rvBodyMat=new THREE.MeshStandardMaterial({color:0x161616, roughness:0.92, metalness:0.0});
     rvSegs.forEach(function(sg){
       var len=sg[1]-sg[0]; if(len<=0.02) return;
-      var body=new THREE.Mesh(new THREE.BoxGeometry(rvW, rvH, len), rvMat);
-      body.position.set(ridgeX, rvY+rvH/2, (sg[0]+sg[1])/2);
+      var shp=new THREE.Shape();
+      shp.moveTo(-rvHX, -rvHX*rvTan);
+      shp.lineTo(0, 0);
+      shp.lineTo( rvHX, -rvHX*rvTan);
+      shp.lineTo( rvHX, -rvHX*rvTan+rvH);
+      shp.lineTo(0, rvH);
+      shp.lineTo(-rvHX, -rvHX*rvTan+rvH);
+      shp.closePath();
+      var body=new THREE.Mesh(new THREE.ExtrudeGeometry(shp,{depth:len, bevelEnabled:false}), rvBodyMat);
+      body.position.set(ridgeX, rvCapTopY, sg[0]);
       body.castShadow=true; roofG.add(body);
-      // Shadow line down each side — without it the strip reads as a lump of
-      // roof rather than a separate vent sitting on top.
-      [-1,1].forEach(function(sd){
-        var lip=new THREE.Mesh(new THREE.BoxGeometry(0.006, rvH*0.8, len),
-          new THREE.MeshStandardMaterial({color:0x101010, roughness:0.95}));
-        lip.position.set(ridgeX+sd*(rvW/2+0.002), rvY+rvH*0.45, (sg[0]+sg[1])/2);
-        roofG.add(lip);
-      });
+      // The cap again, carried over the baffle. run() lifts it 0.002 off the
+      // face along the normal, so start it that much lower to sit flush.
+      var rvTopY=rvCapTopY+rvH-0.002/cosA;
+      CAPg.run([ridgeX, rvTopY, sg[0]], [ridgeX, rvTopY, sg[1]], fL, fR, 0, null, null);
     });
   }
 
@@ -6778,7 +6804,7 @@ function roofCapBuilder(rc, group){
     });
   }
   return {run:run, faceFromPts:faceFromPts, faceFromProfile:faceFromProfile,
-          capT:capT, capW:capW};
+          capT:capT, capW:capW, capLap:capLap};
 }
 
 /* CROSS GABLE for the 3-peak. Runs after the main gable shell: its ridge is
