@@ -1314,6 +1314,9 @@ function porchCeilY(){
      control is only offered there (see porchPageHTML), and this guard makes
      sure a saved design carrying a stale porchH still renders correctly. */
   if(typeof PORCH_LOC!=='undefined' && PORCH_LOC==='front') return wallY;
+  /* A partial porch sits under the MAIN roof (R1) — its ceiling is the wall
+     top, like a front porch's, with nothing of its own to lower. */
+  if(typeof porchIsPartial==='function' && porchIsPartial()) return wallY;
   if(!(PORCH_H>0)) return wallY;
   return Math.min(wallY, PORCH_H*0.2);   // never higher than the wall it hangs off
 }
@@ -1547,6 +1550,262 @@ function buildPorchDeck(x0,x1,z0,z1,topY){
   });
 } // A-frame porch: "none" | "side" (along length) | "front" (off width)
 var SIDE_PORCH=0;     // porch depth in feet (0 = none). Gable only.
+/* ── PARTIAL PORCH ───────────────────────────────────────────────────────
+   PORCH_LEN is how much of the wall the porch runs along, in feet; 0 (or the
+   whole wall) is the full-length porch every design saved before this has,
+   and that keeps building exactly as it always did. PORCH_OFF is where it
+   starts, in feet from the wall's START corner — the same corner a door's
+   pos=0 is measured from (wallFrame's axisStart): the LEFT end of the front
+   wall, the BACK end of the right side wall.
+
+   A partial porch is built the R1 way: the main roof keeps spanning the full
+   W x L, the enclosure stays the full rectangle, and the porch is a notch
+   out of one corner or the middle of the wall — the wall steps in by the
+   porch depth under the porch and a header carries the roof edge across the
+   opening. So the DEPTH still comes out of the footprint (a 10x20 stays
+   10x20 on the ground), but only porchLen x depth of it, not a whole strip.
+   That is why porchEatFt() — a full strip off W or L — is zero for it. */
+var PORCH_LEN=0;                     // ft along the wall, 0 = full length
+var PORCH_OFF=0;                     // ft from the wall's start corner
+var PORCH_MIN_LEN=4;                 // shortest partial porch on offer
+var PORCH_MIN_STUB=2;                // shortest wall left beside a porch
+function porchOn(){
+  return (typeof STYLE!=='undefined' && STYLE==='gable') &&
+         typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none' && SIDE_PORCH>0;
+}
+function porchSpanFt(){ return (PORCH_LOC==='front') ? W : L; }
+function porchIsPartial(){
+  if(!porchOn()) return false;
+  return PORCH_LEN>0 && PORCH_LEN<porchSpanFt();
+}
+function porchIsFull(){ return porchOn() && !porchIsPartial(); }
+function porchLenFt(){ return porchIsPartial() ? PORCH_LEN : porchSpanFt(); }
+/* Where it may start: flush at either end, or far enough in that the wall
+   left beside it is a real wall rather than a 6-inch sliver of siding. */
+function porchSnapOff(off, len, span){
+  var maxO=Math.max(0, span-len);
+  off=Math.round(Math.max(0, Math.min(maxO, +off||0)));
+  if(off>0 && off<PORCH_MIN_STUB) off=(off<PORCH_MIN_STUB/2)?0:Math.min(PORCH_MIN_STUB, maxO);
+  if(maxO-off>0 && maxO-off<PORCH_MIN_STUB) off=((maxO-off)<PORCH_MIN_STUB/2)?maxO:Math.max(0, maxO-PORCH_MIN_STUB);
+  return off;
+}
+function porchOffFt(){
+  if(!porchIsPartial()) return 0;
+  var span=porchSpanFt(), len=PORCH_LEN;
+  return Math.max(0, Math.min(span-len, +PORCH_OFF||0));
+}
+/* The porch as a world rectangle {x0,x1,z0,z1} on the full enclosure, plus
+   the run it occupies along its wall's axis [a0,a1]. Partial porches only. */
+function porchRect(){
+  if(!porchIsPartial()) return null;
+  var w=W*0.2, l=L*0.2, d=SIDE_PORCH*0.2, o=porchOffFt()*0.2, n=PORCH_LEN*0.2;
+  if(PORCH_LOC==='front')
+    return {wall:'front', x0:-w/2+o, x1:-w/2+o+n, z0:l/2-d, z1:l/2, a0:-w/2+o, a1:-w/2+o+n, d:d,
+            atStart:o<1e-6, atEnd:(o+n)>w-1e-6};
+  return {wall:'right', x0:w/2-d, x1:w/2, z0:-l/2+o, z1:-l/2+o+n, a0:-l/2+o, a1:-l/2+o+n, d:d,
+          atStart:o<1e-6, atEnd:(o+n)>l-1e-6};
+}
+/* Where a partial porch cuts each OUTER wall, as [a0,a1] on that wall's own
+   axis (x for front/back, z for the sides). The porch wall loses the porch's
+   run; a wall the notch reaches at a corner loses the porch depth there,
+   because a corner porch is open on both of its outside faces. */
+function porchWallGaps(){
+  var r=porchRect(); if(!r) return {};
+  var g={}; g[r.wall]=[r.a0, r.a1];
+  if(r.wall==='right'){
+    if(r.atEnd)   g.front=[r.x0, r.x1];
+    if(r.atStart) g.back =[r.x0, r.x1];
+  } else {
+    if(r.atStart) g.left =[r.z0, r.z1];
+    if(r.atEnd)   g.right=[r.z0, r.z1];
+  }
+  return g;
+}
+/* Is a point on `wall`'s axis inside the porch — i.e. on the stepped-in
+   wall rather than the outer one? Only the porch wall has a stepped-in part. */
+function porchCoversAxis(wall, axisC){
+  var r=porchRect(); if(!r || r.wall!==wall) return false;
+  return axisC>r.a0+1e-4 && axisC<r.a1-1e-4;
+}
+/* The plane an opening at axisC on `wall` actually sits in: the outer wall,
+   or — inside a partial porch — the stepped-in wall, porch depth further in. */
+function porchFixedAt(f, wall, axisC){
+  if(!f || !porchCoversAxis(wall, axisC)) return f ? f.fixed : 0;
+  var r=porchRect(), n=(f.ax==='x') ? f.nz : f.nx;
+  return f.fixed - n*r.d;
+}
+/* The stepped-in wall as a wall frame: same axis and normal as the outer
+   wall it replaces, porch depth further in, only the porch's run long. */
+function porchInsetFrame(){
+  var r=porchRect(); if(!r) return null;
+  var f=wallFrame(r.wall); if(!f) return null;
+  var n=(f.ax==='x') ? f.nz : f.nx, fx=f.fixed - n*r.d;
+  var o={}; for(var k in f) o[k]=f[k];
+  o.len=r.a1-r.a0; o.ctr=(r.a0+r.a1)/2; o.fixed=fx;
+  if(f.ax==='x'){ o.faceZ=fx; o.faceX=o.ctr; } else { o.faceX=fx; o.faceZ=o.ctr; }
+  o.porchInset=true;
+  return o;
+}
+/* Enclosed floor area in sq ft: the full-length porch's strip, or a partial
+   porch's notch, out of the footprint. */
+function enclosedSqft(){
+  var eat=porchEatFt(), a=(W-eat.w)*(L-eat.l);
+  if(porchIsPartial()) a-=SIDE_PORCH*PORCH_LEN;
+  return Math.max(0, a);
+}
+/* Holes for a wall that a partial porch touches. Outer walls lose every
+   opening inside the porch (those are on the stepped-in wall now) and gain
+   one full-height hole across the porch run; the stepped-in wall (inset)
+   keeps ONLY the openings inside the porch. Everything else: unchanged. */
+function porchFilterHoles(wall, holes, wallH, inset){
+  if(!porchIsPartial()) return holes;
+  var g=porchWallGaps()[wall];
+  if(inset) return holes.filter(function(hl){ return porchCoversAxis(wall, hl.c); });
+  if(!g) return holes;
+  var out=holes.filter(function(hl){ return !(hl.c>g[0] && hl.c<g[1]); });
+  out.push({c:(g[0]+g[1])/2, half:(g[1]-g[0])/2, top:wallH+0.5, bot:0, porchGap:true});
+  return out;
+}
+/* POST SEATS along one open edge of a porch, on its wall's axis from a to b.
+   endA/endB: put a post at that end (a free corner). Intermediates go in
+   once the clear span passes maxSpan, evenly spaced, and are then moved off
+   any door: a post planted in front of a door is the Estate Porch fault, a
+   centre post on a 16ft porch landing dead on a centred door. */
+function porchPostSeats(a, b, endA, endB, maxSpan, wall, inset){
+  var seats=[];
+  if(endA) seats.push(a);
+  if(endB) seats.push(b);
+  var n=Math.max(0, Math.ceil((b-a)/maxSpan - 1e-6)-1);
+  var clear=0.10;                                   // ~6in past the casing
+  var spans=(typeof doorsData!=='undefined' ? doorsData : []).filter(function(dd){
+    return dd.wall===wall;
+  }).map(function(dd){
+    var c=posToAxis(wall, dd.pos, dd.w), hw=(dd.w*0.2/12)/2 + 0.07;  // casing
+    return [c-hw-clear, c+hw+clear];
+  });
+  /* Evenly spaced first. If that puts a post on a door, try one or two more
+     posts, still evenly spaced, before nudging: a 16ft porch with a centred
+     door reads right with posts at the thirds, and one middle post pushed
+     2ft to the side does not. */
+  function hits(m){
+    for(var i=1;i<=m;i++){ var t=a+(b-a)*i/(m+1);
+      for(var k=0;k<spans.length;k++) if(t>spans[k][0] && t<spans[k][1]) return true; }
+    return false;
+  }
+  if(n>0 && hits(n)){
+    if(!hits(n+1)) n=n+1; else if(!hits(n+2)) n=n+2;
+  }
+  for(var i=1;i<=n;i++){
+    var t=a+(b-a)*i/(n+1);
+    for(var k=0;k<spans.length;k++){
+      var s=spans[k];
+      if(t>s[0] && t<s[1]){
+        var lo=s[0], hi=s[1];
+        var okLo=lo>a+0.15, okHi=hi<b-0.15;
+        t = (okLo && (!okHi || (t-lo)<=(hi-t))) ? lo : (okHi ? hi : t);
+      }
+    }
+    seats.push(t);
+  }
+  return seats;
+}
+/* KEEP OPENINGS OFF THE PORCH'S EDGES. Run whenever the porch or an opening
+   moves. On the porch wall: a door belongs inside the porch (that is what the
+   porch is for) — if it fits, it is pulled in; a window whose centre is in
+   the porch stays in, one whose centre is out stays out, and either is slid
+   clear of the step. On a wall the notch reaches at a corner, anything
+   overlapping the opened-up end is slid clear of it. Nothing is deleted.
+   `follow` = {wall, shift} moves openings already inside the porch along
+   with it when the porch itself slides, so the door goes where the porch goes.
+   Returns the number of openings it had to move. */
+function porchFitOpenings(follow){
+  if(!porchIsPartial()) return 0;
+  var gaps=porchWallGaps(), r=porchRect(), moved=0, pw=r.wall;
+  function inv(wall, axisC, wIn){
+    var f=wallFrame(wall), sw=wIn*0.2/12, margin=sw/2+0.12, usable=f.len-margin*2;
+    var u=(f.ax==='x')?f.ux:f.uz, start=f.ctr-u*(f.len/2);
+    if(usable<=0) return 0.5;
+    return Math.max(0, Math.min(1, ((axisC-start)*u - margin)/usable));
+  }
+  /* One door is pulled into the porch, not all of them: the first door on
+     the porch wall that already sits inside it, else the first that fits. */
+  var pullDoor=null;
+  (typeof doorsData!=='undefined'?doorsData:[]).forEach(function(dd){
+    if(pullDoor || dd.wall!==pw) return;
+    var c=posToAxis(pw, dd.pos, dd.w);
+    if(follow && follow.wall===pw && follow.from && c>follow.from[0] && c<follow.from[1]) c+=follow.shift;
+    if(c>gaps[pw][0] && c<gaps[pw][1]) pullDoor=dd;
+  });
+  if(!pullDoor) (typeof doorsData!=='undefined'?doorsData:[]).some(function(dd){
+    if(dd.wall!==pw) return false;
+    var need=2*((dd.w*0.2/12)/2+0.07+0.02);
+    if(need<=gaps[pw][1]-gaps[pw][0]){ pullDoor=dd; return true; }
+    return false;
+  });
+  function fit(list, isDoor, isVent){
+    list.forEach(function(o){
+      var g=gaps[o.wall]; if(!g) return;
+      var wIn=isVent ? 16 : (+o.w||24);
+      var half=(wIn*0.2/12)/2 + (isVent?0.02:0.07);   // casing
+      var c=posToAxis(o.wall, o.pos, wIn), c0=c;
+      var m=0.06;                                   // clear of the corner trim
+      /* Inside the porch the opening only has to clear the inset wall's own
+         corner boards (~1in), not the outer corner trim: a 36in door has to
+         fit a 4ft porch, which it does with 4in to spare each side. */
+      var mIn=0.02;
+      if(follow && o.wall===follow.wall && follow.from && c>follow.from[0] && c<follow.from[1]) c+=follow.shift;
+      var cF=c;                                     // where following alone put it
+      var inside = (o.wall===pw) && (isDoor ? (o===pullDoor) : (c>g[0] && c<g[1]));
+      // A door pulled in from elsewhere on the wall lands in the porch's middle.
+      if(isDoor && inside && !(c>g[0] && c<g[1])) c=(g[0]+g[1])/2;
+      var fitsIn = (g[1]-g[0]) >= 2*(half+mIn);
+      if(inside && fitsIn){
+        c=Math.max(g[0]+half+mIn, Math.min(g[1]-half-mIn, c));
+        // ...and no closer to the shed's corner than pos 0..1 can express
+        // (posToAxis keeps width/2 + 0.12 off each end). Clamping only to the
+        // porch let the stored pos round back, so the next pass "moved" it.
+        var wf=wallFrame(o.wall), wu=(wf.ax==='x')?wf.ux:wf.uz, wsw=wIn*0.2/12;
+        var wa=wf.ctr-wf.len/2+wsw/2+0.12, wb=wf.ctr+wf.len/2-wsw/2-0.12;
+        if(wa<wb) c=Math.max(wa, Math.min(wb, c));
+      } else if(c+half>g[0]-m && c-half<g[1]+m){
+        // straddles the step (or is a door too wide for the porch): slide out
+        var left=g[0]-m-half, right=g[1]+m+half;
+        var f=wallFrame(o.wall), u=(f.ax==='x')?f.ux:f.uz;
+        var lo=f.ctr-f.len/2+half+0.12, hi=f.ctr+f.len/2-half-0.12;
+        var cand=[left, right].filter(function(v){ return v>=lo-1e-6 && v<=hi+1e-6; });
+        if(cand.length) c=cand.sort(function(p,q){ return Math.abs(p-c)-Math.abs(q-c); })[0];
+      }
+      if(Math.abs(c-c0)>1e-4){ o.pos=inv(o.wall, c, wIn); 
+        // An opening that went along with the porch and is still in it was
+        // not "moved clear" — only a nudge the customer did not ask for counts.
+        var rode=Math.abs(cF-c0)>1e-4 && inside;
+        if(!rode && Math.abs(c-cF)>1e-4) moved++; }
+    });
+  }
+  fit(typeof doorsData!=='undefined'?doorsData:[], true, false);
+  fit(typeof windowsData!=='undefined'?windowsData:[], false, false);
+  fit(typeof ventsData!=='undefined'?ventsData:[], false, true);
+  return moved;
+}
+/* ── DORMER POSITION ─────────────────────────────────────────────────────
+   Each roof face carries one shed dormer, centred on the length until now.
+   DORMER_L_OFF / DORMER_R_OFF slide it along the roof, in feet from the
+   centre (+ toward the front gable). It runs eave to ridge, so along the
+   length is the only way it can move; the limit keeps it 6in inside each end
+   of the enclosed room — the same margin the width rule (encLft()-1) has
+   always used, so a dormer that fits centred also fits slid to either end.
+   One per face, so two dormers cannot collide. */
+var DORMER_L_OFF=0, DORMER_R_OFF=0;
+function dormerMaxOffFt(side){
+  var ft=(side>0)?DORMER_R:DORMER_L;
+  if(!(ft>0)) return 0;
+  var encL=(typeof encLft==='function') ? encLft() : L;
+  return Math.max(0, (encL-ft)/2 - 0.5);
+}
+function dormerOffFt(side){
+  var o=(side>0)?DORMER_R_OFF:DORMER_L_OFF, m=dormerMaxOffFt(side);
+  return Math.max(-m, Math.min(m, +o||0));
+}
 var WINDOW="none";   // legacy flag: "none" or "preset" — kept for the dropdown
 /* HOW FAR THE FAIRYTALE DOOR'S ARCH TRIM REACHES PAST ITS LEAF.
 
@@ -5243,6 +5502,7 @@ function buildShed(){
     buildWallWithOpenings('back');
     buildWallWithOpenings('left');
     buildWallWithOpenings('right');
+    if(porchIsPartial()) buildPorchInsetWalls();
   }
 
   // CORNER TRIM — vertical posts at the four wall corners, standing proud of
@@ -5507,7 +5767,7 @@ function buildShed(){
   // full gable triangle rides to the porch's leading edge. The flat porch soffit
   // sits below at wall height, so the triangular space between soffit and roof
   // is open — that's correct for this build.
-  var fpD=(PORCH_LOC==='front' && SIDE_PORCH>0) ? SIDE_PORCH*0.2 : 0;
+  var fpD=(PORCH_LOC==='front' && SIDE_PORCH>0 && !porchIsPartial()) ? SIDE_PORCH*0.2 : 0;
   var roofDepth=el+gableOv*2+fpD;
   var roofEdgeZ=el/2+gableOv;                 // back edge
   var zFront=roofEdgeZ+fpD;                   // front edge, out over the porch
@@ -5564,7 +5824,7 @@ function buildShed(){
   // Where a dormer sits, NO eave trim should cross its face — the wall siding
   // runs straight up into it. Same segmenting used for the roof panel is applied
   // to the soffit, frieze and eave fascia.
-  function dormerSegs(sideWidthFt, lo, hi){
+  function dormerSegs(sideWidthFt, lo, hi, sideSign){
     // 3-peak: the +X eave doesn't exist across the cross gable, so the main
     // eave fascia breaks for it. -1 flags that side.
     if(isCrossGable() && sideWidthFt===-1 && typeof crossGableGeom==='function'){
@@ -5582,15 +5842,17 @@ function buildShed(){
     }
     if(!(sideWidthFt>0) || PITCH<8 || STYLE!=='gable') return [[lo,hi]];
     var gw=Math.min(sideWidthFt*0.2, el-0.2);
-    var g0=-gw/2, g1=gw/2, out=[];
+    var gzo=sideSign ? dormerOffFt(sideSign)*0.2 : 0;   // slid along the roof
+    var g0=-gw/2+gzo, g1=gw/2+gzo, out=[];
     if(g0 > lo+0.02) out.push([lo, g0]);
     if(g1 < hi-0.02) out.push([g1, hi]);
     return out;
   }
-  function dormerGapZ(sideWidthFt){
+  function dormerGapZ(sideWidthFt, sideSign){
     if(!(sideWidthFt>0) || PITCH<8 || STYLE!=='gable') return null;
     var gw=Math.min(sideWidthFt*0.2, el-0.2);
-    return [-gw/2, gw/2];
+    var gzo=sideSign ? dormerOffFt(sideSign)*0.2 : 0;   // slid along the roof
+    return [-gw/2+gzo, gw/2+gzo];
   }
   /* THE ROOF IS ASYMMETRIC WHEN THERE IS A FRONT PORCH. It runs from the back
      rake at -roofEdgeZ to zFront = roofEdgeZ + fpD, out over the porch — its
@@ -5655,14 +5917,14 @@ function buildShed(){
   var _lSegs=[];
   addRoofPanel(panelLen+ridgeExt, lMidX + (ridgeExt/2)*cosA, lMidY + (ridgeExt/2)*sinA,
                roofAng, matRL,
-               (STYLE==='4peak' ? crossGapZ() : dormerGapZ(DORMER_L)), repU, _lSegs);
+               (STYLE==='4peak' ? crossGapZ() : dormerGapZ(DORMER_L, -1)), repU, _lSegs);
 
   var texR=roofTex(rc); orientShingle(texR, repUR, repV);
   var matRR=roofMat(rc, texR);
   var _xSegs=[];
   addRoofPanel(panelLenR+ridgeExt, rMidX - (ridgeExt/2)*cosA, rMidY + (ridgeExt/2)*sinA,
                -roofAng, matRR,
-               (isCrossGable() ? crossGapZ() : dormerGapZ(DORMER_R)), repUR, _xSegs);
+               (isCrossGable() ? crossGapZ() : dormerGapZ(DORMER_R, 1)), repUR, _xSegs);
   /* buildCrossGable runs later and outside this scope, so the mapping it needs
      has to be published. BoxGeometry's +Y face maps u across local X and v
      across local Z, and each panel's local X starts ridgeExt BEFORE the ridge —
@@ -5972,7 +6234,7 @@ function buildShed(){
       var midX = sx*(ew/2 + (soffInX + soffOutX)/2);
       var midY = h + rh - Math.abs(midX)*Math.tan(roofAngLocal) - underDrop;
       var sideFt=(sx>0)?DORMER_R:DORMER_L;
-      dormerSegs(sideFt, soffZC-soffSpanZ/2, soffZC+soffSpanZ/2).forEach(function(sg){
+      dormerSegs(sideFt, soffZC-soffSpanZ/2, soffZC+soffSpanZ/2, sx).forEach(function(sg){
         var d=sg[1]-sg[0]; if(d<=0.01) return;
         var sof=new THREE.Mesh(new THREE.BoxGeometry(slopeLen, soffThk, d), soffitMat);
         sof.position.set(midX, midY, (sg[0]+sg[1])/2);
@@ -5983,7 +6245,7 @@ function buildShed(){
       var frY = h - underDrop;
       // Full length: stopping tw short left its end hanging 0.9" proud of the
       // wall with nothing closing it.
-      dormerSegs(sideFt, -el/2, el/2).forEach(function(sg){
+      dormerSegs(sideFt, -el/2, el/2, sx).forEach(function(sg){
         var d=sg[1]-sg[0]; if(d<=0.01) return;
         var fz=new THREE.Mesh(new THREE.BoxGeometry(tw*0.5, tw, d), matT);
         fz.position.set(sx*(ew/2 + tw*0.25), frY - tw/2, (sg[0]+sg[1])/2);
@@ -6035,7 +6297,7 @@ function buildShed(){
   // eave (SIDE, along the length) or at the gable end (FRONT, off the width).
   // Carries the shed's overhang on its free edges and uses the shed's fascia
   // width and soffit finish. Entirely additive — the shell is never modified.
-  if(!INSIDE_VIEW && STYLE==='gable' && PORCH_LOC==='front' && SIDE_PORCH>0){
+  if(!INSIDE_VIEW && STYLE==='gable' && PORCH_LOC==='front' && SIDE_PORCH>0 && !porchIsPartial()){
     // FRONT PORCH — the main roof already covers it (extended above). All that's
     // needed here is the flat soffit at wall height, a header beam, and posts.
     var fpTrim=paintMat(tc,0.1);
@@ -6085,13 +6347,16 @@ function buildShed(){
     fpHb.castShadow=true; shedGroup.add(fpHb);
     // posts on the ground at the outer corners
     var fpPT=fpY-fpH;
-    [-(w/2)+0.05, (w/2)-0.05].concat(w>2.2?[0]:[]).forEach(function(px){
+    /* Ends at the corners, and a middle post once the span passes 11ft —
+       moved off any door on the porch wall (porchPostSeats). Planted at x=0
+       it stood dead in front of a centred door, which is the Estate Porch. */
+    porchPostSeats(-(w/2)+0.05, (w/2)-0.05, true, true, (w>2.2 ? (w-0.1)/2+1e-3 : 1e9), 'front').forEach(function(px){
       var pq=new THREE.Mesh(new THREE.BoxGeometry(0.06, fpPT, 0.06), fpTrim);
       pq.position.set(px, fpPT/2, fpZ1-0.05);
       pq.castShadow=true; shedGroup.add(pq);
     });
   }
-  if(!INSIDE_VIEW && STYLE==='gable' && PORCH_LOC==='side' && SIDE_PORCH>0){
+  if(!INSIDE_VIEW && STYLE==='gable' && PORCH_LOC==='side' && SIDE_PORCH>0 && !porchIsPartial()){
     var spIN=0.2/12, spTw=0.06;
     var spEaveOv, spGableOv, spFasciaW;
     if(OVTYPE==="gable"){ spEaveOv=spTw/2+0.026; spGableOv=spEaveOv; spFasciaW=OVH*spIN; }
@@ -6204,7 +6469,8 @@ function buildShed(){
     var spPostTopY=spAttY-(spPost-spStart)*Math.tan(spAng)-spFasciaW-0.01;
     if(spPostTopY>0.2){
       var spSpan=spFront ? w : l;
-      var spSeats=[-(spSpan/2)+0.10, (spSpan/2)-0.10].concat(spSpan>2.6?[0]:[]);
+      var spSeats=porchPostSeats(-(spSpan/2)+0.10, (spSpan/2)-0.10, true, true,
+        (spSpan>2.6 ? (spSpan-0.2)/2+1e-3 : 1e9), spFront ? 'front' : 'right');
       spSeats.forEach(function(t){
         var pq=new THREE.Mesh(new THREE.BoxGeometry(0.06, spPostTopY, 0.06), spTrim);
         if(spFront) pq.position.set(t, spPostTopY/2, spPost-0.03);
@@ -6212,6 +6478,70 @@ function buildShed(){
         pq.castShadow=true; shedGroup.add(pq);
       });
     }
+  }
+
+  // ================= PARTIAL PORCH (R1) =================
+  // Shorter than its wall: a notch out of the full enclosure, under the MAIN
+  // roof. Walls, openings and the floor are handled where they are built
+  // (porchFilterHoles, buildPorchInsetWalls, porchFixedAt, the floor split);
+  // what is left is what sits IN the notch — the deck, a flat ceiling at the
+  // wall top, a header carrying the roof edge across every open side, and
+  // posts at a free corner plus any span too long to leave unsupported.
+  if(!INSIDE_VIEW && porchIsPartial()){
+    var ppR=porchRect();
+    var ppTrim=paintMat(tc,0.1);
+    var ppY=porchCeilY();                          // the wall top
+    var ppH=0.075;                                 // header depth, as the front porch's
+    var ppSide=(ppR.wall==='right');
+    // deck, level with the floor
+    buildPorchDeck(ppR.x0, ppR.x1, ppR.z0, ppR.z1, 0.0);
+    // ceiling: stepped-in wall out to the outer wall FACE, the porch's run
+    var ppCeilMat;
+    if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
+      var ppCT=makeCedar(); ppCT.wrapS=ppCT.wrapT=THREE.RepeatWrapping;
+      ppCT.repeat.set(Math.max(1,Math.round((ppR.x1-ppR.x0)/0.5)), Math.max(1,Math.round((ppR.z1-ppR.z0)/0.5)));
+      ppCeilMat=new THREE.MeshStandardMaterial({map:ppCT, emissiveMap:ppCT,
+        emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
+    } else {
+      ppCeilMat=new THREE.MeshStandardMaterial({color:soffitHex(), emissive:soffitHex(),
+        emissiveIntensity:SOFFIT_GLOW, roughness:0.9, metalness:0.0});
+    }
+    ppCeilMat.side=THREE.DoubleSide;
+    var cx0=ppR.x0, cx1=ppR.x1, cz0=ppR.z0, cz1=ppR.z1;
+    if(ppSide){ cx1+=WALL_FACE; if(ppR.atStart) cz0-=WALL_FACE; if(ppR.atEnd) cz1+=WALL_FACE; }
+    else      { cz1+=WALL_FACE; if(ppR.atStart) cx0-=WALL_FACE; if(ppR.atEnd) cx1+=WALL_FACE; }
+    var ppCeil=new THREE.Mesh(new THREE.BoxGeometry(cx1-cx0, 0.014, cz1-cz0), ppCeilMat);
+    ppCeil.position.set((cx0+cx1)/2, ppY-0.007, (cz0+cz1)/2);
+    shedGroup.add(ppCeil);
+    // headers along every open edge, flush with the outer wall plane
+    function ppHeader(x0,x1,z0,z1){
+      var hb=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.06,x1-x0), ppH, Math.max(0.06,z1-z0)), ppTrim);
+      hb.position.set((x0+x1)/2, ppY-ppH/2, (z0+z1)/2); hb.castShadow=true; shedGroup.add(hb);
+    }
+    var hT=0.06;
+    if(ppSide){
+      ppHeader(ppR.x1-hT, ppR.x1, ppR.z0, ppR.z1);
+      if(ppR.atEnd)   ppHeader(ppR.x0, ppR.x1, ppR.z1-hT, ppR.z1);
+      if(ppR.atStart) ppHeader(ppR.x0, ppR.x1, ppR.z0, ppR.z0+hT);
+    } else {
+      ppHeader(ppR.x0, ppR.x1, ppR.z1-hT, ppR.z1);
+      if(ppR.atStart) ppHeader(ppR.x0, ppR.x0+hT, ppR.z0, ppR.z1);
+      if(ppR.atEnd)   ppHeader(ppR.x1-hT, ppR.x1, ppR.z0, ppR.z1);
+    }
+    // posts: a free corner gets one; long spans get intermediates, off the doors
+    var ppPT=ppY-ppH, ppIn=0.03;
+    var ppMax=(ppSide ? 13 : 11)*0.2;              // same spans the full porches use
+    /* A post at BOTH ends. At a shed corner the corner itself is open (both
+       walls are cut back), so that post is what carries the eave and the
+       rake; mid-wall it stands at the end of the outer wall, carrying the
+       header and finishing the cut wall like corner trim. */
+    var ppSeats=porchPostSeats(ppR.a0+ppIn, ppR.a1-ppIn, true, true, ppMax, ppR.wall);
+    ppSeats.forEach(function(t){
+      var pq=new THREE.Mesh(new THREE.BoxGeometry(0.06, ppPT, 0.06), ppTrim);
+      if(ppSide) pq.position.set(ppR.x1-ppIn, ppPT/2, t);
+      else       pq.position.set(t, ppPT/2, ppR.z1-ppIn);
+      pq.castShadow=true; shedGroup.add(pq);
+    });
   }
 
   // TRIM — matches reference: flat trim boards laid ON the wall faces, with
@@ -6326,7 +6656,7 @@ function buildShed(){
     // +X run; 4 Peak has a gable on both side walls, so both break.
     var sideFtF=(es>0) ? (isCrossGable() ? -1 : DORMER_R)
                        : (STYLE==='4peak' ? -1 : DORMER_L);
-    dormerSegs(sideFtF, -efZBack, efZOut).forEach(function(sg){
+    dormerSegs(sideFtF, -efZBack, efZOut, es).forEach(function(sg){
       var mitreA=(sg[0]<=-efZBack+0.001), mitreB=(sg[1]>=efZOut-0.001);
       var shp=new THREE.Shape();
       shp.moveTo(xin,  sg[0]+(mitreA?ft2:0));
@@ -6373,6 +6703,12 @@ function buildShed(){
 
     function buildDormer(sideSign, widthFt){
       if(!(widthFt>0)) return;
+      /* SLID ALONG THE ROOF (DORMER_L_OFF / DORMER_R_OFF). Everything below
+         is built centred on z=0 as it always was, into its own group, and the
+         group is moved; the siding's texture offset gets the same shift so the
+         boards still land on the wall's below (see dOffX). */
+      var dZo=dormerOffFt(sideSign)*0.2;
+      var dG=new THREE.Group(); dG.position.z=dZo; roofG.add(dG);
       var dW=Math.min(widthFt*0.2, el-0.2);
       // FLUSH WITH THE WALL: the dormer face continues the shed's side wall so the
       // siding runs unbroken from the wall up through the dormer. It rises from the
@@ -6432,7 +6768,7 @@ function buildShed(){
       var dUScale=(SIDING==='horizontal') ? (1/dWallF.len) : dPer;
       var dPerX=dU*dUScale;        // run the texture the way the wall's does
       var dPerY=dPer;              // per unit, vertically
-      var dOffX=(-dAxisStart*dU*dUScale)%1;
+      var dOffX=((dZo-dAxisStart)*dU*dUScale)%1;
       dTex.repeat.set(dPerX, dPerY);
       dTex.offset.x=dOffX;
       dTex.wrapS=dTex.wrapT=THREE.RepeatWrapping;
@@ -6476,7 +6812,7 @@ function buildShed(){
         g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv),2));
         g.computeVertexNormals();
         var m=new THREE.Mesh(g, mat);
-        m.castShadow=true; m.receiveShadow=true; roofG.add(m);
+        m.castShadow=true; m.receiveShadow=true; dG.add(m);
         return m;
       }
 
@@ -6525,7 +6861,7 @@ function buildShed(){
       // it. Setting pos.x to dXF+dThk/2 floated it 1.5" in front of the cheeks.
       // Put the OUTER face exactly on dXF, where the cheek front edges are.
       fw.position.set((sideSign>0) ? (dXF-dThk) : dXF, 0, 0);
-      fw.castShadow=true; roofG.add(fw);
+      fw.castShadow=true; dG.add(fw);
 
       // ---- cheeks: triangles on the SAME corners ----
       face(dSideMat, [P1, P3, P5], 'xy');
@@ -6554,42 +6890,42 @@ function buildShed(){
       var dfH=(typeof fasciaW!=='undefined'? fasciaW : 0.055);
       var dff2=new THREE.Mesh(new THREE.BoxGeometry(0.018, dfH, dW+dOvZ*2), dTrim);
       dff2.position.set(dXF+sideSign*(dOvX+0.009), dTopY-oy-dfH/2, 0);
-      dff2.castShadow=true; roofG.add(dff2);
+      dff2.castShadow=true; dG.add(dff2);
       [1,-1].forEach(function(sz){
         var rl=Math.hypot((dXF+sideSign*dOvX)-dXB, dTopY-oy-dBackY);
         var rk=new THREE.Mesh(new THREE.BoxGeometry(rl, dfH*0.8, 0.018), dTrim);
         rk.position.set(((dXF+sideSign*dOvX)+dXB)/2, (dTopY-oy+dBackY)/2-dfH*0.4, sz*(hz+dOvZ-0.009));
         rk.rotation.z=Math.atan2(dTopY-oy-dBackY, (dXF+sideSign*dOvX)-dXB);
-        rk.castShadow=true; roofG.add(rk);
+        rk.castShadow=true; dG.add(rk);
       });
 
       // ---- dark interior behind the openings ----
       var cav=new THREE.Mesh(new THREE.BoxGeometry(0.01, dFH, dW-0.012),
         new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:1.0}));
       cav.position.set(dXF - sideSign*0.14, dBaseY+dFH/2, 0);
-      roofG.add(cav);
+      dG.add(cav);
 
       // ---- glass + casing ----
       var faceX=dXF+sideSign*0.006;
       for(var iw=0; iw<nWin; iw++){
         var wz=-hz + (dW/nWin)*(iw+0.5);
         var gl=new THREE.Mesh(new THREE.BoxGeometry(0.012, winH, winW), dGlass);
-        gl.position.set(faceX, winCY, wz); roofG.add(gl);
+        gl.position.set(faceX, winCY, wz); dG.add(gl);
         // Same casing treatment as the wall windows: a proper board around all
         // four sides sitting proud of the siding, plus a sill.
         var cW=0.055, cD=0.020;
         var cx2=faceX+sideSign*(cD/2);
         [[winH/2+cW/2],[-winH/2-cW/2]].forEach(function(c){
           var m=new THREE.Mesh(new THREE.BoxGeometry(cD, cW, winW+cW*2), dTrim);
-          m.position.set(cx2, winCY+c[0], wz); m.castShadow=true; roofG.add(m);
+          m.position.set(cx2, winCY+c[0], wz); m.castShadow=true; dG.add(m);
         });
         [[-winW/2-cW/2],[winW/2+cW/2]].forEach(function(c){
           var m=new THREE.Mesh(new THREE.BoxGeometry(cD, winH+cW*2, cW), dTrim);
-          m.position.set(cx2, winCY, wz+c[0]); m.castShadow=true; roofG.add(m);
+          m.position.set(cx2, winCY, wz+c[0]); m.castShadow=true; dG.add(m);
         });
         var sill=new THREE.Mesh(new THREE.BoxGeometry(cD*1.5, 0.020, winW+cW*2.6), dTrim);
         sill.position.set(faceX+sideSign*(cD*0.75), winCY-winH/2-cW-0.008, wz);
-        sill.castShadow=true; roofG.add(sill);
+        sill.castShadow=true; dG.add(sill);
       }
 
     }
@@ -9048,8 +9384,9 @@ function buildDoor(){
     DG.rotation.y=rotY;
     // center coordinate along the wall axis
     var ax=posToAxis(dd.wall, dd.pos, dd.w);
-    if(f.ax==='x'){ DG.position.set(ax, 0, f.fixed); }
-    else { DG.position.set(f.fixed, 0, ax); }
+    var _dfx=porchFixedAt(f, dd.wall, ax);          // stepped-in wall under a partial porch
+    if(f.ax==='x'){ DG.position.set(ax, 0, _dfx); }
+    else { DG.position.set(_dfx, 0, ax); }
     shedGroup.add(DG);
     doorMeshes.push({group:DG, index:dIdx});
 
@@ -9081,9 +9418,14 @@ function clampOpeningsToWalls(){
     if(typeof windowsData!=='undefined') windowsData.forEach(fix);
     if(typeof doorsData!=='undefined') doorsData.forEach(fix);
   });
+  // Nothing may straddle a partial porch's step or sit in its open end.
+  if(typeof porchFitOpenings==='function') porchFitOpenings();
 }
-function buildWallWithOpenings(wall){
-  var f=wallFrame(wall);
+function buildWallWithOpenings(wall, fo){
+  // fo: a frame to build INSTEAD of the wall's own — the stepped-in wall of a
+  // partial porch (porchInsetFrame). Openings keep their positions on the
+  // outer wall's axis; porchFilterHoles decides which wall each one cuts.
+  var f=fo||wallFrame(wall);
   var h=f.height, L_=f.len;
   // gather openings on this wall, each as {c (center along axis, world), half, top, bot}
   var holes=[];
@@ -9113,6 +9455,7 @@ function buildWallWithOpenings(wall){
     }
     holes.push(ho);
   });
+  holes=porchFilterHoles(wall, holes, h, !!fo);
   /* VENTS BREAK THE BATTENS BUT DO NOT CUT THE WALL.
      A vent is a louvre sitting ON the siding, so the panel behind it stays
      whole — but a 1x3 batten cannot run straight through one, which is what it
@@ -9125,6 +9468,7 @@ function buildWallWithOpenings(wall){
   var ventBreaks=[];
   (typeof ventsData!=='undefined'?ventsData:[]).forEach(function(vd){
     if(vd.wall!==wall) return;
+    if(porchCoversAxis(wall, posToAxis(wall,vd.pos,16)) !== !!fo) return;
     // The CASING is what the batten has to clear, not the louvre inside it.
     // Cut to the louvre, the strips ran across the trim boards — and being
     // 3/4in proud against an 0.018 board, they crossed in FRONT of them.
@@ -9340,6 +9684,8 @@ function porchEatFt(){
   if(typeof STYLE==='undefined' || STYLE!=='gable') return {w:0,l:0};
   if(typeof PORCH_LOC==='undefined' || PORCH_LOC==='none') return {w:0,l:0};
   if(!(typeof SIDE_PORCH!=='undefined' && SIDE_PORCH>0)) return {w:0,l:0};
+  // A partial porch is a notch out of the full rectangle, not a strip off it.
+  if(typeof porchIsPartial==='function' && porchIsPartial()) return {w:0,l:0};
   return (PORCH_LOC==='front') ? {w:0, l:SIDE_PORCH} : {w:SIDE_PORCH, l:0};
 }
 // Deepest porch this footprint can give up and still leave a usable room.
@@ -9632,8 +9978,10 @@ function buildFloor(){
       // premium tier's thicker layer reads very slightly softer.
       roughness:isBest?0.55:0.5, metalness:0.0});
     var eB=enclosure();
-    var fbM=new THREE.Mesh(new THREE.BoxGeometry(eB.w-0.03, 0.03, eB.l-0.03), floorMat);
-    fbM.position.set(eB.cx, 0.015, eB.cz); fbM.receiveShadow=true; shedGroup.add(fbM);
+    porchFloorRects(eB).forEach(function(fr){
+      var fbM=new THREE.Mesh(new THREE.BoxGeometry(fr.x1-fr.x0, 0.03, fr.z1-fr.z0), floorMat);
+      fbM.position.set((fr.x0+fr.x1)/2, 0.015, (fr.z0+fr.z1)/2); fbM.receiveShadow=true; shedGroup.add(fbM);
+    });
     return;
   }
   var mat;
@@ -9657,8 +10005,56 @@ function buildFloor(){
     mat=new THREE.MeshStandardMaterial({map:ft, roughness:1.0, metalness:0.0});
   }
   var eF=enclosure();
-  var floorM=new THREE.Mesh(new THREE.BoxGeometry(eF.w-0.03, 0.03, eF.l-0.03), mat);
-  floorM.position.set(eF.cx, 0.015, eF.cz); floorM.receiveShadow=true; shedGroup.add(floorM);
+  porchFloorRects(eF).forEach(function(fr){
+    var floorM=new THREE.Mesh(new THREE.BoxGeometry(fr.x1-fr.x0, 0.03, fr.z1-fr.z0), mat);
+    floorM.position.set((fr.x0+fr.x1)/2, 0.015, (fr.z0+fr.z1)/2); floorM.receiveShadow=true; shedGroup.add(floorM);
+  });
+}
+/* The room's floor as rectangles: the enclosure inset 0.015 all round (as it
+   always was), less a partial porch's notch — the porch has its own deck, and
+   the room's plywood showing through under it read as the porch floor. */
+function porchFloorRects(e){
+  var x0=e.x0+0.015, x1=e.x1-0.015, z0=e.z0+0.015, z1=e.z1-0.015;
+  var r=porchRect();
+  if(!r) return [{x0:x0,x1:x1,z0:z0,z1:z1}];
+  var out=[];
+  function add(a,b,c,d){ if(b-a>0.005 && d-c>0.005) out.push({x0:a,x1:b,z0:c,z1:d}); }
+  if(r.wall==='right'){
+    add(x0, r.x0, z0, z1);
+    add(r.x0, x1, z0, r.z0);
+    add(r.x0, x1, r.z1, z1);
+  } else {
+    add(x0, x1, z0, r.z0);
+    add(x0, r.x0, r.z0, z1);
+    add(r.x1, x1, r.z0, z1);
+  }
+  return out;
+}
+/* The stepped-in wall and the short return walls that close the porch's
+   ends where it does not reach a corner. The stepped-in wall goes through
+   the same opening-aware builder as every other wall (it carries the door);
+   the returns are plain siding. */
+function buildPorchInsetWalls(){
+  var r=porchRect(); if(!r) return;
+  var fi=porchInsetFrame();
+  if(fi) buildWallWithOpenings(r.wall, fi);
+  var h=H*0.2, t=0.05;
+  function ret(cx, cz, lenX, lenZ){
+    var len=Math.max(lenX, lenZ);
+    var mat=DIAG ? diagMat(0x22cc88) : wallSegMatGlobal(len, h, 0, len, 0, h, false);
+    var m=new THREE.Mesh(new THREE.BoxGeometry(lenX, h, lenZ), mat);
+    m.position.set(cx, h/2, cz); m.castShadow=true; m.receiveShadow=true;
+    shedGroup.add(m);
+  }
+  if(r.wall==='right'){
+    var rx0=r.x0-t/2, rx1=r.x1+t/2;
+    if(!r.atStart) ret((rx0+rx1)/2, r.z0-t/2, rx1-rx0, t);
+    if(!r.atEnd)   ret((rx0+rx1)/2, r.z1+t/2, rx1-rx0, t);
+  } else {
+    var rz0=r.z0-t/2, rz1=r.z1+t/2;
+    if(!r.atStart) ret(r.x0-t/2, (rz0+rz1)/2, t, rz1-rz0);
+    if(!r.atEnd)   ret(r.x1+t/2, (rz0+rz1)/2, t, rz1-rz0);
+  }
 }
 function buildFoundation(){
   if(typeof FOUNDATION==='undefined') return;
@@ -10102,8 +10498,9 @@ function buildWindows(){
     else if(wd.wall==='left') rotY=-Math.PI/2;
     grp.rotation.y=rotY;
     var ax=posToAxis(wd.wall, wd.pos, wd.w);
-    if(f.ax==='x'){ grp.position.set(ax, 0, f.fixed); }
-    else { grp.position.set(f.fixed, 0, ax); }
+    var _wfx=porchFixedAt(f, wd.wall, ax);          // stepped-in wall under a partial porch
+    if(f.ax==='x'){ grp.position.set(ax, 0, _wfx); }
+    else { grp.position.set(_wfx, 0, ax); }
     shedGroup.add(grp);
     windowMeshes.push({group:grp, index:idx});
   });
@@ -10588,13 +10985,14 @@ function buildRamps(){
     // Lay the group down the slope: high end at the threshold, toe on the dirt.
     grp.position.y = lift/2;
     var outFromWall = 0.025 + run/2;                 // wall face, then half the run
+    var _rfx=porchFixedAt(f, dd.wall, ac);           // stepped-in wall under a partial porch
     if(f.ax==='x'){
       grp.position.x = ac;
-      grp.position.z = f.fixed + outN*outFromWall;
+      grp.position.z = _rfx + outN*outFromWall;
       grp.rotation.y = (outN>0) ? 0 : Math.PI;
     } else {
       grp.position.z = ac;
-      grp.position.x = f.fixed + outN*outFromWall;
+      grp.position.x = _rfx + outN*outFromWall;
       grp.rotation.y = (outN>0) ? Math.PI/2 : -Math.PI/2;
     }
     // shedGroup, not scene, so the ramp moves with the building; the y above is
@@ -10948,6 +11346,10 @@ function buildPorchLights(){
       var startA=(f.ax==='x') ? f.ctr-f.ux*(f.len/2) : f.ctr-f.uz*(f.len/2);
       var along=startA+((f.ax==='x')?f.ux:f.uz)*auto.s;
       if(f.ax==='x') grp.position.x=along; else grp.position.z=along;
+      // The auto slot can carry a light onto (or off) a partial porch's
+      // stepped-in wall, so the plane follows where it actually landed.
+      var _lfx=porchFixedAt(f, pld.wall, along);
+      if(f.ax==='x') grp.position.z=_lfx; else grp.position.x=_lfx;
     }
     shedGroup.add(grp);
     porchLightMeshes.push({group:grp, index:idx});
@@ -11135,8 +11537,9 @@ function applyWallTransform(grp, wall, pos, widthIn){
   else if(wall==='right') rotY=Math.PI/2; else if(wall==='left') rotY=-Math.PI/2;
   grp.rotation.y=rotY;
   var ax=posToAxis(wall, pos, widthIn);
-  if(f.ax==='x'){ grp.position.set(ax, 0, f.fixed); }
-  else { grp.position.set(f.fixed, 0, ax); }
+  var _afx=porchFixedAt(f, wall, ax);
+  if(f.ax==='x'){ grp.position.set(ax, 0, _afx); }
+  else { grp.position.set(_afx, 0, ax); }
 }
 
 // through the windows and BLOCKS interior light from leaking through the shell.
@@ -11525,7 +11928,7 @@ function buildInterior(){
     }
     shedGroup.add(m);
   }
-  function interiorWall(wall){
+  function interiorWall(wall, fo){
     // LEAN-TO SIDE WALLS are TRAPEZOIDS (high at the front, low at the back) — the
     // exterior side is built that way in buildLeanToRoof(). Sheathing them as flat
     // full-height rectangles makes the OSB poke up through the sloped roof at the
@@ -11610,7 +12013,7 @@ function buildInterior(){
       }
       return;
     }
-    var f=wallFrame(wall);
+    var f=fo||wallFrame(wall);
     var L_=f.len;
     // The wall's TRUE height. buildWallWithOpenings already does `var h=f.height`;
     // this function used to shadow it with the global full-height `h`, which is why
@@ -11631,6 +12034,7 @@ function buildInterior(){
       var dwi=dd.w*0.2/12, dhi=Math.min(dd.h*0.2/12, wallH-0.12);
       holes.push({c:posToAxis(wall,dd.pos,dd.w), half:dwi/2, top:dhi, bot:0});
     });
+    holes=porchFilterHoles(wall, holes, wallH, !!fo);
     var u=(f.ax==='x')?f.ux:f.uz;
     var axisStart=f.ctr-u*(L_/2);
     // drop openings that don't land on this wall (same guard as the exterior)
@@ -11721,13 +12125,38 @@ function buildInterior(){
       var wTop=isFinite(capW) ? Math.min(wallH, capW) : wallH;
       var topR=function(){ return wTop; };
       var plR=wallPlacer(f, axisStart, u, studIn, topR);
+      /* A partial porch's gap in an OUTER wall is open air, not an opening
+         anyone frames: no header or sill across it, and where it reaches a
+         corner, no end stud or jack standing out in the open corner — those
+         were bare 2x4s showing from outside. Jacks at a mid-wall gap edge
+         stay; they are inside the return wall. */
+      var _pg=holes.filter(function(hl){ return hl.porchGap; })[0];
+      if(_pg && !fo){
+        var gs0=_pg.local-_pg.half, gs1=_pg.local+_pg.half, _v=plR.vert, _h=plR.horiz;
+        var atS=gs0<0.08, atE=gs1>L_-0.08;
+        plR.vert=function(s,y0,y1){
+          if(s>gs0 && s<gs1) return;
+          if(atS && s<=gs0+FR_T) return;
+          if(atE && s>=gs1-FR_T) return;
+          _v(s,y0,y1);
+        };
+        plR.horiz=function(s0,s1,y0,y1,dep){
+          var m=(s0+s1)/2; if(m>gs0 && m<gs1) return;
+          _h(s0,s1,y0,y1,dep);
+        };
+      }
       frameWall({L:L_, top:topR, rake:rakeFor(wall, f, axisStart, u), sloped:false,
-        holes:holes.map(function(hl){ return {s0:hl.local-hl.half, s1:hl.local+hl.half, bot:hl.bot, top:hl.top}; }),
+        /* A partial porch's gap runs past the wall top so the siding and
+           sheathing open fully — but framed to that height its jacks would
+           stand up through the roof. Frame it to just under the plates. */
+        holes:holes.map(function(hl){ return {s0:hl.local-hl.half, s1:hl.local+hl.half, bot:hl.bot, top:hl.porchGap?Math.min(hl.top, wTop-0.1):hl.top}; }),
         vert:plR.vert, horiz:plR.horiz, plate:plR.plate});
     }
   }
   interiorWall('front'); interiorWall('back');
   interiorWall('left');  interiorWall('right');
+  // A partial porch's stepped-in wall is a wall of the room too.
+  if(porchIsPartial()){ var _pif=porchInsetFrame(); if(_pif) interiorWall(_pif.ax==='x'?'front':'right', _pif); }
 
   /* v456 — LEAN-TO ROOF FRAMING. The block below is gated on STYLE==='gable',
      so a lean-to had no rafters, no deck and nothing overhead at all.
@@ -12384,7 +12813,7 @@ function pickStyle(style, el){
   // The porch models are siblings on this grid, so choosing a plain style has
   // to clear the porch — otherwise picking Barn would leave a porch attached to
   // a shell that can't build one.
-  if(typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none'){ PORCH_LOC='none'; SIDE_PORCH=0; }
+  if(typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none'){ PORCH_LOC='none'; SIDE_PORCH=0; PORCH_LEN=0; PORCH_OFF=0; }
   document.querySelectorAll('.style-btn').forEach(function(b){b.classList.remove('on');});
   /* Before buildShed, so the size change and the style change land in one
      rebuild rather than drawing the new roof over the old footprint first. */
@@ -12399,6 +12828,7 @@ function pickPorchStyle(loc, el){
   document.querySelectorAll('#styleGrid .tile').forEach(function(t){t.classList.remove('on');});
   if(el) el.classList.add('on');
   STYLE='gable';
+  if(loc!==PORCH_LOC){ PORCH_LEN=0; PORCH_OFF=0; }   // a length belongs to one wall
   PORCH_LOC=loc;
   if(!(SIDE_PORCH>0)) SIDE_PORCH=4;
   // Side has no finish tiers, but its DEPTH is selectable like the front's.
@@ -13752,7 +14182,13 @@ function clampPorch(){
      disagree would offer a depth the clamp then takes away, which reads as
      the designer ignoring the tap. */
   var fits=porchDepthOptions().filter(function(d){ return d<=cap; });
-  if(!fits.length){ PORCH_LOC='none'; SIDE_PORCH=0; return; }
+  if(!fits.length){ PORCH_LOC='none'; SIDE_PORCH=0; PORCH_LEN=0; PORCH_OFF=0; return; }
+  /* A partial porch as long as the (now shorter) wall IS the full porch;
+     otherwise keep its length and pull its start back onto the wall. */
+  if(PORCH_LEN>0){
+    if(PORCH_LEN>=porchSpanFt()){ PORCH_LEN=0; PORCH_OFF=0; }
+    else PORCH_OFF=porchSnapOff(PORCH_OFF, PORCH_LEN, porchSpanFt());
+  }
   /* Snap to a depth that is actually ON THE LADDER, not merely one the
      footprint could carry. Those are different questions and only the first
      was being asked: a build could sit on a depth the picker no longer
@@ -13763,8 +14199,8 @@ function clampPorch(){
 }
 function _sizeLabel(){
   var el=document.getElementById('sqft'); if(!el) return;
-  var eat=porchEatFt(), enc=(W-eat.w)*(L-eat.l);
-  el.textContent=(W*L)+' sq ft'+((eat.w||eat.l)?(' \u00b7 '+enc+' enclosed'):'');
+  var eat=porchEatFt(), enc=enclosedSqft();
+  el.textContent=(W*L)+' sq ft'+((eat.w||eat.l||porchIsPartial())?(' \u00b7 '+enc+' enclosed'):'');
 }
 // _sizeStripSync: the preset highlight has to follow the sliders too, or
 // dragging off a preset leaves it looking selected. Guarded because setW runs
@@ -14725,7 +15161,53 @@ function renderDormerUI(){
     // A dormer already wider than this shed can take has to come back in, or
     // the geometry trims it silently and the quote bills the wider one.
     if(cur>maxDormerFt){ setDormerWidth(opts.length>1?opts[opts.length-1]:0); return; }
+    renderDormerPos(wh, ok);
   }
+}
+/* DORMER POSITION SLIDER — slides the selected face's dormer along the roof
+   in 1 ft steps, kept 6in inside each end of the room (dormerMaxOffFt).
+   renderDormerUI runs on every rebuild, and so does a live drag, so the
+   slider lives in its own container and is only REWRITTEN when its range or
+   face changes; otherwise its value is updated in place and the thumb stays
+   under the customer's finger. */
+function renderDormerPos(wh, ok){
+  var host=document.getElementById('dormerPosWrap');
+  if(!host){
+    wh.insertAdjacentHTML('afterend','<div id="dormerPosWrap"></div>');
+    host=document.getElementById('dormerPosWrap');
+    if(!host) return;
+  }
+  var side=(ADD_ROOF==='right')?1:-1;
+  var ft=(side>0)?DORMER_R:DORMER_L;
+  var m=Math.floor(dormerMaxOffFt(side)+1e-6);
+  if(!ok || !(ft>0) || m<1){ host.innerHTML=''; host.removeAttribute('data-key'); return; }
+  var v=Math.round(dormerOffFt(side));
+  var key=side+'|'+m;
+  if(host.getAttribute('data-key')===key && document.getElementById('dormerSlide')){
+    var sl=document.getElementById('dormerSlide'); if(+sl.value!==v) sl.value=v;
+    var tx=document.getElementById('dormerSlideTxt'); if(tx) tx.textContent=dormerSlideTxt(v);
+    return;
+  }
+  host.setAttribute('data-key', key);
+  host.innerHTML='<span class="lbl" style="display:block;margin-top:10px">Dormer Position</span>'+
+    '<input id="dormerSlide" type="range" min="'+(-m)+'" max="'+m+'" step="1" value="'+v+'" '+
+    'aria-label="Slide the dormer along the roof" style="width:100%;margin:6px 0 2px" '+
+    'oninput="setDormerOff(this.value,true)" onchange="setDormerOff(this.value,false)">'+
+    '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu)"><span>Back</span><span>Front</span></div>'+
+    '<div id="dormerSlideTxt" style="font-size:11px;color:var(--mu);margin:2px 0 8px">'+dormerSlideTxt(v)+'</div>';
+}
+function dormerSlideTxt(v){
+  v=+v||0;
+  if(v===0) return 'Centered on the roof';
+  return Math.abs(v)+' ft toward the '+(v>0?'front':'back');
+}
+function setDormerOff(v, live){
+  var side=(ADD_ROOF==='right')?1:-1;
+  var m=dormerMaxOffFt(side);
+  var o=Math.max(-m, Math.min(m, Math.round(+v||0)));
+  if(side>0) DORMER_R_OFF=o; else DORMER_L_OFF=o;
+  buildShed();
+  var tx=document.getElementById('dormerSlideTxt'); if(tx) tx.textContent=dormerSlideTxt(o);
 }
 function setAddRoof(side){
   ADD_ROOF=side; renderDormerUI(); buildShed();   // highlight is already on
@@ -14752,6 +15234,8 @@ function setDormerWidth(ft){
     if(STYLE==='gable' && !DORMER_EDIT) DORMER_EDIT=true;   // show the slope highlight
   }
   if(ADD_ROOF==='right') DORMER_R=ft; else DORMER_L=ft;
+  // A wider dormer has less room to slide: keep its position on the roof.
+  if(ADD_ROOF==='right') DORMER_R_OFF=ft>0?dormerOffFt(1):0; else DORMER_L_OFF=ft>0?dormerOffFt(-1):0;
   // Last dormer gone -> hand the roof back the way we found it.
   if(DORMER_R===0 && DORMER_L===0 && PITCH_BEFORE_DORMER!==null){
     PITCH=PITCH_BEFORE_DORMER;
@@ -14829,7 +15313,12 @@ function syncOverhangUI(){
 }
 function porchLabel(){
   if(PORCH_LOC==='none'||SIDE_PORCH<=0) return 'Tap to choose';
-  return (PORCH_LOC==='front'?'Front':'Side')+' &middot; '+SIDE_PORCH+' ft';
+  return (PORCH_LOC==='front'?'Front':'Side')+' &middot; '+porchSizeTxt();
+}
+/* "4 ft" for a full-length porch (its depth — the length is the wall), and
+   "4 x 4 ft" (depth x length) for a partial one. */
+function porchSizeTxt(){
+  return porchIsPartial() ? (SIDE_PORCH+' \u00d7 '+PORCH_LEN+' ft') : (SIDE_PORCH+' ft');
 }
 function syncPorchBtn(){
   var fi=document.getElementById('porchFrontIcon');
@@ -14845,7 +15334,7 @@ function syncPorchBtn(){
   var fb=document.getElementById('porchFrontBtn'); if(fb) fb.classList.toggle('on', onF||onS);
   var fl=document.getElementById('porchFrontLabel');
   if(fl) fl.textContent = (onF||onS)
-    ? (SIDE_PORCH+' ft '+(onF?'front':'side')+' porch')
+    ? (porchSizeTxt()+' '+(onF?'front':'side')+' porch')
     : 'Front or side porch';
   // Sub-row: only visible once the tile is active, and it marks which side.
   var sub=document.getElementById('porchSubRow');
@@ -14853,12 +15342,122 @@ function syncPorchBtn(){
   var f2=document.getElementById('porchSideBtn2'); if(f2) f2.classList.toggle('on', onF);
   var sb=document.getElementById('porchSideBtn');  if(sb) sb.classList.toggle('on', onS);
   var fl2=document.getElementById('porchFrontLabel2');
-  if(fl2) fl2.textContent = onF ? (SIDE_PORCH+' ft across the width') : 'Across the width';
+  if(fl2) fl2.textContent = onF ? (porchSizeTxt()+(porchIsPartial()?' on the front':' across the width')) : 'Across the width';
   var sl=document.getElementById('porchSideLabel');
-  if(sl) sl.textContent = onS ? (SIDE_PORCH+' ft along the length')  : 'Along the length';
+  if(sl) sl.textContent = onS ? (porchSizeTxt()+(porchIsPartial()?' on the side':' along the length'))  : 'Along the length';
   // The plain A-frame tile is only "on" when there is NO porch.
   var gb=document.querySelector('#styleGrid .tile[data-style="gable"]');
   if(gb) gb.classList.toggle('on', STYLE==='gable' && (PORCH_LOC==='none'||!(SIDE_PORCH>0)));
+}
+/* PORCH LENGTH + POSITION (Option A). Length chips — Full, then every even
+   foot from PORCH_MIN_LEN up to the wall — each with its price at the current
+   depth off quoteCache.optionPrices.porch.lengths (worker/index.js; no rate
+   lives here). A partial porch then gets Left / Center / Right and a 1 ft
+   slider. Left and right are as you stand OUTSIDE facing the porch wall: the
+   front wall's start corner is on your left, the side wall's on your right,
+   so the side wall's slider runs the other way round in PORCH_OFF terms. */
+function porchVisFromOff(off, len, span){ return (PORCH_LOC==='side') ? (span-len-off) : off; }
+function porchOffFromVis(v, len, span){ return (PORCH_LOC==='side') ? (span-len-v) : v; }
+function porchLengthHTML(){
+  if(PORCH_LOC==='none') return '';
+  var span=porchSpanFt();
+  var lens=[];
+  for(var n=PORCH_MIN_LEN; n<span; n+=2) lens.push(n);
+  if(!lens.length) return '';
+  var op=quoteCache.optionPrices && quoteCache.optionPrices.porch;
+  var lp=(op && op.lengths) || null;
+  function priceTag(k){
+    if(!lp || lp[k]==null) return '';
+    return ' <span style="opacity:.65;font-size:11px">'+money(lp[k])+'</span>';
+  }
+  function chip(on, click, label){
+    return '<div class="pitch-btn'+(on?' on':'')+'" onclick="'+click+'" style="flex:1 1 22%;min-width:0">'+label+'</div>';
+  }
+  var part=porchIsPartial();
+  var h='<span class="lbl" style="margin-top:6px;display:block">Porch Length</span>';
+  h+='<div id="porchLenChips" style="display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 8px">';
+  h+=chip(!part, 'setPorchLen(0)', 'Full '+span+' ft'+priceTag('full'));
+  lens.forEach(function(n){ h+=chip(part && PORCH_LEN===n, 'setPorchLen('+n+')', n+' ft'+priceTag(n)); });
+  h+='</div>';
+  if(part){
+    var len=PORCH_LEN, maxV=span-len, v=porchVisFromOff(porchOffFt(), len, span);
+    var al=(v<=0)?'left':(v>=maxV)?'right':(Math.abs(v-maxV/2)<0.51?'center':'');
+    h+='<span class="lbl" style="display:block">Porch Position</span>';
+    h+='<div style="display:flex;gap:7px;margin:6px 0 8px">';
+    h+=chip(al==='left','setPorchAlign(\'left\')','Left');
+    h+=chip(al==='center','setPorchAlign(\'center\')','Center');
+    h+=chip(al==='right','setPorchAlign(\'right\')','Right');
+    h+='</div>';
+    h+='<input id="porchSlide" type="range" min="0" max="'+maxV+'" step="1" value="'+v+'" '+
+       'aria-label="Slide the porch along the wall" style="width:100%;margin:2px 0 2px" '+
+       'oninput="setPorchSlide(this.value,true)" onchange="setPorchSlide(this.value,false)">';
+    h+='<div id="porchSlideTxt" style="font-size:11px;color:var(--mu);margin:0 0 10px">'+porchSlideTxt(v, maxV)+'</div>';
+    h+='<div style="font-size:11px;color:var(--mu);margin:-4px 0 10px">The wall steps in under the porch; '+
+       'the room is '+enclosedSqft()+' sq ft of the '+(W*L)+' sq ft footprint. Facing the '+
+       (PORCH_LOC==='front'?'front':'porch side')+' of the shed.</div>';
+  } else {
+    h+='<div style="font-size:11px;color:var(--mu);margin:-2px 0 10px">Runs the full '+span+' ft '+
+       (PORCH_LOC==='front'?'width':'length')+'. Pick a shorter length to set the porch at one end or in the middle.</div>';
+  }
+  return h;
+}
+function porchSlideTxt(v, maxV){
+  v=+v; var r=maxV-v;
+  if(v<=0) return 'At the left end';
+  if(r<=0) return 'At the right end';
+  return v+' ft from the left end \u00b7 '+r+' ft from the right';
+}
+/* Openings inside the porch ride along when it slides or resizes (follow),
+   anything it now overlaps is slid clear; say so only when something moved
+   that the customer did not move themselves. */
+function porchApplyMove(before){
+  var after=porchRect(), follow=null;
+  if(before && after && before.wall===after.wall)
+    follow={wall:after.wall, from:[before.a0, before.a1], shift:((after.a0+after.a1)-(before.a0+before.a1))/2};
+  var n=porchFitOpenings(follow);
+  if(n>0 && typeof showToast==='function')
+    showToast(n===1 ? 'Moved a door or window clear of the porch.' : ('Moved '+n+' doors/windows clear of the porch.'));
+}
+function setPorchLen(n){
+  var before=porchRect(), span=porchSpanFt();
+  n=+n||0;
+  if(!(n>0) || n>=span){ PORCH_LEN=0; PORCH_OFF=0; }
+  else {
+    // Keep the porch where it was: same centre if it was already partial,
+    // centred on the wall (over the door, usually) if it was full.
+    var c = before ? (porchOffFt()+PORCH_LEN/2) : span/2;
+    PORCH_LEN=n;
+    PORCH_OFF=porchSnapOff(Math.round(c-n/2), n, span);
+  }
+  porchApplyMove(before);
+  porchRefresh();
+}
+function setPorchAlign(a){
+  if(!porchIsPartial()) return;
+  var span=porchSpanFt(), len=PORCH_LEN, maxV=span-len;
+  var v=(a==='left')?0:(a==='right')?maxV:Math.round(maxV/2);
+  var before=porchRect();
+  PORCH_OFF=porchSnapOff(porchOffFromVis(v, len, span), len, span);
+  porchApplyMove(before);
+  porchRefresh();
+}
+function setPorchSlide(v, live){
+  if(!porchIsPartial()) return;
+  var span=porchSpanFt(), len=PORCH_LEN, maxV=span-len;
+  var before=porchRect();
+  var off=porchSnapOff(porchOffFromVis(Math.max(0,Math.min(maxV,+v||0)), len, span), len, span);
+  if(off!==PORCH_OFF || !live){
+    PORCH_OFF=off;
+    porchApplyMove(before);
+  }
+  if(live){
+    // Rebuild the 3D only: re-rendering the page would replace the slider
+    // under the customer's finger. The snapped value goes back into it.
+    buildShed();
+    var vs=porchVisFromOff(PORCH_OFF, len, span);
+    var sl=document.getElementById('porchSlide'); if(sl && +sl.value!==vs) sl.value=vs;
+    var tx=document.getElementById('porchSlideTxt'); if(tx) tx.textContent=porchSlideTxt(vs, maxV);
+  } else porchRefresh();
 }
 function porchPriceLine(loc, depth, tier){
   // Reads the already-computed dollar amount for THIS depth/tier off
@@ -14928,9 +15527,6 @@ function porchPageHTML(){
          'Saved porch finish: <b>'+PORCH_TIER+'</b> \u2014 priced as originally quoted. '+
          'New designs use the standard finish with the decking priced separately.</div>';
     }
-    if(PORCH_LOC==='side'){
-      h+='<div style="font-size:11px;color:var(--mu);margin-bottom:10px">Side porch runs the full length of the wall.</div>';
-    }
     /* Same depth ladder on both sides. Side was hardcoded to [4] and front's
        standard tier to [4,6] — those lists were mirroring which cells happen to
        be filled in the porch rate tables, so an unpriced depth
@@ -14969,6 +15565,7 @@ function porchPageHTML(){
     // A porch already set deeper than this footprint allows (size changed after
     // the fact) has to come back in, or the room silently shrinks past the floor.
     if(SIDE_PORCH>_cap && _shown.length){ SIDE_PORCH=_shown[_shown.length-1]; }
+    h+=porchLengthHTML();
     var totalLine=porchPriceLine(PORCH_LOC, SIDE_PORCH, PORCH_TIER);
     var totalPrice=(totalLine?totalLine.price:0);
     h+='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">Porch total: <b style="color:#8fe3ff">'+
@@ -14978,7 +15575,10 @@ function porchPageHTML(){
        offering the control just let you open a two-foot hole between the
        dropped ceiling and the roof. Say why rather than silently dropping it,
        or it reads as a missing option. */
-    if(PORCH_LOC==='side'){
+    if(PORCH_LOC==='side' && porchIsPartial()){
+      h+='<div style="font-size:11px;color:var(--mu);margin:4px 0 10px">A partial porch is tucked under the main roof, '+
+         'so its ceiling sits at the '+H+' ft wall height.</div>';
+    } else if(PORCH_LOC==='side'){
       h+='<span class="lbl" style="margin-top:12px;display:block">Porch Ceiling Height</span>';
       h+='<div class="optrow" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;margin:6px 0 4px">';
       h+=btn(!(PORCH_H>0),'setPorchH(0)','Match walls');
@@ -15062,6 +15662,8 @@ function porchMoveDoor(){
 }
 function setPorchLoc(v){
   if(v!=='none' && STYLE!=='gable'){ showToast('Porches are available on the Gable / A-Frame style.'); return; }
+  // A length and position belong to one wall — moving walls starts full.
+  if(v!==PORCH_LOC){ PORCH_LEN=0; PORCH_OFF=0; }
   PORCH_LOC=v;
   /* Clear the pin when it stops being a thing you can build. Left set, it would
      ride along in the saved config and the quote for a porch whose ceiling
@@ -15901,7 +16503,7 @@ function addShedLights(){
     // SHADER LIGHT BUDGET (see buildWindows): the porch takes its allowance FROM
     // the eave/rake budget rather than adding to it, so the total can't creep
     // back past the Metal shader limit that killed rendering in v60.
-    var _porchOn=(STYLE==='gable' && typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none' && SIDE_PORCH>0);
+    var _porchOn=(STYLE==='gable' && typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none' && SIDE_PORCH>0 && !porchIsPartial());
     var _eaveSpots=_porchOn?1:2, _rakeSpots=_porchOn?1:2, _porchSpots=_porchOn?2:0;
 
     // wantSpot: whether THIS fixture gets a real beam. The budget used to be
@@ -16190,7 +16792,7 @@ function addShedLights(){
       // With a SIDE PORCH the +X eave soffit is covered by the porch roof, so
       // those fixtures belong under the PORCH soffit instead — that's the
       // ceiling people actually stand under.
-      var spLightOn=(STYLE==='gable' && typeof PORCH_LOC!=='undefined' && PORCH_LOC==='side' && SIDE_PORCH>0);
+      var spLightOn=(STYLE==='gable' && typeof PORCH_LOC!=='undefined' && PORCH_LOC==='side' && SIDE_PORCH>0 && !porchIsPartial());
       var spLx=0, spLy=0, spTilt=0;
       if(spLightOn){
         /* Read the porch's real attachment rather than re-deriving the eave.
@@ -16233,7 +16835,7 @@ function addShedLights(){
         var dPitch=2/12;                           // shallow dormer roof
         var dTopY=(_gd.ridgeY+dSurf-0.015) - dPitch*dXFa;
         var oy=eaveOv*dPitch;                      // drop across its projection
-        return { half:dW/2,
+        return { half:dW/2, zc:dormerOffFt(sideSign)*0.2,   // slid along the roof
                  x: sideSign*(dXFa+eaveOv*0.5),    // mid-projection, like the eave
                  y: dTopY-oy-0.052 };              // just under its soffit board
       }
@@ -16246,8 +16848,8 @@ function addShedLights(){
       for(var i2=0;i2<nLong;i2++){
         var zz2 = -l/2 + ((i2+0.5)/nLong)*l;
         var lit2=(i2===eaveMid);
-        var inR = dSofR && Math.abs(zz2)<=dSofR.half;
-        var inL = dSofL && Math.abs(zz2)<=dSofL.half;
+        var inR = dSofR && Math.abs(zz2-dSofR.zc)<=dSofR.half;
+        var inL = dSofL && Math.abs(zz2-dSofL.zc)<=dSofL.half;
         /* LIE IN THE SOFFIT, DON'T SIT ON IT.
            These eave soffits FOLLOW THE ROOF PITCH — eaveSoffitY subtracts
            eaveOv*tan(eaveAng) for exactly that reason, and a 12in overhang at
@@ -16304,7 +16906,7 @@ function addShedLights(){
       // FRONT PORCH: the roof runs out over the porch and the usable ceiling is
       // the flat porch soffit at wall height — so the front-end fixtures belong
       // under THAT, not up under the rake out over the bay.
-      var fpLit=(STYLE==='gable' && typeof PORCH_LOC!=='undefined' && PORCH_LOC==='front' && SIDE_PORCH>0);
+      var fpLit=(STYLE==='gable' && typeof PORCH_LOC!=='undefined' && PORCH_LOC==='front' && SIDE_PORCH>0 && !porchIsPartial());
       var fpMidZ=0;
       if(fpLit){
         var fpDl=SIDE_PORCH*0.2;
@@ -16563,7 +17165,8 @@ function getDesignConfig(){
     leantoDrop:LEANTO_DROP, leantoFrontOvh:LEANTO_FRONT_OVH,
     porchLoc:PORCH_LOC, porchDepth:SIDE_PORCH, porchH:PORCH_H, porchDeck:PORCH_DECK, deckColor:DECK_COLOR,
     porchTier:PORCH_TIER,
-    dormerL:DORMER_L, dormerR:DORMER_R,
+    porchLen:PORCH_LEN, porchOff:PORCH_OFF,
+    dormerL:DORMER_L, dormerR:DORMER_R, dormerLOff:DORMER_L_OFF, dormerROff:DORMER_R_OFF,
     foundation:FOUNDATION, foundationFinish:FOUNDATION_FINISH, foundationStain:FOUNDATION_STAIN,
     loft:LOFT, elec:ELEC, intFinish:INT_FINISH, floor:FLOOR, addons:ADDONS,
     doors:doorsData, windows:windowsData, vents:ventsData, shelves:shelvesData,
@@ -16716,10 +17319,21 @@ function applyDesignConfig(c){
     if(c.leantoDrop!=null)LEANTO_DROP=+c.leantoDrop;
     if(c.leantoFrontOvh!=null)LEANTO_FRONT_OVH=(c.leantoFrontOvh==='match')?'match':+c.leantoFrontOvh;
     if(c.porchLoc)PORCH_LOC=c.porchLoc; if(c.porchDepth!=null)SIDE_PORCH=+c.porchDepth;
+    /* Partial porch. A design saved before it existed carries porchLoc but no
+       porchLen, and must open as the full-length porch it was — so a config
+       that speaks for the porch at all resets these to full when absent,
+       rather than inheriting whatever the last build had. */
+    if(c.porchLoc!=null || c.porchLen!=null){
+      PORCH_LEN=(c.porchLen!=null)?(+c.porchLen||0):0;
+      PORCH_OFF=(c.porchOff!=null)?(+c.porchOff||0):0;
+    }
     if(c.porchTier)PORCH_TIER=c.porchTier;
     // Saved by getDesignConfig but never read back, so a reopened design lost its deck choice.
     if(c.porchDeck)PORCH_DECK=c.porchDeck; if(c.deckColor)DECK_COLOR=c.deckColor; if(c.porchH!=null)PORCH_H=+c.porchH;
     if(c.dormerL!=null)DORMER_L=+c.dormerL; if(c.dormerR!=null)DORMER_R=+c.dormerR;
+    // Dormer position: absent = centred, which is where every older dormer sat.
+    if(c.dormerL!=null || c.dormerLOff!=null) DORMER_L_OFF=(c.dormerLOff!=null)?(+c.dormerLOff||0):0;
+    if(c.dormerR!=null || c.dormerROff!=null) DORMER_R_OFF=(c.dormerROff!=null)?(+c.dormerROff||0):0;
     if(c.foundation)FOUNDATION=c.foundation;
     if(c.foundationFinish)FOUNDATION_FINISH=c.foundationFinish;
     if(c.foundationStain)FOUNDATION_STAIN=c.foundationStain;
