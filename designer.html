@@ -9584,8 +9584,12 @@ function buildWallWithOpenings(wall, fo){
   // Battens break around both, so vent gaps need the same local coordinate.
   ventBreaks.forEach(function(hl){ hl.local=(hl.c-axisStart)*u; });
 
+  /* f.ctr, not 0: an outer wall is centred on the origin, but the stepped-in
+     wall of a partial porch is not. With no opening on it (the door slid out
+     of a porch too short for it) the solid panel went up at x=0, leaving the
+     porch open into the room. */
   if(holes.length===0){
-    panelSeg(L_, h, 0, h/2, 0);                 // solid wall
+    panelSeg(L_, h, f.ctr, h/2, 0);             // solid wall
     addBattens(ventBreaks);
     return;
   }
@@ -9602,7 +9606,7 @@ function buildWallWithOpenings(wall, fo){
     if(b2<=0.001 || a>=L_-0.001) return false;   // entirely off this wall
     return true;
   });
-  if(holes.length===0){ panelSeg(L_, h, 0, h/2, 0); addBattens(ventBreaks); return; }
+  if(holes.length===0){ panelSeg(L_, h, f.ctr, h/2, 0); addBattens(ventBreaks); return; }
   addBattens(holes.concat(ventBreaks));
 
   /* SIDING IN BANDS, NOT ONE SWEEP.
@@ -12088,7 +12092,8 @@ function buildInterior(){
        height — you looked through the glass straight onto a flat sheet of
        sheathing. The exterior got cut properly in v263, which is precisely what
        made this one visible: the hole was finally there to see through. */
-    if(holes.length===0){ seg(L_-0.1, wallH, 0, wallH/2); }
+    // f.ctr: the stepped-in porch wall is off-centre (see buildWallWithOpenings).
+    if(holes.length===0){ seg(L_-0.1, wallH, f.ctr, wallH/2); }
     else{
       holes.forEach(function(hl){ hl.local=(hl.c-axisStart)*u; });
       var iys=[0, wallH];
@@ -12117,7 +12122,10 @@ function buildInterior(){
     }
     // Wrap each opening's reveal. Only once the wall is finished — a bare-stud
     // shed is meant to show its framing, and the cavity edge IS the product.
-    if(wallFinished) holes.forEach(function(hl){ lineOpening(f, hl); });
+    // Not a partial porch's gap: that is open air, not an opening, and lined
+    // it stood up as two white jambs at the porch's edges, past the wall top
+    // and out through the roof (top = wallH+0.5). Same rule as the framing.
+    if(wallFinished) holes.forEach(function(hl){ if(!hl.porchGap) lineOpening(f, hl); });
     // FRAMING: studs on layout, double top plate, bottom plate, and every
     // opening framed (see frameWall). Drywall covers it, so not once finished.
     if(!wallFinished){
