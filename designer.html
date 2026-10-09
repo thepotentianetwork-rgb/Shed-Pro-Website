@@ -1286,6 +1286,26 @@ function soffitHex(){
    beige/board-and-batten wall). Turned down to 0.15 — still enough lift to
    keep the underside from going flat black, without the mismatch. */
 var SOFFIT_GLOW=0.15;
+/* ONE SOFFIT FINISH. The eave soffits and every porch ceiling (full front,
+   full side, partial) each built this material on their own; they agreed,
+   but only by being copied. A porch ceiling is a soffit, so it is now the same
+   call: Match Walls / White / Black as a flat colour, Cedar as the cedar
+   boards. rx, ry: cedar board repeats across the two sides of the panel. */
+function soffitFinishMat(rx, ry){
+  var m;
+  if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
+    var t=makeCedar(); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+    t.repeat.set(Math.max(1,Math.round(rx)), Math.max(1,Math.round(ry)));
+    m=new THREE.MeshStandardMaterial({map:t, emissiveMap:t,
+      emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
+  } else {
+    m=new THREE.MeshStandardMaterial({color:soffitHex(), emissive:soffitHex(),
+      emissiveIntensity:SOFFIT_GLOW, roughness:0.9, metalness:0.0});
+  }
+  m.side=THREE.DoubleSide;
+  m.userData.soffitFinish=(typeof SOFFIT!=='undefined') ? SOFFIT : 'match';
+  return m;
+}
 var DORMER_R=0;      // right-slope dormer width in ft (0 = none). A-Frame only.
 var DORMER_L=0;      // left-slope dormer width in ft (0 = none)
 var ADD_ROOF="right";// which slope the dormer controls act on
@@ -6357,18 +6377,9 @@ function buildShed(){
   // Built in EVERY mode — the "flush" options still have a ~3" reveal past the
   // wall, and leaving it open shows a dark slit (eaves) and daylight (rakes).
   if(eaveOv>0.02){
-    var soffitMat;
-    if(SOFFIT==='cedar'){
-      var sced=makeCedar();
-      sced.repeat.set(Math.max(2,Math.round(el/0.5)), 1);
-      soffitMat=new THREE.MeshStandardMaterial({map:sced, emissiveMap:sced,
-        emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
-    } else {
-      soffitMat=DIAG ? diagMat(0xff7700)
-        : new THREE.MeshStandardMaterial({color:soffitHex(), emissive:soffitHex(),
-        emissiveIntensity:SOFFIT_GLOW, roughness:0.9, metalness:0.0});
-    }
+    var soffitMat=(DIAG && SOFFIT!=='cedar') ? diagMat(0xff7700) : soffitFinishMat(Math.max(2,el/0.5), 1);
     soffitMat.side=THREE.DoubleSide;
+    soffitMat.userData.eaveSoffit=true;
     var soffThk=0.012;
     // Real soffits are HORIZONTAL. Seat the eave soffit flat at the fascia-bottom
     // height (the lowest point of the eave) so it never pokes above the roof, and
@@ -6498,17 +6509,8 @@ function buildShed(){
     var fpCeilW  = w + WALL_FACE*2;            // wall face to wall face
     var fpCeilZ1 = fpZ1 + gableOv;             // out to the roof's leading edge
     var fpCeilD  = fpCeilZ1 - fpZ0;
-    var fpCeilMat;
-    if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
-      var fpCT=makeCedar(); fpCT.wrapS=fpCT.wrapT=THREE.RepeatWrapping;
-      fpCT.repeat.set(Math.max(2,Math.round(fpCeilW/0.5)), Math.max(1,Math.round(fpCeilD/0.5)));
-      fpCeilMat=new THREE.MeshStandardMaterial({map:fpCT, emissiveMap:fpCT,
-        emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
-    } else {
-      fpCeilMat=new THREE.MeshStandardMaterial({color:soffitHex(), emissive:soffitHex(),
-        emissiveIntensity:SOFFIT_GLOW, roughness:0.9, metalness:0.0});
-    }
-    fpCeilMat.side=THREE.DoubleSide;
+    var fpCeilMat=soffitFinishMat(Math.max(2,fpCeilW/0.5), fpCeilD/0.5);
+    fpCeilMat.userData.porchCeiling=true;
     var fpY=porchCeilY();                       // pinned, or the wall top
     var fpCeil=new THREE.Mesh(new THREE.BoxGeometry(fpCeilW, 0.014, fpCeilD), fpCeilMat);
     fpCeil.position.set(0, fpY-0.007, (fpZ0+fpCeilZ1)/2);
@@ -6618,17 +6620,8 @@ function buildShed(){
       });
     }
     // ---- soffit: same finish option as the shed's ----
-    var spCeilMat;
-    if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
-      var spCT=makeCedar(); spCT.wrapS=spCT.wrapT=THREE.RepeatWrapping;
-      spCT.repeat.set(Math.max(2,Math.round(spLen/0.5)), 1);
-      spCeilMat=new THREE.MeshStandardMaterial({map:spCT, emissiveMap:spCT,
-        emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
-    } else {
-      spCeilMat=new THREE.MeshStandardMaterial({color:soffitHex(), emissive:soffitHex(),
-        emissiveIntensity:SOFFIT_GLOW, roughness:0.9, metalness:0.0});
-    }
-    spCeilMat.side=THREE.DoubleSide;
+    var spCeilMat=soffitFinishMat(Math.max(2,spLen/0.5), 1);
+    spCeilMat.userData.porchCeiling=true;
     var spCeil;
     if(spFront){
       spCeil=new THREE.Mesh(new THREE.BoxGeometry(spLen-0.04, 0.012, spSlope-0.04), spCeilMat);
@@ -6682,17 +6675,8 @@ function buildShed(){
                 dOpen={z1:true, x0:ppR.atStart, x1:ppR.atEnd}; }
     buildPorchDeck(dx0, dx1, dz0, dz1, ppOnSlab ? 0.03 : 0.0, {along: ppSide ? 'z' : 'x', open: dOpen});
     // ceiling: stepped-in wall out to the outer wall FACE, the porch's run
-    var ppCeilMat;
-    if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
-      var ppCT=makeCedar(); ppCT.wrapS=ppCT.wrapT=THREE.RepeatWrapping;
-      ppCT.repeat.set(Math.max(1,Math.round((ppR.x1-ppR.x0)/0.5)), Math.max(1,Math.round((ppR.z1-ppR.z0)/0.5)));
-      ppCeilMat=new THREE.MeshStandardMaterial({map:ppCT, emissiveMap:ppCT,
-        emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
-    } else {
-      ppCeilMat=new THREE.MeshStandardMaterial({color:soffitHex(), emissive:soffitHex(),
-        emissiveIntensity:SOFFIT_GLOW, roughness:0.9, metalness:0.0});
-    }
-    ppCeilMat.side=THREE.DoubleSide;
+    var ppCeilMat=soffitFinishMat((ppR.x1-ppR.x0)/0.5, (ppR.z1-ppR.z0)/0.5);
+    ppCeilMat.userData.porchCeiling=true;
     var cx0=ppR.x0, cx1=ppR.x1, cz0=ppR.z0, cz1=ppR.z1;
     if(ppSide){ cx1+=WALL_FACE; if(ppR.atStart) cz0-=WALL_FACE; if(ppR.atEnd) cz1+=WALL_FACE; }
     else      { cz1+=WALL_FACE; if(ppR.atStart) cx0-=WALL_FACE; if(ppR.atEnd) cx1+=WALL_FACE; }
@@ -10218,16 +10202,35 @@ function porchFloorRects(e){
   if(!r) return [{x0:x0,x1:x1,z0:z0,z1:z1}];
   var out=[];
   function add(a,b,c,d){ if(b-a>0.005 && d-c>0.005) out.push({x0:a,x1:b,z0:c,z1:d}); }
+  /* Stop at the ROOM face of the walls round the notch, not on their centre
+     or porch-side planes: a floor or ceiling edge left on the return's porch
+     face sat coplanar with its siding and showed through as a pale sliver
+     from outside. The stepped-in wall is centred on the notch line, the
+     returns stand wholly outside it (see buildPorchInsetWalls). */
+  var ri=PORCH_ROOM_GAP, nx0, nx1, nz0, nz1;
   if(r.wall==='right'){
-    add(x0, r.x0, z0, z1);
-    add(r.x0, x1, z0, r.z0);
-    add(r.x0, x1, r.z1, z1);
+    nx0=r.x0-(0.025+ri); nz0=r.atStart ? r.z0 : r.z0-(0.05+ri); nz1=r.atEnd ? r.z1 : r.z1+(0.05+ri);
+    add(x0, nx0, z0, z1);
+    add(nx0, x1, z0, nz0);
+    add(nx0, x1, nz1, z1);
   } else {
-    add(x0, x1, z0, r.z0);
-    add(x0, r.x0, r.z0, z1);
-    add(r.x1, x1, r.z0, z1);
+    nz0=r.z0-(0.025+ri); nx0=r.atStart ? r.x0 : r.x0-(0.05+ri); nx1=r.atEnd ? r.x1 : r.x1+(0.05+ri);
+    add(x0, x1, z0, nz0);
+    add(x0, nx0, nz0, z1);
+    add(nx1, x1, nz0, z1);
   }
   return out;
+}
+/* How far the room's own surfaces (floor, ceiling, wall linings) stay clear
+   of the porch-side faces of the walls round the notch. */
+var PORCH_ROOM_GAP=0.003;
+/* Is plan point (x, z) out over a partial porch — past the room faces of the
+   stepped-in wall and the returns? */
+function porchUnderAt(x, z){
+  var r=porchRect(); if(!r) return false;
+  var side=(r.wall==='right'), a=side?z:x, c=side?x:z;
+  var a0=r.atStart ? -1e9 : r.a0-0.05, a1=r.atEnd ? 1e9 : r.a1+0.05;
+  return a>a0 && a<a1 && c>(side?r.x0:r.z0)-0.025;
 }
 /* The stepped-in wall and the short return walls that close the porch's
    ends where it does not reach a corner. The stepped-in wall goes through
@@ -12289,6 +12292,16 @@ function buildInterior(){
       holes.push({c:posToAxis(wall,dd.pos,dd.w), half:dwi/2, top:dhi, bot:0});
     });
     holes=porchFilterHoles(wall, holes, wallH, !!fo);
+    /* The lining of an OUTER wall the porch cuts stopped exactly on the gap
+       edge — the return wall's porch-side face — so its end sat coplanar with
+       the return's siding and flickered through as a white sliver from the
+       porch. Inside, the gap is wider by the return's thickness: the lining
+       now ends inside the room, tucked behind the return's own lining. */
+    if(!fo) holes.forEach(function(hl){
+      if(!hl.porchGap) return;
+      var grow=(porchRect().wall===wall ? 0.05 : 0.025)+PORCH_ROOM_GAP;   // return / stepped-in wall
+      hl.half+=grow;
+    });
     var u=(f.ax==='x')?f.ux:f.uz;
     var axisStart=f.ctr-u*(L_/2);
     // drop openings that don't land on this wall (same guard as the exterior)
@@ -12398,9 +12411,15 @@ function buildInterior(){
           if(atE && s>=gs1-FR_T) return;
           _v(s,y0,y1);
         };
+        /* Anything run along the wall (plates, headers, blocking) stops at
+           the gap. Only members CENTRED in it were dropped, so the double top
+           plate — centred on the wall — still ran on through an open corner
+           under the porch ceiling. */
         plR.horiz=function(s0,s1,y0,y1,dep){
-          var m=(s0+s1)/2; if(m>gs0 && m<gs1) return;
-          _h(s0,s1,y0,y1,dep);
+          var lo=Math.min(s0,s1), hi=Math.max(s0,s1);
+          if(hi<=gs0 || lo>=gs1){ _h(s0,s1,y0,y1,dep); return; }
+          if(!atS && lo<gs0-0.005) _h(lo, gs0, y0,y1,dep);
+          if(!atE && hi>gs1+0.005) _h(gs1, hi, y0,y1,dep);
         };
         // Top plates stop at the gap too: across it they hung under the porch
         // ceiling, and at an open corner they ran out into the air.
@@ -12569,10 +12588,25 @@ function buildInterior(){
           var dz=Math.abs(z-_xg.zc);
           if(dz < W2-_xg.xEnd) xr=Math.min(xr, _xg.xEnd+dz-0.02);
         }
+        /* OVER A PARTIAL PORCH there is no wall plate under the heel: the
+           side wall stops at the porch (a corner porch), or the porch steps
+           the wall in (a side porch). The heel hung below the porch ceiling
+           there, with its tie, in plain sight from the porch. Cut it back to
+           where its underside clears the porch ceiling; it bears on the
+           porch's header and ceiling framing, which the porch ceiling hides. */
+        var overPorch=porchUnderAt(sx*(W2-0.06), z);
+        if(overPorch){
+          var clearY=porchCeilY()+0.002, lo=ridgeHalf, hi=xr;
+          var under=function(x){ return gableDeckY(x)-RAF_D/cosG; };
+          if(under(hi)<clearY){
+            for(var it=0; it<30; it++){ var mid=(lo+hi)/2; if(under(mid)<clearY) hi=mid; else lo=mid; }
+            xr=lo;
+          }
+        }
         reach[sx]=xr;
         if(xr>ridgeHalf+0.03)
           rafF.beam([sx*ridgeHalf, gableDeckY(ridgeHalf), z],[sx*xr, gableDeckY(xr), z], RAF_T, RAF_D);
-        if(xr>=W2-0.06){                                 // a tie where it lands on the plate
+        if(!overPorch && xr>=W2-0.06){                   // a tie where it lands on the plate
           tieF.at(0.045, 0.012, 0.042, sx*(W2-0.075), gableDeckY(W2-0.075)-RAF_D/cosG-0.006, z);
           tieF.at(0.010, 0.05, 0.042, sx*(W2-0.075)-sx*0.022, gableDeckY(W2-0.075)-RAF_D/cosG+0.02, z);
         }

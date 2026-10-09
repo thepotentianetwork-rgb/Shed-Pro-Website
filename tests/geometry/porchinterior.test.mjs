@@ -66,6 +66,16 @@ test('from inside, the stepped-in wall, the returns and their corners are lined 
         const hi = first(m, P(al, yy, inset - 0.6), D(0, 1));
         assert.ok(hi && C(hi) < inset - 0.025 - 0.01, `${fin} ${name}: stepped-in wall at ${al.toFixed(2)},y${yy} hit ${hi && C(hi)}`);
       }
+      // the inside corner where a return meets the outer wall it stands in
+      const outer = side ? c.W * 0.1 : c.L * 0.1;
+      if (!r.atStart) {
+        const q = first(m, P(a0 - 0.45, y, outer - 0.45), D(1, 1));
+        assert.ok(q && A(q) < a0 - 0.06 && C(q) < outer - 0.03, `${fin} ${name}: start inside corner at y${y} hit ${q && [A(q).toFixed(3), C(q).toFixed(3)]}`);
+      }
+      if (!r.atEnd) {
+        const q = first(m, P(a1 + 0.45, y, outer - 0.45), D(-1, 1));
+        assert.ok(q && A(q) > a1 + 0.06 && C(q) < outer - 0.03, `${fin} ${name}: end inside corner at y${y} hit ${q && [A(q).toFixed(3), C(q).toFixed(3)]}`);
+      }
       if (!r.atStart) {
         const h = first(m, P(a0 - 0.6, y, inset + 0.3), D(1, 0));
         assert.ok(h && A(h) < a0 - 0.05 - 0.01, `${fin} ${name}: start return at y${y} hit ${h && A(h)}`);
@@ -95,7 +105,12 @@ test('the drywall ceiling stops at the notch and still covers the room', () => {
       const ox = Math.min(b.max.x, r.x1) - Math.max(b.min.x, r.x0), oz = Math.min(b.max.z, r.z1) - Math.max(b.min.z, r.z0);
       assert.ok(ox <= 1e-6 || oz <= 1e-6, `${name}: lid over the notch`);
     }
-    const want = (w - 0.02) * (l - 0.02) - (r.x1 - r.x0) * (r.z1 - r.z0);
+    // the notch, out to the room faces of the walls round it (the stepped-in
+    // wall is centred on its line, the returns stand outside it)
+    const g = c.PORCH_ROOM_GAP, side = r.wall === 'right', A = side ? l : w, Cw = side ? w : l;
+    const n0 = Math.max(-A / 2 + 0.01, r.a0 - (r.atStart ? 0 : 0.05 + g)), n1 = Math.min(A / 2 - 0.01, r.a1 + (r.atEnd ? 0 : 0.05 + g));
+    const across = (Cw / 2 - 0.01) - ((side ? r.x0 : r.z0) - 0.025 - g);
+    const want = (w - 0.02) * (l - 0.02) - (n1 - n0) * across;
     assert.ok(Math.abs(area - want) < 0.05, `${name}: lid area ${area} vs ${want}`);
   }
 });
