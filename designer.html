@@ -12144,6 +12144,14 @@ function buildInterior(){
           var m=(s0+s1)/2; if(m>gs0 && m<gs1) return;
           _h(s0,s1,y0,y1,dep);
         };
+        // Top plates stop at the gap too: across it they hung under the porch
+        // ceiling, and at an open corner they ran out into the air.
+        var _pl=plR.plate;
+        plR.plate=function(s0,s1,thick,drop){
+          var lo=Math.min(s0,s1), hi=Math.max(s0,s1);
+          if(lo<gs0) _pl(lo, Math.min(hi,gs0), thick, drop);
+          if(hi>gs1) _pl(Math.max(lo,gs1), hi, thick, drop);
+        };
       }
       frameWall({L:L_, top:topR, rake:rakeFor(wall, f, axisStart, u), sloped:false,
         /* A partial porch's gap runs past the wall top so the siding and
