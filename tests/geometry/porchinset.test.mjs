@@ -80,8 +80,10 @@ test('4ft corner front porch, slider too wide to go in: the porch is closed, no 
   const m = rebuild();
   const r = c.porchRect();
   assert.ok(r.atEnd && Math.abs(r.a1 - r.a0 - 0.8) < 1e-6);
-  const dc = c.posToAxis('front', c.doorsData[0].pos, 70);
-  assert.ok(dc < r.a0, 'the slider stayed on the outer wall');
+  // Since the single-door swap, the slider comes into the porch as a 36in
+  // single; the porch must be closed either way.
+  const d = c.doorsData[0], dc = c.posToAxis('front', d.pos, d.w);
+  assert.ok(dc < r.a0 || (d.w === 36 && d.porchSwap), 'the slider stayed out, or came in as a single');
   assertClosed(m, 'right-hand corner');
   nothingPastWallTopAtGapEdges(m, 'right-hand corner');
   c.setPorchAlign('center'); assertClosed(rebuild(), 'mid-wall');

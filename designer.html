@@ -1718,7 +1718,110 @@ function porchPostSeats(a, b, endA, endB, maxSpan, wall, inset){
    `follow` = {wall, shift} moves openings already inside the porch along
    with it when the porch itself slides, so the door goes where the porch goes.
    Returns the number of openings it had to move. */
+/* ── A DOUBLE DOOR IN A SHORT PORCH BECOMES A SINGLE ─────────────────────
+   A 4ft porch has 48in of stepped-in wall; a 5ft double plus its casing is
+   ~68in. When the door the porch carries is too wide for it, it is swapped
+   for the matching single — same series where there is one — and the double
+   is remembered on the door (dd.porchSwap) so lengthening the porch puts it
+   back. Only if the customer has not changed the door in between: if the
+   door is no longer the single we put there, the memory is dropped.
+   It is saved with the design, so a reload still knows what to restore. */
+var PORCH_DOOR_MIN=0.02;                          // inset-wall corner clearance, as porchFitOpenings
+function porchGapWidth(){
+  if(!porchIsPartial()) return Infinity;
+  var g=porchWallGaps()[porchRect().wall];
+  return g ? (g[1]-g[0]) : Infinity;
+}
+function porchDoorFits(wIn){
+  return 2*((wIn*0.2/12)/2 + 0.07 + PORCH_DOOR_MIN) <= porchGapWidth() + 1e-9;
+}
+/* The single that stands in for a double, or null when the door is not a
+   double (a single, a roll-up, the fairytale entry). */
+function porchSingleFor(dd){
+  if(!dd) return null;
+  var st=dd.style, w=+dd.w||0, kind=doorKindOf(st, w);
+  if(kind==='double') return {style:st, w:36, h:76};                   // same series, 3' single
+  if(st==='resDouble')      return {style:'res6',     w:36, h:82.5};
+  if(st==='resDoubleFull')  return {style:'resfull',  w:36, h:82.5};
+  if(st==='resDoubleFullB') return {style:'resfullB', w:36, h:82.5};
+  if(st==='slideglass')     return {style:'resfull',  w:36, h:82.5};  // closest single: full-lite
+  if(st==='slideglassB')    return {style:'resfullB', w:36, h:82.5};
+  if(st==='cedar' && w>=60) return {style:'cedarSingle', w:36, h:76};
+  return null;
+}
+function porchDoorAxisPos(wall, axisC, wIn){
+  var f=wallFrame(wall), sw=wIn*0.2/12, margin=sw/2+0.12, usable=f.len-margin*2;
+  var u=(f.ax==='x')?f.ux:f.uz, start=f.ctr-u*(f.len/2);
+  if(usable<=0) return 0.5;
+  return Math.max(0, Math.min(1, ((axisC-start)*u - margin)/usable));
+}
+function porchSetDoor(dd, nd){
+  var c=posToAxis(dd.wall, dd.pos, dd.w);       // keep the door's centre
+  dd.style=nd.style; dd.w=nd.w; dd.h=nd.h;
+  if(nd.color!=null) dd.color=nd.color;
+  var cs=(typeof DOOR_COLOR_SETS!=='undefined') && DOOR_COLOR_SETS[dd.style];
+  if(!cs) delete dd.color;
+  else if(!cs.opts.some(function(o){ return o.k===dd.color; })) dd.color=cs.dflt;
+  dd.pos=porchDoorAxisPos(dd.wall, c, dd.w);
+}
+function porchDoorNote(msg){
+  if(typeof showToast==='function') showToast(msg);
+}
+/* Put back any double we swapped out, once there is room for it again (or
+   the porch is gone or full length). Runs before anything else in
+   porchFitOpenings, including when there is no partial porch at all. */
+function porchRestoreDoors(){
+  var n=0;
+  (typeof doorsData!=='undefined'?doorsData:[]).forEach(function(dd){
+    var sw=dd.porchSwap; if(!sw) return;
+    var as=sw.as||{};
+    if(dd.style!==as.style || +dd.w!==+as.w){ delete dd.porchSwap; return; }   // the customer changed it
+    var r=porchIsPartial() ? porchRect() : null;
+    if(r && dd.wall===r.wall && !porchDoorFits(+sw.w)) return;                  // still no room
+    porchSetDoor(dd, {style:sw.style, w:+sw.w, h:+sw.h, color:sw.color});
+    delete dd.porchSwap; n++;
+  });
+  if(n) porchDoorNote('Put your double door back \u2014 the porch has room for it now.');
+  return n;
+}
+/* Would picking this door for the porch wall right now be a door the porch
+   cannot take? True when the porch is partial, the pick lands on the porch
+   wall as THE porch door (replacing it, or the wall's porch has no door
+   yet), and it is a double that does not fit. Used to grey out tiles. */
+function porchBlocksDoor(style, wIn, wall, replacing){
+  if(!porchIsPartial()) return false;
+  var r=porchRect(); if(!r || wall!==r.wall) return false;
+  if(porchDoorFits(wIn)) return false;
+  if(!porchSingleFor({style:style, w:wIn})) return false;   // roll-ups etc. are not doubles
+  if(replacing) return porchDoorInPorch(replacing);
+  // a new door: blocked only if it would become the porch's door
+  return !(doorsData||[]).some(function(d){ return porchDoorInPorch(d); });
+}
+function porchDoorInPorch(dd){
+  if(!dd || !porchIsPartial()) return false;
+  var r=porchRect(), g=porchWallGaps()[r.wall];
+  if(dd.wall!==r.wall || !g) return false;
+  var c=posToAxis(dd.wall, dd.pos, dd.w);
+  return c>g[0] && c<g[1];
+}
+/* The door a style pick would land as, mirroring addDoorByStyle's order:
+   the selected door on the active wall, else the wall's existing door, else
+   a new one (null). Only used to decide what to grey out. */
+function porchPickBlocked(style, wIn){
+  var wall=WIZ_ADDWALL_DOOR||'front', rep=null;
+  if(!porchIsPartial()) return false;
+  if(!ADD_ANOTHER_DOOR){
+    if(selectedKind==='door' && selectedDoor>=0 && doorsData[selectedDoor] && doorsData[selectedDoor].wall===wall)
+      rep=doorsData[selectedDoor];
+    else for(var i=0;i<doorsData.length;i++) if(doorsData[i].wall===wall){ rep=doorsData[i]; break; }
+  }
+  return porchBlocksDoor(style, wIn, wall, rep);
+}
+function porchTooShortHint(){
+  return 'Too wide for the '+PORCH_LEN+' ft porch \u2014 lengthen the porch or pick a single door.';
+}
 function porchFitOpenings(follow){
+  porchRestoreDoors();
   if(!porchIsPartial()) return 0;
   var gaps=porchWallGaps(), r=porchRect(), moved=0, pw=r.wall;
   function inv(wall, axisC, wIn){
@@ -1742,6 +1845,25 @@ function porchFitOpenings(follow){
     if(need<=gaps[pw][1]-gaps[pw][0]){ pullDoor=dd; return true; }
     return false;
   });
+  // Nothing fits as it is: a double that can become a single will do.
+  if(!pullDoor) (typeof doorsData!=='undefined'?doorsData:[]).some(function(dd){
+    if(dd.wall!==pw || !porchSingleFor(dd)) return false;
+    pullDoor=dd; return true;
+  });
+  // The porch's door is a double too wide for it: swap in the single.
+  var swapped=null;
+  if(pullDoor && !porchDoorFits(+pullDoor.w||36)){
+    var single=porchSingleFor(pullDoor);
+    if(single){
+      var was={style:pullDoor.style, w:+pullDoor.w, h:+pullDoor.h};
+      if(pullDoor.color!=null) was.color=pullDoor.color;
+      porchSetDoor(pullDoor, single);
+      was.as={style:pullDoor.style, w:pullDoor.w};
+      pullDoor.porchSwap=was;
+      swapped=pullDoor;
+      porchDoorNote('Switched to a single door to fit the '+PORCH_LEN+' ft porch.');
+    }
+  }
   function fit(list, isDoor, isVent){
     list.forEach(function(o){
       var g=gaps[o.wall]; if(!g) return;
@@ -1778,7 +1900,7 @@ function porchFitOpenings(follow){
       if(Math.abs(c-c0)>1e-4){ o.pos=inv(o.wall, c, wIn); 
         // An opening that went along with the porch and is still in it was
         // not "moved clear" — only a nudge the customer did not ask for counts.
-        var rode=Math.abs(cF-c0)>1e-4 && inside;
+        var rode=(Math.abs(cF-c0)>1e-4 && inside) || o===swapped;
         if(!rode && Math.abs(c-cF)>1e-4) moved++; }
     });
   }
@@ -13750,12 +13872,22 @@ function openDoorSection(sec){
   if(!items.length) return;
   if(items.length===1){ openDoorOptions(items[0].i); return; }
   var secName=''; DOOR_SECTIONS.forEach(function(s){ if(s[0]===sec) secName=s[1]; });
-  var html='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">Pick a size.</div><div class="tgrid">';
+  var html='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">Pick a size.</div>'+
+    (items.some(function(it){ return it.c.styles.some(function(s){ return porchPickBlocked(s[0], s[3]||it.c.w); }); })
+      ? '<div class="porch-door-hint" style="font-size:12px;color:var(--mu);margin:-6px 0 12px">Your '+PORCH_LEN+' ft porch fits a single door \u2014 lengthen the porch for a double.</div>' : '')+
+    '<div class="tgrid">';
   items.forEach(function(it){
     var c=it.c, i=it.i;
     var ic=(c.kind==='cedar')?doorStyleIcon(c.styles[0][0],'cedar')
           :(c.kind==='fairytale')?doorStyleIcon('fairytale','single')
           :doorStyleIcon('basic', c.kind);
+    var off=c.styles.every(function(s){ return porchPickBlocked(s[0], s[3]||c.w); });
+    if(off){
+      html+='<div class="tile porch-off" aria-disabled="true" title="'+porchTooShortHint()+'" style="opacity:.42;cursor:not-allowed" onclick="showToast(porchTooShortHint())">'+
+        '<div class="tile-img">'+ic+'</div>'+
+        '<div class="tile-cap"><div class="tile-name">'+c.name+'</div><div class="tile-price" style="white-space:normal;line-height:1.25">Too wide for the '+PORCH_LEN+' ft porch</div></div></div>';
+      return;
+    }
     html+='<div class="tile" onclick="openDoorOptions('+i+')">'+
       '<div class="tile-img">'+ic+'</div>'+
       '<div class="tile-cap"><div class="tile-name">'+c.name+'</div><div class="tile-price">Tap to choose</div></div></div>';
@@ -13771,6 +13903,13 @@ function doorOptionsHTML(i){
     var style=s[0], nm=s[1], hh=s[2], sw=s[3]||c.w;
     var up=doorUpcharge(style, sw);
     var pr = PRICE_LOCKED ? '' : (up>0 ? ('+'+priceTag(up)) : 'Included');
+    // A double the short porch can't take: shown, but greyed with the reason.
+    if(porchPickBlocked(style, sw)){
+      h+='<div class="tile porch-off" aria-disabled="true" title="'+porchTooShortHint()+'" style="opacity:.42;cursor:not-allowed" onclick="showToast(porchTooShortHint())">'+
+        '<div class="tile-img">'+doorStyleIcon(style, c.kind)+'</div>'+
+        '<div class="tile-cap"><div class="tile-name">'+nm+'</div><div class="tile-price" style="white-space:normal;line-height:1.25">Too wide for the '+PORCH_LEN+' ft porch</div></div></div>';
+      return;
+    }
     h+='<div class="tile" onclick="addDoorByStyle(\''+style+'\','+sw+','+hh+')">'+
       '<div class="tile-img">'+doorStyleIcon(style, c.kind)+'</div>'+
       '<div class="tile-cap"><div class="tile-name">'+nm+'</div><div class="tile-price">'+pr+'</div></div></div>';
@@ -13811,6 +13950,7 @@ function startAnotherDoor(){
   openSubPage('Add another door', html);
 }
 function addDoorByStyle(style, w, h){
+  if(porchPickBlocked(style, w||60)){ showToast(porchTooShortHint()); return; }
   var adding=ADD_ANOTHER_DOOR; ADD_ANOTHER_DOOR=false;
   var wall=WIZ_ADDWALL_DOOR||'front';
   // 1) A door on the ACTIVE wall is explicitly selected -> swap it in place.
