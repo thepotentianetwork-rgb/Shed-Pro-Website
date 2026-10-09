@@ -98,14 +98,14 @@ test('a door elsewhere on the wall is pulled into a new porch; windows on the st
   assert.ok(wc - wh >= g[1] || wc + wh <= g[0], 'window clear of the step');
 });
 
-test('posts: one at each end of the porch, including an open shed corner', () => {
+test('posts: none mid-wall, one at an open shed corner (Nando, 9 Oct)', () => {
   const posts = (m) => m.filter(x => x.geometry.type === 'BoxGeometry' && x.geometry.parameters &&
     Math.abs(x.geometry.parameters.width - 0.06) < 1e-6 && Math.abs(x.geometry.parameters.depth - 0.06) < 1e-6 &&
     x.geometry.parameters.height > 1.2 && x.position.x > 0.9 && x.position.x < 1.0);
-  assert.equal(posts(build(SIDE4)).length, 2);
+  assert.equal(posts(build(SIDE4)).length, 0, 'mid-wall: the return walls carry the header');
   const atCorner = posts(build({ PORCH_LOC:'side', SIDE_PORCH:4, PORCH_LEN:4, PORCH_OFF:0 }));
-  assert.equal(atCorner.length, 2);
-  assert.ok(atCorner.some(p => p.position.z < -1.9), 'the open back-right corner has its post');
+  assert.equal(atCorner.length, 1);
+  assert.ok(atCorner[0].position.z < -1.9, 'the open back-right corner has its post');
 });
 
 test('no middle post lands in front of a door (the Estate Porch)', () => {

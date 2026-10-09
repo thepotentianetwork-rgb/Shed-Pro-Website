@@ -124,7 +124,7 @@ test('posts still never stand in front of a door (long side porch, centred door)
     [{ wall:'right', pos:0.5, style:'basic', w:60, h:76 }]);
   const r = c.porchRect(), dc = c.posToAxis('right', 0.5, 60), hw = 60 * 0.2 / 24 + 0.07;
   const posts = m.filter(isPost).map(o => { const b = box(o); return (b.min.z + b.max.z) / 2; });
-  assert.ok(posts.length >= 3, 'ends plus an intermediate');
+  assert.equal(posts.length, 1, 'mid-wall 16ft side porch: just the middle post');
   for (const z of posts) assert.ok(z <= dc - hw || z >= dc + hw, `post at z=${z.toFixed(2)} clear of the door ${(dc - hw).toFixed(2)}..${(dc + hw).toFixed(2)}`);
 });
 
