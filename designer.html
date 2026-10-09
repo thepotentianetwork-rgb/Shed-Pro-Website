@@ -1508,7 +1508,17 @@ function deckColorHex(){
    rather than one textured slab, so the gaps catch shadow and the edge of the
    deck reads as board ends. */
 var DECK_BUILT='(not built)';       // what the last build actually used
-function buildPorchDeck(x0,x1,z0,z1,topY){
+/* opts (partial porches only; the full porches pass nothing and build as
+   they always have):
+     along: 'x' | 'z'  — boards run parallel to the porch's wall, like a full
+                         porch's, not along whichever side happens to be longer
+                         (a 4x4 has no longer side and the boards ran front to
+                         back).
+     open:  {x0,x1,z0,z1} — which edges are open, for the rim boards. The rim
+                         used to go on z1, x0 and x1 regardless, which is a
+                         front porch's three open sides — wrong for a side
+                         porch, and into the return walls mid-wall. */
+function buildPorchDeck(x0,x1,z0,z1,topY,opts){
   if(PORCH_DECK==='none'){ DECK_BUILT='none'; return; }
   var composite=(PORCH_DECK==='composite');
   var col = composite ? deckColorHex() : 0x8A765A;        // PT pine weathers tan
@@ -1527,7 +1537,7 @@ function buildPorchDeck(x0,x1,z0,z1,topY){
      span the short direction. I had it backwards: laying them across the short
      span means a butt joint every few feet on a long porch and it reads wrong.
      A deck board runs the length of the porch. */
-  var runX=(x1-x0) > (z1-z0);
+  var runX=(opts && opts.along) ? (opts.along==='x') : ((x1-x0) > (z1-z0));
   var span = runX ? (x1-x0) : (z1-z0);
   var along= runX ? (z1-z0) : (x1-x0);
   var n=Math.max(1, Math.floor(along/(bw+gap)));
@@ -1542,6 +1552,16 @@ function buildPorchDeck(x0,x1,z0,z1,topY){
   // rim board around the open edges
   var rim=new THREE.MeshStandardMaterial({
     color:col, roughness:composite?0.78:0.90, metalness:0.0, envMapIntensity:0.25 });
+  if(opts && opts.open){
+    // The rim sits just INSIDE each open edge, so its face is the deck's edge
+    // (flush with the walls beside it) rather than straddling the line.
+    var o=opts.open, rt=0.02, ry=topY-thk/2-0.006, rh=thk+0.018;
+    if(o.z1){ var a=new THREE.Mesh(new THREE.BoxGeometry(x1-x0, rh, rt), rim); a.position.set((x0+x1)/2, ry, z1-rt/2); shedGroup.add(a); }
+    if(o.z0){ var b2=new THREE.Mesh(new THREE.BoxGeometry(x1-x0, rh, rt), rim); b2.position.set((x0+x1)/2, ry, z0+rt/2); shedGroup.add(b2); }
+    if(o.x1){ var cc=new THREE.Mesh(new THREE.BoxGeometry(rt, rh, z1-z0), rim); cc.position.set(x1-rt/2, ry, (z0+z1)/2); shedGroup.add(cc); }
+    if(o.x0){ var dd=new THREE.Mesh(new THREE.BoxGeometry(rt, rh, z1-z0), rim); dd.position.set(x0+rt/2, ry, (z0+z1)/2); shedGroup.add(dd); }
+    return;
+  }
   var rb=new THREE.Mesh(new THREE.BoxGeometry(x1-x0+0.02, thk+0.018, 0.02), rim);
   rb.position.set((x0+x1)/2, topY-thk/2-0.006, z1); shedGroup.add(rb);
   [x0,x1].forEach(function(xe){
@@ -1633,6 +1653,15 @@ function porchFixedAt(f, wall, axisC){
   if(!f || !porchCoversAxis(wall, axisC)) return f ? f.fixed : 0;
   var r=porchRect(), n=(f.ax==='x') ? f.nz : f.nx;
   return f.fixed - n*r.d;
+}
+/* Is the shed corner (sx, sz) — sx -1 left / +1 right, sz +1 front / -1
+   back — cut away by a partial porch? Both walls stop short of it there, so
+   it gets the porch's post, not the house's corner block and trim boards
+   (which stood in the open air as a tall thin strip beside the post). */
+function porchOpenCorner(sx, sz){
+  var r=porchRect(); if(!r) return false;
+  if(r.wall==='front') return sz>0 && ((sx<0 && r.atStart) || (sx>0 && r.atEnd));
+  return sx>0 && ((sz<0 && r.atStart) || (sz>0 && r.atEnd));
 }
 /* The stepped-in wall as a wall frame: same axis and normal as the outer
    wall it replaces, porch depth further in, only the porch's run long. */
@@ -5691,6 +5720,7 @@ function buildShed(){
     trimTopPre = h - (PITCH/12)*cbThk - 0.004;
   }
   [[eT.x0,eT.z1],[eT.x1,eT.z1],[eT.x0,eT.z0],[eT.x1,eT.z0]].forEach(function(c){
+    if(porchOpenCorner(c[0]<0?-1:1, c[1]<0?-1:1)) return;     // the porch post stands there
     var hh=((c[1]<0 && STYLE==='leanto' && LEAN_BACK_H>0) ? LEAN_BACK_H : h);
     if(STYLE==='gable'||STYLE==='hip') hh=Math.min(hh, trimTopPre);
     // Same correction the gable, barn and hip each already carry: the roof is
@@ -5741,6 +5771,7 @@ function buildShed(){
   // so they MITRE at 45 degrees. Butting the belt into the side of the corner
   // board left an open notch no matter how far it was extended.
   function cornerBoards(sx, sz, hSide, hFace, hHeel){
+    if(porchOpenCorner(sx, sz)) return;                        // open porch corner
     var wf=(sx>0?eT.x1:eT.x0)+sx*0.025;  // wall outer face, x
     var zf=(sz>0?eT.z1:-l/2)+sz*0.025;   // wall outer face, z
     // board flat on the X-facing (side) wall, wrapping to cover the outer corner
@@ -6615,8 +6646,19 @@ function buildShed(){
     var ppY=porchCeilY();                          // the wall top
     var ppH=0.075;                                 // header depth, as the front porch's
     var ppSide=(ppR.wall==='right');
-    // deck, level with the floor
-    buildPorchDeck(ppR.x0, ppR.x1, ppR.z0, ppR.z1, 0.0);
+    /* DECK. Out to the outer wall FACE on the open sides, so its edge lines
+       up with the siding beside it, and back to the stepped-in wall.
+       On a slab (ours or theirs) the slab runs under the whole footprint,
+       notch included, and its top is the floor line — a deck at 0 was
+       coplanar with the concrete and z-fought it board by board. There it
+       sits on the slab, level with the room's floor (no step out the door). */
+    var ppOnSlab=(typeof FOUNDATION!=='undefined' && (FOUNDATION==='pad' || FOUNDATION==='existing'));
+    var dx0=ppR.x0, dx1=ppR.x1, dz0=ppR.z0, dz1=ppR.z1, dOpen;
+    if(ppSide){ dx1+=WALL_FACE; if(ppR.atStart) dz0-=WALL_FACE; if(ppR.atEnd) dz1+=WALL_FACE;
+                dOpen={x1:true, z0:ppR.atStart, z1:ppR.atEnd}; }
+    else      { dz1+=WALL_FACE; if(ppR.atStart) dx0-=WALL_FACE; if(ppR.atEnd) dx1+=WALL_FACE;
+                dOpen={z1:true, x0:ppR.atStart, x1:ppR.atEnd}; }
+    buildPorchDeck(dx0, dx1, dz0, dz1, ppOnSlab ? 0.03 : 0.0, {along: ppSide ? 'z' : 'x', open: dOpen});
     // ceiling: stepped-in wall out to the outer wall FACE, the porch's run
     var ppCeilMat;
     if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
@@ -6651,7 +6693,7 @@ function buildShed(){
       if(ppR.atEnd)   ppHeader(ppR.x1-hT, ppR.x1, ppR.z0, ppR.z1);
     }
     // posts: a free corner gets one; long spans get intermediates, off the doors
-    var ppPT=ppY-ppH, ppIn=0.03;
+    var ppPT=ppY-ppH, ppIn=0.05;                   // the full porches' post inset
     var ppMax=(ppSide ? 13 : 11)*0.2;              // same spans the full porches use
     /* A post at BOTH ends. At a shed corner the corner itself is open (both
        walls are cut back), so that post is what carries the eave and the
