@@ -53,6 +53,9 @@ different library than production.
   tab (a new group used to land in with the plain windows), the Luxury stamp is
   the gold one, a tapped bi-fold reaches its fold controls, and a serving
   window hangs at bar height instead of up under the eave.
+- `geometry/ridgevent.test.mjs` — the Roof Ridge Vent rests on the ridge cap
+  on every ridge style, roofing and pitch: no daylight between cap and vent
+  when looking along the ridge, and it stays low (under 1.5in proud of the cap).
 - `ui/shedlimits.test.mjs` — the sliders never offer a size the server will not
   price. They did once: raised to 22x34 while the clamp stayed at 20x32, so a
   customer saw the price of a shed two feet smaller each way. The server sends
