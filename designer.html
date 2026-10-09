@@ -1109,6 +1109,9 @@ textarea.inp{resize:vertical}
           <span id="priceTax" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.45)" hidden>+ tax</span>
         </span>
       </div>
+      <!-- Only when the server prices at our regular (card) price: the figure
+           for paying any other way. Filled from /shed/quote's cashDiscount. -->
+      <div id="priceCash" hidden style="font-size:11px;font-weight:600;color:#6fcf97;margin:-4px 0 10px;text-align:right"></div>
       <div id="redlinePanel" style="display:none;margin:0 0 12px;padding:11px 12px;border-radius:9px;background:rgba(220,70,70,.07);border:1px solid rgba(220,70,70,.35)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#ff8a8a">Redline · Internal</span>
@@ -18083,6 +18086,7 @@ function openQ(){
     /* Nando, 9 Oct 2026: the shed price is not described as including travel;
        a far-away job may get a travel & fuel line on its quote. */
     '<div class="q-travel-note" style="font-size:11px;color:var(--mu);margin:-2px 0 10px">Travel or fuel charges may apply for locations outside our standard service area.</div>'+
+    (quoteCache.cashDiscount && quoteCache.cashDiscount.disclosure ? '<div class="q-cash-note" style="font-size:11px;color:#6fcf97;margin:-4px 0 10px">'+String(quoteCache.cashDiscount.disclosure).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})+'</div>' : '')+
     '<div class="qsec-lbl">Anything Else?</div>'+
     '<div class="grp"><textarea id="qNotes" class="inp" aria-label="Anything else" rows="3" placeholder="Site access, timing, questions... (optional)"></textarea></div>'+
     /* Honeypot. Positioned off-screen rather than display:none, because the
@@ -18359,6 +18363,7 @@ function fetchQuote(){
     if(!d){ quoteCache.failed = true; quoteCache.total = null; paintPrice(); return; }
     quoteCache.failed = false;
     quoteCache.total = d.total;
+    quoteCache.cashDiscount = d.cashDiscount || null;
     if(d.optionPrices) quoteCache.optionPrices = d.optionPrices;
     /* THE SERVER OWNS THE SIZE LIMITS. The sliders' own min/max sit in this
        page's markup and the clamp that actually decides what gets PRICED sits
@@ -18404,6 +18409,14 @@ function paintPrice(){
   // Only alongside an actual dollar figure — not next to "On request" while
   // the padlock is on, and not next to "Request a quote" after a failed fetch.
   if(tx) tx.hidden = !(showing && !PRICE_LOCKED && quoteCache.total!=null);
+  /* Regular price on screen: say what cash, check, cashier's check or ACH
+     comes to. Never beside "Request a quote" or a padlocked price. */
+  var pc=document.getElementById('priceCash'), cd=quoteCache.cashDiscount;
+  if(pc){
+    var on = !!(cd && showing && !PRICE_LOCKED && quoteCache.total!=null && !quoteCache.failed);
+    pc.hidden = !on;
+    pc.textContent = on ? 'Regular price. By cash, check or ACH: '+money0(cd.cashTotal)+' (save '+cd.percentLabel+'%)' : '';
+  }
 }
 
 /* ── REDLINE (staff cost/margin breakdown) ──────────────────────────────
