@@ -18080,6 +18080,9 @@ function openQ(){
       '<input id="qCity" class="inp" type="text" placeholder="City" aria-label="City" autocomplete="address-level2" style="flex:2">'+
       '<input id="qState" class="inp" type="text" placeholder="UT" aria-label="State" autocomplete="address-level1" style="flex:1" maxlength="2">'+
       '<input id="qZip" class="inp" type="text" placeholder="ZIP" aria-label="ZIP code" autocomplete="postal-code" style="flex:1" inputmode="numeric"></div>'+
+    /* Nando, 9 Oct 2026: the shed price is not described as including travel;
+       a far-away job may get a travel & fuel line on its quote. */
+    '<div class="q-travel-note" style="font-size:11px;color:var(--mu);margin:-2px 0 10px">Travel or fuel charges may apply for locations outside our standard service area.</div>'+
     '<div class="qsec-lbl">Anything Else?</div>'+
     '<div class="grp"><textarea id="qNotes" class="inp" aria-label="Anything else" rows="3" placeholder="Site access, timing, questions... (optional)"></textarea></div>'+
     /* Honeypot. Positioned off-screen rather than display:none, because the
