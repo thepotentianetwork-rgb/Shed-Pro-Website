@@ -18572,6 +18572,7 @@ function openQ(){
       'Rather talk it through? Call 435-277-0764</div>';
   openSubPage('Request your quote', body);
   prefillContactFromUrl();
+  if(crmOrderId()) checkCrmOrderLock();
   if(window.DU && DU.afterQuoteForm) DU.afterQuoteForm();
 }
 // admin-customer.html's "View design" link carries a customer's known
@@ -18584,12 +18585,30 @@ function openQ(){
 function crmOrderId(){
   try { var v=new URLSearchParams(location.search).get('crm_order'); return /^\d{1,9}$/.test(v||'') ? v : ''; } catch(e){ return ''; }
 }
+var DEPOSIT_LOCK_MSG="This order has a deposit, so it can't be updated from the designer. Save as new quote instead.";
+/* Orders with a deposit or payment cannot be updated from here (Nando,
+   12 Oct 2026). The worker refuses them anyway; this just says so up front
+   and turns the button off. Needs the staff token, so it runs only once staff
+   are logged in. */
+function lockCrmUpdate(reason){
+  var btn=document.getElementById('qUpdate'), msg=document.getElementById('qUpdMsg');
+  if(btn){ btn.textContent='Update not available'; btn.style.pointerEvents='none'; btn.style.opacity='.45'; btn.setAttribute('aria-disabled','true'); btn.dataset.locked='1'; }
+  if(msg){ msg.textContent=reason||DEPOSIT_LOCK_MSG; msg.style.color='#f5a524'; }
+}
+function checkCrmOrderLock(cb){
+  var id=crmOrderId(); if(!id||!shedAdminToken){ if(cb) cb(false); return; }
+  fetch(ADMIN_API+'/admin/submissions/'+id+'/design-status',{headers:{'Authorization':'Bearer '+shedAdminToken}})
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+    .then(function(res){ var l=!!(res.ok&&res.j&&res.j.locked); if(l) lockCrmUpdate(res.j.reason); if(cb) cb(l); })
+    .catch(function(){ if(cb) cb(false); });
+}
 function updateCrmQuote(){
   var id=crmOrderId(); if(!id) return;
+  var b0=document.getElementById('qUpdate'); if(b0&&b0.dataset.locked==='1') return;
   var msg=document.getElementById('qUpdMsg'), btn=document.getElementById('qUpdate');
   var np=(quoteCache&&quoteCache.total!=null)?'$'+Math.round(quoteCache.total).toLocaleString():'the current price';
   if(!window.confirm('Replace the design on order #'+id+' with this one?\n\nIt will be re-priced at today\u2019s prices ('+np+' before adjustments). Contact details, status, notes and price adjustments stay; the old design is kept in the order history and a note is added in the CRM.')) return;
-  ensureShedAdmin(function(){
+  ensureShedAdmin(function(){ checkCrmOrderLock(function(locked){ if(locked) return;
     if(btn){ btn.textContent='Saving\u2026'; btn.style.pointerEvents='none'; btn.style.opacity='.6'; }
     saveDesignAndGetLink(null).then(function(link){
       return fetch(ADMIN_API+'/admin/submissions/'+id+'/design',{
@@ -18611,8 +18630,9 @@ function updateCrmQuote(){
       .catch(function(e){
         if(msg){ msg.textContent=e.message||'Could not update'; msg.style.color='#ff6b6b'; }
         if(btn){ btn.textContent='Update this quote (#'+id+') \u2192'; btn.style.pointerEvents=''; btn.style.opacity=''; }
+        if(/has a deposit/.test(e.message||'')) lockCrmUpdate(e.message);
       });
-  });
+  }); });
 }
 function prefillContactFromUrl(){
   var params;
