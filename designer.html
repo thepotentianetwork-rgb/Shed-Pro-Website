@@ -18563,7 +18563,11 @@ function openQ(){
       '<span>Yes, text me about my quote and build updates from ShedPro. Msg frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. '+
       'See our <a href="/privacy" target="_blank" rel="noopener" style="color:var(--blue)">Privacy Policy</a> and <a href="/terms" target="_blank" rel="noopener" style="color:var(--blue)">Terms</a>.</span></label>'+
     '<div id="qErr" class="qerr-box"></div>'+
-    '<div id="qSend" class="cta" onclick="submitQuote()" style="margin-top:16px">Send my request →</div>'+
+    (crmOrderId() ? '<div class="crm-upd" style="margin-top:16px;padding:12px;border:1px solid rgba(43,181,232,.35);border-radius:8px;background:rgba(43,181,232,.06)">'+
+      '<div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:6px">Staff \u00b7 opened from CRM order #'+crmOrderId()+'</div>'+
+      '<div id="qUpdate" class="cta" onclick="updateCrmQuote()">Update this quote (#'+crmOrderId()+') \u2192</div>'+
+      '<div id="qUpdMsg" style="font-size:12px;color:var(--mu);margin-top:8px;line-height:1.5">Saves this design and its new price back onto the same order. Contact details, status, notes and price adjustments are kept. Needs the staff login.</div></div>' : '')+
+    '<div id="qSend" class="cta" onclick="submitQuote()" style="margin-top:16px">'+(crmOrderId() ? 'Save as new quote \u2192' : 'Send my request →')+'</div>'+
     '<div style="text-align:center;font-size:11px;color:var(--mu);margin-top:12px">'+
       'Rather talk it through? Call 435-277-0764</div>';
   openSubPage('Request your quote', body);
@@ -18574,10 +18578,46 @@ function openQ(){
 // contact info as ?prefill_name=&prefill_email=... ahead of the #hash the
 // design config lives in, so reopening someone's design to tweak and
 // re-quote it doesn't mean retyping their name/email/phone/address by hand.
+/* CRM order id carried by the CRM's "View design" link (crm_order=). Only
+   decides whether the staff "Update this quote" box shows; the update itself
+   needs a staff token and the worker checks it. */
+function crmOrderId(){
+  try { var v=new URLSearchParams(location.search).get('crm_order'); return /^\d{1,9}$/.test(v||'') ? v : ''; } catch(e){ return ''; }
+}
+function updateCrmQuote(){
+  var id=crmOrderId(); if(!id) return;
+  var msg=document.getElementById('qUpdMsg'), btn=document.getElementById('qUpdate');
+  var np=(quoteCache&&quoteCache.total!=null)?'$'+Math.round(quoteCache.total).toLocaleString():'the current price';
+  if(!window.confirm('Replace the design on order #'+id+' with this one?\n\nIt will be re-priced at today\u2019s prices ('+np+' before adjustments). Contact details, status, notes and price adjustments stay; the old design is kept in the order history and a note is added in the CRM.')) return;
+  ensureShedAdmin(function(){
+    if(btn){ btn.textContent='Saving\u2026'; btn.style.pointerEvents='none'; btn.style.opacity='.6'; }
+    saveDesignAndGetLink(null).then(function(link){
+      return fetch(ADMIN_API+'/admin/submissions/'+id+'/design',{
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+shedAdminToken},
+        body:JSON.stringify({ config:getDesignConfig(), permalink:link, renders:captureRenders(),
+          overrides:(costOverrides.marginTarget!=null)?{marginTarget:costOverrides.marginTarget}:undefined })
+      });
+    }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok,status:r.status,j:j}; }); })
+      .then(function(res){
+        if(res.status===401){ sessionStorage.removeItem('shed_admin_token'); shedAdminToken=null; throw new Error('Staff login expired \u2014 press Update again.'); }
+        if(!res.ok) throw new Error((res.j&&res.j.error)||'Could not update');
+        var f=function(n){ return n==null?'?':'$'+Math.round(n).toLocaleString(); };
+        var t='Updated order #'+id+': '+f(res.j.previousPrice)+' \u2192 '+f(res.j.quotedPrice)+
+          (res.j.effective_price!=null?' (customer pays '+f(res.j.effective_price)+' after adjustments)':'')+'.';
+        if(res.j.stale&&res.j.stale.length) t+=' \u26a0 These adjustments no longer match a line and do nothing now: '+res.j.stale.map(function(a){return a.item;}).join(', ')+'. Fix them in the CRM.';
+        if(msg){ msg.textContent=t; msg.style.color=(res.j.stale&&res.j.stale.length)?'#f5a524':'#6fcf97'; }
+        if(btn){ btn.textContent='Updated \u2713'; btn.style.opacity='1'; btn.style.pointerEvents=''; }
+      })
+      .catch(function(e){
+        if(msg){ msg.textContent=e.message||'Could not update'; msg.style.color='#ff6b6b'; }
+        if(btn){ btn.textContent='Update this quote (#'+id+') \u2192'; btn.style.pointerEvents=''; btn.style.opacity=''; }
+      });
+  });
+}
 function prefillContactFromUrl(){
   var params;
   try { params = new URLSearchParams(location.search); } catch(e){ return; }
-  var map = { name:'qName', email:'qEmail', phone:'qPhone', address:'qAddr', city:'qCity', state:'qState', zip:'qZip' };
+  var map = { name:'qName', email:'qEmail', phone:'qPhone', address:'qAddr', city:'qCity', state:'qState', zip:'qZip', notes:'qNotes' };
   Object.keys(map).forEach(function(k){
     var v = params.get('prefill_'+k);
     if (!v) return;
