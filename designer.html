@@ -870,6 +870,7 @@ textarea.inp{resize:vertical}
           <span class="lbl">Soffit Finish</span>
           <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
             <div class="pitch-btn soffit-btn on" onclick="setSoffit('match',this)">Match Walls</div>
+            <div class="pitch-btn soffit-btn" onclick="setSoffit('trim',this)">Match Trim</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('white',this)">White</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('black',this)">Black</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('cedar',this)">Cedar</div>
@@ -1282,20 +1283,27 @@ function barnProfile(){
   var bH=(w/2)*(0.66 + (PITCH/12)*0.06);
   return { barnH:bH, kneeX:w*0.365, kneeY:h+bH*0.60, ridgeY:h+bH };
 }
-var SOFFIT="match";  // soffit finish: "match" | "white" | "black" | "cedar"
+var SOFFIT="match";  // soffit finish: "match" | "trim" | "white" | "black" | "cedar"
 /* Soffit had only two states: match the walls, or cedar. White and black are
    the two finishes people actually ask for, and neither was reachable — a black
    shed with white soffits was impossible. Every soffit material now reads its
    colour from here instead of hard-coding the siding colour. */
 var SOFFIT_COLORS=[
   {k:'match', name:'Match Walls', css:null},
+  {k:'trim',  name:'Match Trim',  css:null},   // follows the trim colour (tc)
   {k:'white', name:'White',       css:'#F2F0EC', hex:0xF2F0EC},
   {k:'black', name:'Black',       css:'#1A1A1A', hex:0x1A1A1A},
   {k:'cedar', name:'Cedar',       css:'#8B5A2B'}
 ];
+/* "Match Trim" on a cedar trim finish is a cedar soffit, not the hidden paint swatch. */
+function soffitCedar(){
+  if(typeof SOFFIT==='undefined') return false;
+  return SOFFIT==='cedar' || (SOFFIT==='trim' && typeof TRIM_FINISH!=='undefined' && TRIM_FINISH==='cedar');
+}
 function soffitHex(){
   if(SOFFIT==='white') return 0xF2F0EC;
   if(SOFFIT==='black') return 0x1A1A1A;
+  if(SOFFIT==='trim')  return tc;  // "Match Trim" follows the trim swatch
   return sc;                       // 'match' (cedar never reaches here)
 }
 /* Every soffit/porch-ceiling material (7 call sites) is built with
@@ -1316,7 +1324,7 @@ var SOFFIT_GLOW=0.15;
    boards. rx, ry: cedar board repeats across the two sides of the panel. */
 function soffitFinishMat(rx, ry){
   var m;
-  if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
+  if(soffitCedar()){
     var t=makeCedar(); t.wrapS=t.wrapT=THREE.RepeatWrapping;
     t.repeat.set(Math.max(1,Math.round(rx)), Math.max(1,Math.round(ry)));
     m=new THREE.MeshStandardMaterial({map:t, emissiveMap:t,
@@ -6510,7 +6518,7 @@ function buildShed(){
   // Built in EVERY mode — the "flush" options still have a ~3" reveal past the
   // wall, and leaving it open shows a dark slit (eaves) and daylight (rakes).
   if(eaveOv>0.02){
-    var soffitMat=(DIAG && SOFFIT!=='cedar') ? diagMat(0xff7700) : soffitFinishMat(Math.max(2,el/0.5), 1);
+    var soffitMat=(DIAG && !soffitCedar()) ? diagMat(0xff7700) : soffitFinishMat(Math.max(2,el/0.5), 1);
     soffitMat.side=THREE.DoubleSide;
     soffitMat.userData.eaveSoffit=true;
     var soffThk=0.012;
@@ -6579,7 +6587,7 @@ function buildShed(){
       [1,-1].forEach(function(sz){                     // front(+)/back(-)
         [1,-1].forEach(function(side){                 // left/right rake
           var gMat;
-          if(SOFFIT==='cedar'){
+          if(soffitCedar()){
             var gced=makeCedar(); gced.repeat.set(3,1);
             gMat=new THREE.MeshStandardMaterial({map:gced, emissiveMap:gced,
               emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
@@ -7996,7 +8004,7 @@ function buildHipRoof(){
   // ---- fascia + soffit all the way round (no gable ends on a hip) ----
   var trimMat=paintMat(tc,0.1);
   var soffMat;
-  if(SOFFIT==='cedar'){
+  if(soffitCedar()){
     var sc2=makeCedar(); sc2.wrapS=sc2.wrapT=THREE.RepeatWrapping; sc2.repeat.set(Math.max(2,Math.round(l/0.5)),1);
     soffMat=new THREE.MeshStandardMaterial({map:sc2, emissiveMap:sc2, emissive:0xffffff,
       emissiveIntensity:0.5, roughness:0.85});
@@ -8220,7 +8228,7 @@ function buildLeanToRoof(){
   // SOFFITS — close the open underside of every overhang (flush mode included).
   var ltSoffThk=0.012;
   var ltSoffMat;
-  if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
+  if(soffitCedar()){
     var ltc=makeCedar(); ltc.repeat.set(Math.max(2,Math.round(w/0.5)),1);
     ltSoffMat=new THREE.MeshStandardMaterial({map:ltc, emissiveMap:ltc,
       emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
@@ -8604,7 +8612,7 @@ function buildBarnRoof(){
   // SOFFITS — close every open underside (the barn had none at all).
   var bSoffThk=0.012;
   var bSoffMat;
-  if(typeof SOFFIT!=='undefined' && SOFFIT==='cedar'){
+  if(soffitCedar()){
     var bced=makeCedar(); bced.repeat.set(Math.max(2,Math.round(l/0.5)),1);
     bSoffMat=new THREE.MeshStandardMaterial({map:bced, emissiveMap:bced,
       emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
@@ -15755,10 +15763,10 @@ function setSprinklerCount(n){
   while(SPRINKLERS.length<n) SPRINKLERS.push(sprinklerDefaultFt());
   SPRINKLERS.length=n;
   if(!n) _sprDetail=false;
-  renderAddons(); buildShed();
+  renderAddons(); buildShed(); if(typeof updateSum==='function') updateSum();
 }
 function toggleSprinklers(){ setSprinklerCount(SPRINKLERS.length ? 0 : 1); }
-function setSprinklerFt(i, ft){ if(i>=0 && i<SPRINKLERS.length){ SPRINKLERS[i]=+ft||sprinklerDefaultFt(); renderAddons(); buildShed(); } }
+function setSprinklerFt(i, ft){ if(i>=0 && i<SPRINKLERS.length){ SPRINKLERS[i]=+ft||sprinklerDefaultFt(); renderAddons(); buildShed(); if(typeof updateSum==='function') updateSum(); } }
 function toggleSprinklerDetail(){ _sprDetail=!_sprDetail; renderAddons(); }
 function sprinklerRowHTML(it){
   var on=SPRINKLERS.length>0, sp=sprinklerPrices();
@@ -15816,7 +15824,7 @@ function addonPriceText(it){
 function renderAddons(){
   if(typeof syncRidgeVentUI==='function') try{ syncRidgeVentUI(); }catch(e){}
   var host=document.getElementById('addonList'); if(!host) return;
-  var html='';
+  var html=selectedAddonsHTML();
   // (Cupola moved to the Roof step — it's roof hardware, not a general add-on.)
   /* Walk the SECTIONS and pull each one's items, rather than walking the items
      and printing a heading when the section changes. Same output while the
@@ -15909,7 +15917,39 @@ function toggleAddon(k){
     var any=doorsData.some(function(d){ return d.awning && d.w>=51; });
     if(!any){ for(var i=0;i<doorsData.length;i++){ if(doorsData[i].w>=51){ doorsData[i].awning=true; break; } } }
   }
-  renderAddons(); buildShed();
+  renderAddons(); buildShed(); if(typeof updateSum==='function') updateSum();
+}
+/* SELECTED ADD-ONS, ONE TAP TO REMOVE. Everything switched on (the Upgrades
+   list, sprinkler heads, the roof step's cupola) is listed as a chip at the top
+   of the Upgrades step; its x clears it through the same setter the tile uses,
+   so the 3D model and the price both follow at once. */
+function selectedAddons(){
+  var out=[];
+  ADDON_ITEMS.forEach(function(it){
+    if(it.sprinkler){ if(SPRINKLERS.length) out.push({k:'sprinklers', name:it.name+' ('+SPRINKLERS.length+')'}); return; }
+    if(it.needsRidge && !hasRidgeStyle()) return;
+    if(ADDONS[it.k]) out.push({k:it.k, name:it.name});
+  });
+  if(ADDONS.cupola && ADDONS.cupola!=='none') out.push({k:'cupola', name:'Cupola ('+(ADDONS.cupola==='copper'?'copper':'black')+' roof)'});
+  return out;
+}
+function removeAddon(k){
+  var it=selectedAddons().filter(function(x){return x.k===k;})[0];
+  if(k==='sprinklers') setSprinklerCount(0);
+  else if(k==='cupola') setCupola('none');
+  else if(k==='ridgeVent') setRidgeVent(false);
+  else { ADDONS[k]=false; if(k==='doorAwning' && typeof doorsData!=='undefined') doorsData.forEach(function(d){ d.awning=false; }); }
+  renderAddons(); buildShed(); if(typeof updateSum==='function') updateSum();
+  if(it && typeof showToast==='function') showToast(it.name+' removed');
+}
+function selectedAddonsHTML(){
+  var sel=selectedAddons(); if(!sel.length) return '';
+  return '<div id="selAddons" style="margin:0 0 10px;padding:8px 10px;border-radius:8px;background:var(--d3);border:1px solid var(--br)">'+
+    '<div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--mu);margin-bottom:6px">SELECTED ADD-ONS ('+sel.length+')</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+sel.map(function(x){
+      return '<span class="sel-addon" data-k="'+x.k+'" style="display:inline-flex;align-items:center;gap:6px;padding:4px 4px 4px 10px;border-radius:999px;background:rgba(43,181,232,.14);border:1px solid #2BB5E8;font-size:12px">'+x.name+
+        '<button type="button" aria-label="Remove '+x.name+'" title="Remove" onclick="event.stopPropagation();removeAddon(\''+x.k+'\')" style="width:20px;height:20px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;font-size:13px;line-height:20px;padding:0">\u00d7</button></span>';
+    }).join('')+'</div></div>';
 }
 function toggleDoorAwning(i){
   if(!doorsData[i]) return;
@@ -15920,7 +15960,7 @@ function toggleDoorAwning(i){
   buildShed(); renderPlacedDoors();
   if(typeof openOptionsForSelectedDoor==='function' && selectedDoor===i) openOptionsForSelectedDoor();
 }
-function setAddonColor(key, c){ ADDONS[key]=c; renderAddons(); buildShed(); }
+function setAddonColor(key, c){ ADDONS[key]=c; renderAddons(); buildShed(); if(typeof updateSum==='function') updateSum(); }
 function renderDormerUI(){
   var host=document.getElementById('dormerTiles'); if(!host) return;
   // "Dormer · from $X" — the lowest currently-offered dormer price, read off
@@ -16594,7 +16634,8 @@ function setCupola(v){
   document.querySelectorAll('.cupola-btn').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-cup')===v);
   });
-  buildShed();
+  buildShed(); if(typeof updateSum==='function') updateSum();
+  if(typeof renderAddons==='function') renderAddons();
 }
 // Both roof colors price the same today but are read as two separate server
 // numbers (quoteCache.optionPrices.addons.cupola), not a hardcoded literal —
