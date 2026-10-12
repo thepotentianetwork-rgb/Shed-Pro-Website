@@ -875,6 +875,16 @@ textarea.inp{resize:vertical}
             <div class="pitch-btn soffit-btn" onclick="setSoffit('cedar',this)">Cedar</div>
           </div>
         </div>
+        <!-- Ridge vent lives with the roof (Nando, 12 Oct 2026). Same ADDONS.ridgeVent
+             as the add-ons list; priced per linear foot of ridge. No ridge on a lean-to. -->
+        <div class="grp" style="margin-top:14px" id="ridgeVentGrp">
+          <span class="lbl">Ridge Vent<span id="ridgeVentPriceTag"></span></span>
+          <div style="display:flex;gap:5px">
+            <div class="pitch-btn rv-btn on" data-rv="off" onclick="setRidgeVent(false)">None</div>
+            <div class="pitch-btn rv-btn" data-rv="on" onclick="setRidgeVent(true)">Add ridge vent</div>
+          </div>
+          <div class="wstep-sub" id="ridgeVentNote" style="margin-top:6px"></div>
+        </div>
         <div class="grp" style="margin-top:14px" id="cupolaGrp">
           <span class="lbl">Cupola<span id="cupolaPriceTag"></span></span>
           <div style="display:flex;gap:5px">
@@ -983,6 +993,13 @@ textarea.inp{resize:vertical}
               <option value="12-dual">12' Dual Loft</option>
             </optgroup>
           </select>
+          <div id="loftSideWrap" style="display:none;margin-top:8px">
+            <span class="lbl" style="font-size:11px">Loft placement</span>
+            <div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px;margin-top:4px">
+              <div class="pitch-btn loftside-btn on" data-side="ends" onclick="setLoftSide('ends')"><span class="loftside-txt">Front &amp; back walls</span></div>
+              <div class="pitch-btn loftside-btn" data-side="sides" onclick="setLoftSide('sides')"><span class="loftside-txt">Side walls</span></div>
+            </div>
+          </div>
         </div>
         <div class="grp" style="margin-top:14px" id="shelfGrp">
           <span class="lbl">Shelves</span>
@@ -1004,6 +1021,9 @@ textarea.inp{resize:vertical}
             </div>
             <span class="lbl" style="font-size:11px">Shelf length</span>
             <select id="shelfLenSel" onchange="setShelfLength(this.value)" style="width:100%;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin:4px 0 8px"></select>
+            <span class="lbl" style="font-size:11px">Shelf height (off the floor)</span>
+            <select id="shelfHtSel" onchange="setShelfHeight(this.value)" style="width:100%;background:var(--d3);border:1px solid var(--br);border-radius:7px;padding:8px;color:var(--w);font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin:4px 0 4px"></select>
+            <div id="shelfHtNote" class="wstep-sub" style="display:none;margin:0 0 8px;color:#ffb86b"></div>
             <span class="lbl" style="font-size:11px">Shelf depth</span>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:4px 0 8px">
               <div class="pitch-btn shelfd-btn on" onclick="setShelfDepth(16,this)">16&quot;<span class="shelfd-price" data-depth="16"></span></div>
@@ -2154,7 +2174,18 @@ var PORCH_LIGHT_CATALOG=[
   {key:'modern',     name:'Modern Cylinder',      desc:'Matte black, clean lines — modern builds'}
 ];
 var ROOFTYPE='shingle';  // 'shingle' | 'metal'
-var LOFT='none';         // 'none' | 'single'
+var LOFT='none';         // 'none' | "<depthFt>-<front|back|dual>"
+/* LOFT PLACEMENT (Nando, 12 Oct 2026: long side or short side).
+   'ends'  = against the front/back walls, spanning the width (every loft
+             before this option, so a design that never saved it is 'ends').
+   'sides' = against the left/right walls, spanning the length; the same
+             "<depth>-<kind>" value then reads front=left, back=right,
+             dual=both. Which of the two is the LONG side depends on W vs L,
+             so the UI and the quote say so from the actual size. */
+var LOFT_SIDE='ends';
+/* Shelf headroom under a loft: a shelf under the loft's footprint stays at
+   least this far below the loft's joists. */
+var SHELF_LOFT_CLEAR_IN=18;
 // Foundation: what the shed sits on (own step near the start)
 var FOUNDATION='blocks'; // 'pad' (concrete) | 'blocks' (levelled, complimentary)
 var FOUNDATION_LIFT=0;   // world-units the shed is raised (blocks foundation)
@@ -2984,8 +3015,9 @@ function init(){
       var sd=shelvesData[selectedShelf];
       var r4=pointerOnWall(sd.wall, 36, 4, false);
       if(!r4) return;
-      if(Math.abs(sd.pos-r4.pos)<1e-4 && sd.cy===r4.cyIn){ return; }
-      sd.pos=r4.pos; sd.cy=r4.cyIn;
+      var cy4=clampShelfCy({wall:sd.wall,pos:r4.pos,len:sd.len,depth:sd.depth}, r4.cyIn);
+      if(Math.abs(sd.pos-r4.pos)<1e-4 && sd.cy===cy4){ return; }
+      sd.pos=r4.pos; sd.cy=cy4;
       buildShed(); syncEditorPanel();
     } else if(selectedKind==='plight' && selectedPorchLight>=0 && porchLightsData[selectedPorchLight]){
       // Fixed mount height; slides along the wall, round the porch's inside
@@ -3599,6 +3631,7 @@ function captureStockBuild(){
     fndStain:(typeof FOUNDATION_STAIN!=='undefined') ? FOUNDATION_STAIN : 'none',
     roofType:(typeof ROOFTYPE!=='undefined') ? ROOFTYPE : 'shingle',
     loft:(typeof LOFT!=='undefined') ? LOFT : 'none',
+    loftSide:(typeof LOFT_SIDE!=='undefined') ? LOFT_SIDE : 'ends',
     trimFinish:(typeof TRIM_FINISH!=='undefined') ? TRIM_FINISH : 'paint',
     sc:sc, sn:sn, tc:tc, tn:tn, rc:rc, rn:rn,
     windows:((typeof windowsData!=='undefined') ? windowsData : []).map(function(wd){
@@ -3895,6 +3928,7 @@ function setShedUse(k){
       if(typeof FOUNDATION_STAIN!=='undefined')  FOUNDATION_STAIN =STOCK_BUILD.fndStain;
       if(typeof ROOFTYPE!=='undefined')   ROOFTYPE  =STOCK_BUILD.roofType;
       if(typeof LOFT!=='undefined')       LOFT      =STOCK_BUILD.loft;
+      if(typeof LOFT_SIDE!=='undefined')  LOFT_SIDE =STOCK_BUILD.loftSide||'ends';
       sc=STOCK_BUILD.sc; sn=STOCK_BUILD.sn;
       tc=STOCK_BUILD.tc; tn=STOCK_BUILD.tn;
       rc=STOCK_BUILD.rc; rn=STOCK_BUILD.rn;
@@ -3961,6 +3995,7 @@ function setShedUse(k){
   if(typeof FOUNDATION_FINISH!=='undefined') FOUNDATION_FINISH = u.fndFinish || 'plain';
   if(typeof FOUNDATION_STAIN!=='undefined')  FOUNDATION_STAIN  = u.fndStain  || 'none';
   if(typeof LOFT!=='undefined')       LOFT       = u.loft       || 'none';
+  if(typeof LOFT_SIDE!=='undefined')  LOFT_SIDE  = u.loftSide   || 'ends';
   if(typeof ROOFTYPE!=='undefined')   ROOFTYPE   = u.roofType   || (STOCK_BUILD?STOCK_BUILD.roofType:ROOFTYPE) || 'shingle';
 
   /* Windows are REPLACED, not added to, so switching presets cannot silently
@@ -8372,6 +8407,25 @@ function buildBarnRoof(){
   var fRL=CAPb.faceFromProfile(eaveTipX, eaveTipY, kneeX, kneeY);    // right lower
   var fLL=CAPb.faceFromProfile(-eaveTipX, eaveTipY, -kneeX, kneeY);  // left lower
   CAPb.run([0, ridgeY+nOff, zA], [0, ridgeY+nOff, zB], fRU, fLU, 0, null, null);
+  /* RIDGE VENT ON THE BARN (Nando, 12 Oct 2026: offered on barns too). The
+     same build as the A-frame's: a dark low baffle on the ridge cap, stopped
+     ~6in shy of each rake and broken round a cupola, with a second run of the
+     same cap laid over it so only a thin vent line shows along each edge. */
+  if(typeof ADDONS!=='undefined' && ADDONS.ridgeVent && !WALLS_XRAY){
+    var bvIn=0.10, bv0=zA+gableOv+bvIn, bv1=zB-gableOv-bvIn, bvSegs=[];
+    var bvCup=(ADDONS.cupola && ADDONS.cupola!=='none') ? 0.21 : 0;
+    if(bvCup>0){ if(-bvCup>bv0+0.04) bvSegs.push([bv0,-bvCup]); if(bvCup<bv1-0.04) bvSegs.push([bvCup,bv1]); }
+    else bvSegs.push([bv0,bv1]);
+    var bvT=(CAPb.capT!=null)?CAPb.capT:0.012, bvH=0.0125;
+    var bvMat=new THREE.MeshStandardMaterial({color:0x161616, roughness:0.92, metalness:0.0});
+    bvSegs.forEach(function(sg){
+      var ln=sg[1]-sg[0]; if(ln<=0.02) return;
+      var body=new THREE.Mesh(new THREE.BoxGeometry(0.075, bvH, ln), bvMat);
+      body.position.set(0, ridgeY+nOff+bvT+bvH/2, (sg[0]+sg[1])/2);
+      body.castShadow=true; shedGroup.add(body);
+      CAPb.run([0, ridgeY+nOff+bvH, sg[0]], [0, ridgeY+nOff+bvH, sg[1]], fRU, fLU, 0, null, null);
+    });
+  }
   CAPb.run([ kneeX, kneeY+nOff, zA], [ kneeX, kneeY+nOff, zB], fRL, fRU, 0, null, null);
   CAPb.run([-kneeX, kneeY+nOff, zA], [-kneeX, kneeY+nOff, zB], fLL, fLU, 0, null, null);
 
@@ -13142,8 +13196,33 @@ function buildInterior(){
       rail.position.set(lcx, loftY-0.03, railZ);
       shedGroup.add(rail);
     };
+    if(LOFT_SIDE==='sides'){
+      /* Side-wall loft: against the left/right walls, the full length.
+         Joists span the loft's depth (wall to open edge), spaced along it. */
+      loftRects().forEach(function(q){
+        var atLeft=(q.x0<=-(w/2)+1e-6);
+        var x0=atLeft?q.x0+0.03:q.x0, x1=atLeft?q.x1:q.x1-0.03;
+        loftPieces(x0, x1, q.z0+0.03, q.z1-0.03).forEach(function(pc){
+          var lw=pc.x1-pc.x0, ld=pc.z1-pc.z0, lcx=(pc.x0+pc.x1)/2, cz=(pc.z0+pc.z1)/2;
+          var plat=new THREE.Mesh(new THREE.BoxGeometry(lw,0.05,ld), plyTex);
+          plat.position.set(lcx, loftY, cz); plat.castShadow=true; plat.receiveShadow=true;
+          plat.userData.loftDeck=true; shedGroup.add(plat);
+          var jStepS=16*0.2/12;
+          for(var jz2=cz-ld/2+0.10; jz2<=cz+ld/2-0.05; jz2+=jStepS){
+            var js=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.1,lw),0.09,0.04), joistMat);
+            js.position.set(lcx, loftY-0.07, jz2); js.castShadow=true; shedGroup.add(js);
+          }
+          var railX=atLeft?(x1-0.02):(x0+0.02);
+          if(railX>=pc.x0-0.001 && railX<=pc.x1+0.001){
+            var railS=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.12,ld), joistMat);
+            railS.position.set(railX, loftY-0.03, cz); shedGroup.add(railS);
+          }
+        });
+      });
+    } else {
     if(loftKind==='front' || loftKind==='dual') buildLoftAt(true);
     if(loftKind==='back'  || loftKind==='dual') buildLoftAt(false);
+    }
   }
 }
 
@@ -14823,7 +14902,7 @@ function buildReview(){
   if(STYLE!=='barn' && STYLE!=='leanto') lines.push(PITCH+'/12 pitch');
   lines.push(doorsData.length+' door'+(doorsData.length===1?'':'s')+', '+windowsData.length+' window'+(windowsData.length===1?'':'s'));
   if(typeof ELEC!=='undefined' && ELEC!=='none') lines.push(ELEC.charAt(0).toUpperCase()+ELEC.slice(1)+' electrical');
-  if(typeof LOFT!=='undefined' && LOFT!=='none') lines.push('Loft: '+LOFT.replace('-',"' "));
+  if(typeof LOFT!=='undefined' && LOFT!=='none') lines.push('Loft: '+loftLabel());
   host.innerHTML = lines.join('<br>');
 }
 
@@ -15735,6 +15814,7 @@ function addonPriceText(it){
   return priceTag(v) + (it.perWindow ? ' ea (per window)' : '');
 }
 function renderAddons(){
+  if(typeof syncRidgeVentUI==='function') try{ syncRidgeVentUI(); }catch(e){}
   var host=document.getElementById('addonList'); if(!host) return;
   var html='';
   // (Cupola moved to the Roof step — it's roof hardware, not a general add-on.)
@@ -15748,7 +15828,7 @@ function renderAddons(){
     // ridge at all, so the vent geometry (built in the gable roof block) would
     // never appear.
     if(it.sprinkler) return !sprinklerPrices();
-    return !!(it.needsRidge && !(STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak'));
+    return !!(it.needsRidge && !(STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak'||STYLE==='barn'));
   }
   var _shown=ADDON_ITEMS.filter(function(it){ return !itemHidden(it); });
   var _ordered=[];
@@ -15801,6 +15881,25 @@ function renderAddons(){
     html+='</div>';
   });
   host.innerHTML=html;
+}
+function hasRidgeStyle(){ return STYLE==='gable'||STYLE==='3peak'||STYLE==='4peak'||STYLE==='barn'; }
+function setRidgeVent(on){
+  if(typeof ADDONS==='undefined') return;
+  ADDONS.ridgeVent=!!on && hasRidgeStyle();
+  if(typeof renderAddons==='function') renderAddons();
+  syncRidgeVentUI(); buildShed(); if(typeof updateSum==='function') updateSum();
+}
+function syncRidgeVentUI(){
+  var g=document.getElementById('ridgeVentGrp'); if(!g) return;
+  var ok=hasRidgeStyle(); g.style.display=ok?'':'none';
+  var on=!!(typeof ADDONS!=='undefined' && ADDONS.ridgeVent) && ok;
+  document.querySelectorAll('.rv-btn').forEach(function(b){ b.classList.toggle('on', (b.getAttribute('data-rv')==='on')===on); });
+  var ft=Math.ceil(Number(L)||0), n=document.getElementById('ridgeVentNote');
+  if(n) n.textContent='Runs the full '+ft+' ft ridge, priced per foot of ridge.';
+  var t=document.getElementById('ridgeVentPriceTag'); if(t){
+    var p=quoteCache && quoteCache.optionPrices && quoteCache.optionPrices.addons && quoteCache.optionPrices.addons.ridgeVent;
+    t.textContent=(p && !PRICE_LOCKED && typeof priceTag==='function') ? ' \u00b7 '+priceTag(p) : '';
+  }
 }
 function toggleAddon(k){
   ADDONS[k]=!ADDONS[k];
@@ -16512,9 +16611,112 @@ function paintCupolaTag(){
 // ---- UPGRADES: loft ----
 function setLoft(v){
   LOFT=v;   // 'none' or "<depthFt>-<front|back|dual>"
+  clampShelvesUnderLoft();
   refreshInterior();
+  syncLoftUI();
   buildShed();
 }
+function setLoftSide(v){
+  LOFT_SIDE=(v==='sides')?'sides':'ends';
+  clampShelvesUnderLoft();
+  syncLoftUI();
+  buildShed();
+  if(typeof updateSum==='function') updateSum();
+}
+/* "4' Back Gable loft, front & back walls (short side)" — the quote's wording. */
+function loftWallsLabel(side){
+  var ends=(side!=='sides'), wallFt=ends?W:L, other=ends?L:W;
+  var which=(wallFt===other)?'' : (wallFt<other?' (short side)':' (long side)');
+  return (ends?'Front & back walls':'Side walls')+' \u00b7 '+wallFt+'\u2032'+which;
+}
+function loftLabel(){
+  if(LOFT==='none') return 'None';
+  var p=String(LOFT).split('-'), k=p[1]||'front';
+  var kind=(LOFT_SIDE==='sides') ? ({front:'Left side',back:'Right side',dual:'Dual (both sides)'})[k]
+                                 : ({front:'Front gable',back:'Back gable',dual:'Dual (front + back)'})[k];
+  return p[0]+"' "+(kind||k)+', '+loftWallsLabel(LOFT_SIDE);
+}
+function syncLoftUI(){
+  var ls=document.getElementById('loftSel'); if(ls) ls.value=LOFT;
+  var sides=(LOFT_SIDE==='sides');
+  if(ls) ls.querySelectorAll('option').forEach(function(o){
+    var p=o.value.split('-'); if(p.length<2) return;
+    var k=sides ? ({front:'Left Side',back:'Right Side',dual:'Dual Loft (both sides)'})[p[1]]
+                : ({front:'Front Gable',back:'Back Gable',dual:'Dual Loft'})[p[1]];
+    o.textContent=p[0]+"' "+k;
+  });
+  if(ls) ls.querySelectorAll('optgroup').forEach(function(g,i){
+    g.label = sides ? ['Left Side','Right Side','Dual Loft (both sides)'][i] : ['Front Gable','Back Gable','Dual Loft (front + back)'][i];
+  });
+  var wrap=document.getElementById('loftSideWrap');
+  if(wrap) wrap.style.display=(LOFT==='none')?'none':'block';
+  document.querySelectorAll('.loftside-btn').forEach(function(b){
+    var v=b.getAttribute('data-side'); b.classList.toggle('on', v===LOFT_SIDE);
+    var t=b.querySelector('.loftside-txt'); if(t) t.textContent=loftWallsLabel(v);
+  });
+}
+/* LOFT FOOTPRINT, in plan (world units): the rectangles the deck covers. */
+function loftRects(){
+  if(typeof LOFT==='undefined' || LOFT==='none') return [];
+  var p=String(LOFT).split('-'), dFt=parseFloat(p[0])||0, k=p[1]||'front';
+  var w=encWft()*0.2, l=encLft()*0.2, out=[];
+  if(LOFT_SIDE==='sides'){
+    var dx=Math.min(dFt*0.2, (k==='dual'?w/2:w)-0.05);
+    if(k==='front'||k==='dual') out.push({x0:-w/2, x1:-w/2+dx, z0:-l/2, z1:l/2});
+    if(k==='back' ||k==='dual') out.push({x0:w/2-dx, x1:w/2, z0:-l/2, z1:l/2});
+  } else {
+    var dz=Math.min(dFt*0.2, l-0.1);
+    if(k==='front'||k==='dual') out.push({x0:-w/2, x1:w/2, z0:l/2-dz, z1:l/2});
+    if(k==='back' ||k==='dual') out.push({x0:-w/2, x1:w/2, z0:-l/2, z1:-l/2+dz});
+  }
+  return out;
+}
+/* THE HIGHEST A SHELF MAY SIT, in inches off the floor (its cy).
+   No loft over it: the old ceiling, H*12-12. Under the loft: the loft deck
+   sits 6in below the top plate with 5.4in joists under it, so its underside
+   is about H*12-12.9in; less SHELF_LOFT_CLEAR_IN (18in) of headroom and half
+   the 3/4in board gives H*12-31 (65in on 8ft walls, 77in on 9ft, 89in on 10ft). */
+function loftUndersideIn(){ return H*12 - 12.9; }
+function shelfMaxCy(sd){
+  var ceil=Math.max(26, H*12-12);
+  var rs=loftRects(); if(!rs.length || !sd) return ceil;
+  var f=wallFrame(sd.wall); if(!f) return ceil;
+  var wallLenFt=(sd.wall==='front'||sd.wall==='back')?W:L;
+  var lenFt=Math.min(sd.len||wallLenFt, wallLenFt), half=lenFt*0.2/2;
+  var c0=posToAxis(sd.wall, sd.pos==null?0.5:sd.pos, lenFt*12);
+  var dep=(sd.depth||16)*0.2/12, fx=f.fixed, inward=(f.ax==='x') ? -f.nz : -f.nx;
+  var a0=Math.min(fx, fx+inward*dep), a1=Math.max(fx, fx+inward*dep);
+  var r={}; if(f.ax==='x'){ r.x0=c0-half; r.x1=c0+half; r.z0=a0; r.z1=a1; } else { r.z0=c0-half; r.z1=c0+half; r.x0=a0; r.x1=a1; }
+  var under=rs.some(function(q){ return r.x0<q.x1-1e-3 && r.x1>q.x0+1e-3 && r.z0<q.z1-1e-3 && r.z1>q.z0+1e-3; });
+  if(!under) return ceil;
+  return Math.max(12, Math.min(ceil, Math.floor(loftUndersideIn() - SHELF_LOFT_CLEAR_IN - 0.375)));
+}
+function clampShelfCy(sd, cy){ var m=shelfMaxCy(sd); return Math.max(12, Math.min(m, cy)); }
+/* Only on a change someone makes (loft picked or moved, shelf moved):
+   a stored design reopens exactly as it was saved. */
+function clampShelvesUnderLoft(){
+  (shelvesData||[]).forEach(function(sd){ if(sd && sd.cy!=null) sd.cy=clampShelfCy(sd, sd.cy); });
+}
+function setShelfHeight(v){
+  if(selectedKind!=='shelf' || selectedShelf<0) return;
+  var sd=shelvesData[selectedShelf];
+  sd.cy=clampShelfCy(sd, parseFloat(v)||48);
+  buildShed(); syncEditorPanel();
+}
+function populateShelfHeights(){
+  var sel=document.getElementById('shelfHtSel'), note=document.getElementById('shelfHtNote');
+  if(!sel || selectedKind!=='shelf' || selectedShelf<0) return;
+  var sd=shelvesData[selectedShelf], max=shelfMaxCy(sd), cur=Math.round(sd.cy==null?48:sd.cy), html='', seen=false;
+  for(var i=12; i<=max; i+=6){ html+='<option value="'+i+'"'+(i===cur?' selected':'')+'>'+_inFt(i)+'</option>'; if(i===cur) seen=true; }
+  if(!seen) html+='<option value="'+cur+'" selected>'+_inFt(cur)+'</option>';
+  sel.innerHTML=html;
+  if(note){
+    var lim=(max < Math.max(26, H*12-12));
+    note.textContent = lim ? ('Kept '+SHELF_LOFT_CLEAR_IN+'\u2033 below the loft: up to '+_inFt(max)+'.') : '';
+    note.style.display = lim ? 'block' : 'none';
+  }
+}
+function _inFt(i){ var f=Math.floor(i/12), r=Math.round(i-f*12); return f+'\u2032'+(r?' '+r+'\u2033':'')+' ('+Math.round(i)+'\u2033)'; }
 // Auto-show the interior when a loft or any shelf is present.
 function refreshInterior(){
   SHOW_INTERIOR = (LOFT!=='none' || shelvesData.length>0);
@@ -16674,7 +16876,7 @@ function addShelf(){
      each other, invisible and billed. That is the original bug, re-created by
      the code meant to fix it. Nothing here may ever return a height another
      shelf already has. */
-  var ceil=Math.max(26, H*12-12), cy=null;
+  var ceil=shelfMaxCy({wall:wall,pos:0.5,len:wallLen,depth:16}), cy=null;
   var gaps=[SHELF_GAP_IN, 10, 7, 5, 4];
   for(var gi=0; gi<gaps.length && cy==null; gi++) cy=freeSlot(taken, 48, gaps[gi], 12, ceil);
   if(cy==null){
@@ -16696,6 +16898,7 @@ function removeShelf(){
 function setShelfDepth(d, el){
   if(selectedKind!=='shelf' || selectedShelf<0) return;
   shelvesData[selectedShelf].depth=d;
+  var sdd=shelvesData[selectedShelf]; if(sdd.cy!=null) sdd.cy=clampShelfCy(sdd, sdd.cy);
   document.querySelectorAll('.shelfd-btn').forEach(function(b){b.classList.remove('on');});
   if(el) el.classList.add('on');
   buildShed(); syncEditorPanel();
@@ -16707,6 +16910,7 @@ function setShelfWall(wall, el){
   // cap the shelf length to the new wall's length
   var wallLen=(wall==='front'||wall==='back')?W:L;
   if((sd.len||wallLen) > wallLen) sd.len=wallLen;
+  if(sd.cy!=null) sd.cy=clampShelfCy(sd, sd.cy);
   document.querySelectorAll('.shelfw-btn').forEach(function(b){b.classList.remove('on');});
   if(el) el.classList.add('on');
   buildShed(); syncEditorPanel(); populateShelfLengths();
@@ -16714,6 +16918,7 @@ function setShelfWall(wall, el){
 function setShelfLength(v){
   if(selectedKind!=='shelf' || selectedShelf<0) return;
   shelvesData[selectedShelf].len=parseFloat(v);
+  var sdl=shelvesData[selectedShelf]; if(sdl.cy!=null) sdl.cy=clampShelfCy(sdl, sdl.cy);
   buildShed(); syncEditorPanel();
 }
 // Fill the shelf length dropdown with 2..wallLen ft for the selected shelf.
@@ -17017,6 +17222,7 @@ function syncEditorPanel(){
       if(b.getAttribute('onclick').indexOf("setShelfWall('"+sd.wall+"'")>-1) b.classList.add('on');
     });
     populateShelfLengths();
+    populateShelfHeights();
   }
   if(typeof paintShelfDepthTags==='function') paintShelfDepthTags();
 }
@@ -17951,7 +18157,7 @@ function getDesignConfig(){
     porchLen:PORCH_LEN, porchOff:PORCH_OFF,
     dormerL:DORMER_L, dormerR:DORMER_R, dormerLOff:DORMER_L_OFF, dormerROff:DORMER_R_OFF,
     foundation:FOUNDATION, foundationFinish:FOUNDATION_FINISH, foundationStain:FOUNDATION_STAIN,
-    loft:LOFT, elec:ELEC, intFinish:INT_FINISH, floor:FLOOR, addons:ADDONS,
+    loft:LOFT, loftSide:LOFT_SIDE, elec:ELEC, intFinish:INT_FINISH, floor:FLOOR, addons:ADDONS,
     doors:doorsData, windows:windowsData, vents:ventsData, shelves:shelvesData,
     porchLights:porchLightsData
   };
@@ -18019,6 +18225,8 @@ function syncControlsFromState(){
     if(typeof PINE_WIDTH!=='undefined')        mark('.pinew-btn', PINE_WIDTH);
     if(typeof LEANTO_DROP!=='undefined')       mark('.leanto-drop-btn', LEANTO_DROP);
     if(typeof LEANTO_FRONT_OVH!=='undefined')  mark('.leanto-fovh-btn', LEANTO_FRONT_OVH);
+    if(typeof syncLoftUI==='function')         syncLoftUI();
+    if(typeof syncRidgeVentUI==='function')    syncRidgeVentUI();
 
     // Overhang is the one group where two arguments matter: setOverhang(4,'gable')
     // and setOverhang(4,'all4') are different buttons carrying the same depth.
@@ -18124,6 +18332,8 @@ function applyDesignConfig(c){
     if(c.foundationFinish)FOUNDATION_FINISH=c.foundationFinish;
     if(c.foundationStain)FOUNDATION_STAIN=c.foundationStain;
     if(c.loft)LOFT=c.loft; if(c.elec)ELEC=c.elec;
+    // Absent = against the front/back walls: where every older loft was built.
+    LOFT_SIDE=(c.loftSide==='sides')?'sides':'ends';
     if(c.intFinish)INT_FINISH=c.intFinish;
     /* Flooring is not released yet, so a link that carries one only restores
        it for a browser that asked to see the feature. Otherwise it reads as
@@ -18177,6 +18387,12 @@ function applyDesignConfig(c){
     // above changed, the controls did not. This ticks them to match, so a
     // reopened design shows the customer what they actually chose.
     syncControlsFromState();
+    /* A RESTORED LOFT WAS NEVER SHOWN. LOFT itself came back, but nothing
+       set the Loft dropdown (it sat on "None") and nothing turned the
+       interior on, so a design reopened from the CRM looked loft-less even
+       though the quote priced one. setLoft() does both when a customer picks
+       it; a restore has to do the same. */
+    if(typeof refreshInterior==='function') refreshInterior();
     buildShed(); if(typeof autoFrame==='function') autoFrame(false);
   }catch(e){ console.error('config restore failed', e); }
 }
