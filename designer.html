@@ -18675,6 +18675,48 @@ function updateCrmQuote(){
       });
   }); });
 }
+/* COLOURS-ONLY MODE (crm_colors=<order id>, from the CRM's "Re-render in 3D").
+   Staff change colours here and press one button: the order's stored design
+   gets the new siding/trim/roof/soffit colours and fresh renders, and NOTHING
+   else (POST /admin/submissions/:id/colors never re-prices or touches the
+   adjustments, so it works on orders with a deposit). Other edits made on
+   this page are not sent. */
+function crmColorsId(){
+  try { var v=new URLSearchParams(location.search).get('crm_colors'); return /^\d{1,9}$/.test(v||'') ? v : ''; } catch(e){ return ''; }
+}
+function crmColorPayload(){
+  var c=getDesignConfig();
+  var o={ sidingColor:c.sidingColor, trimColor:c.trimColor, roofColor:c.roofColor, soffit:c.soffit };
+  if(c.colorNames) o.colorNames={siding:c.colorNames.siding, trim:c.colorNames.trim, roof:c.colorNames.roof};
+  if(c.paint) o.paint={siding:c.paint.siding||null, trim:c.paint.trim||null};
+  return o;
+}
+function saveCrmColors(){
+  var id=crmColorsId(); if(!id) return;
+  var btn=document.getElementById('crmColorsBtn'), msg=document.getElementById('crmColorsMsg');
+  ensureShedAdmin(function(){
+    if(btn){ btn.textContent='Saving\u2026'; btn.disabled=true; }
+    fetch(ADMIN_API+'/admin/submissions/'+id+'/colors',{ method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+shedAdminToken},
+      body:JSON.stringify({ colors:crmColorPayload(), renders:captureRenders() }) })
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,status:r.status,j:j}; }); })
+    .then(function(res){
+      if(res.status===401){ sessionStorage.removeItem('shed_admin_token'); shedAdminToken=null; throw new Error('Staff login expired \u2014 press Save again.'); }
+      if(!res.ok) throw new Error((res.j&&res.j.error)||'Could not save');
+      if(msg){ msg.textContent='Saved colours and renders to order #'+id+'. Price unchanged.'; msg.style.color='#6fcf97'; }
+      if(btn){ btn.textContent='Saved \u2713'; btn.disabled=false; }
+    }).catch(function(e){ if(msg){ msg.textContent=e.message; msg.style.color='#ff6b6b'; } if(btn){ btn.textContent='Save colours to #'+id; btn.disabled=false; } });
+  });
+}
+function mountCrmColorsBar(){
+  var id=crmColorsId(); if(!id||document.getElementById('crmColorsBar')) return;
+  var bar=document.createElement('div'); bar.id='crmColorsBar';
+  bar.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#111c;color:#fff;padding:10px 14px;border-radius:12px;font:13px system-ui;display:flex;gap:10px;align-items:center;box-shadow:0 4px 18px #0006';
+  bar.innerHTML='<span>Colours only for order #'+id+'</span><button id="crmColorsBtn" type="button" style="padding:6px 12px;border-radius:8px;border:0;background:#f5a524;font-weight:600;cursor:pointer">Save colours to #'+id+'</button><span id="crmColorsMsg" style="opacity:.9"></span>';
+  document.body.appendChild(bar);
+  document.getElementById('crmColorsBtn').addEventListener('click', saveCrmColors);
+}
+if(typeof document!=='undefined'){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', mountCrmColorsBar); else setTimeout(mountCrmColorsBar,0); }
 function prefillContactFromUrl(){
   var params;
   try { params = new URLSearchParams(location.search); } catch(e){ return; }
