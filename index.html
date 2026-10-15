@@ -497,6 +497,31 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
 
 <main id="main">
 
+<!-- ─── SEASONAL CONCRETE BANNER ─── -->
+<style>
+.cold-banner{background:linear-gradient(90deg,#0d2a37,#111315 60%);border-bottom:1px solid rgba(43,181,232,.25);color:rgba(255,255,255,.92);font-family:'Barlow',system-ui,sans-serif}
+.cold-banner-in{max-width:1200px;margin:0 auto;padding:10px clamp(20px,4vw,40px);display:flex;align-items:center;justify-content:center;gap:12px 16px;flex-wrap:wrap;position:relative;padding-right:48px}
+.cold-ico{width:20px;height:20px;color:#2BB5E8;flex-shrink:0;animation:coldGlow 2.6s ease-in-out infinite}
+.cold-msg{font-size:14.5px;line-height:1.35;text-align:center}.cold-msg strong{color:#fff;font-weight:700}
+.cold-cta{display:inline-flex;align-items:center;gap:6px;background:#2BB5E8;color:#06212D;font-weight:700;font-size:13.5px;padding:7px 16px;border-radius:999px;text-decoration:none;white-space:nowrap;animation:coldPulse 2.6s ease-in-out infinite}
+.cold-cta:hover{background:#1fa3d4}.cold-cta:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.cold-x{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:0;color:rgba(255,255,255,.6);font-size:22px;line-height:1;cursor:pointer;padding:6px 10px}
+.cold-x:hover{color:#fff}
+@keyframes coldPulse{0%,100%{box-shadow:0 0 0 0 rgba(43,181,232,.0)}50%{box-shadow:0 0 0 6px rgba(43,181,232,.22)}}
+@keyframes coldGlow{0%,100%{opacity:.75}50%{opacity:1;filter:drop-shadow(0 0 4px rgba(43,181,232,.7))}}
+@media (max-width:600px){.cold-msg{font-size:13.5px}.cold-banner-in{padding-top:9px;padding-bottom:10px}}
+@media (prefers-reduced-motion:reduce){.cold-cta,.cold-ico{animation:none}}
+.cold-banner[hidden]{display:none}
+</style>
+<div class="cold-banner" id="coldBanner" role="region" aria-label="Seasonal notice">
+  <div class="cold-banner-in">
+    <svg class="cold-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2v20M4.9 4.9l14.2 14.2M2 12h20M4.9 19.1L19.1 4.9M9 3.5l3 2.5 3-2.5M9 20.5l3-2.5 3 2.5"/></svg>
+    <p class="cold-msg"><strong>Cold weather is coming.</strong> Once the ground freezes, pouring concrete gets harder and costs more. Book your concrete work now.</p>
+    <a class="cold-cta" href="/contact" data-cta="cold-banner">Book concrete now <span aria-hidden="true">→</span></a>
+    <button class="cold-x" type="button" aria-label="Dismiss notice" id="coldX">×</button>
+  </div>
+</div>
+<script>(function(){var b=document.getElementById('coldBanner');try{if(sessionStorage.getItem('coldBannerX')){b.hidden=true;return}}catch(e){}document.getElementById('coldX').onclick=function(){b.hidden=true;try{sessionStorage.setItem('coldBannerX','1')}catch(e){}}})();</script>
 <!-- ─── HERO ─── -->
 <section class="hero" id="top">
   <div class="hero-slideshow" aria-hidden="true">
