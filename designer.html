@@ -2241,6 +2241,12 @@ function padPriceHTML(pr){
 /* The pad is drawn from the ENCLOSURE, not the full footprint — buildFoundation
    sizes it w+0.10 x l+0.10 off encWft/encLft — so the area that gets broomed is
    the enclosed room. A porch sits on its own deck. */
+var GRAVEL_MAX_SQFT=200;
+function gravelUnavailable(){
+  var fp=quoteCache.optionPrices && quoteCache.optionPrices.foundation;
+  if(fp && 'gravel' in fp) return fp.gravel==null;
+  return padSqft()>GRAVEL_MAX_SQFT;
+}
 function padSqft(){
   var ew=(typeof encWft==='function')?encWft():(typeof W!=='undefined'?W:0);
   var el=(typeof encLft==='function')?encLft():(typeof L!=='undefined'?L:0);
@@ -15696,11 +15702,17 @@ function renderFoundation(){
      tiers at all. Putting it above keeps Good, Better and Best reading as an
      unbroken climb; sandwiched in the middle, as it was, it broke the sequence
      in half. */
+  /* Gravel is not offered over GRAVEL_MAX_SQFT (worker SELL.gravelTiers.maxSqft,
+     optionPrices.foundation.gravel comes back null). Before, the tile stayed
+     selectable reading "Ask for pricing", and the quote silently dropped it
+     (lead #75, 12x26). Lock the tile and move a stale gravel pick to blocks. */
+  var gravelOff=gravelUnavailable();
+  if(gravelOff && FOUNDATION==='gravel'){ FOUNDATION='blocks'; if(typeof _foundApply==='function'){ setTimeout(_foundApply,0); } }
   var opts=[
     {k:'existing', name:'Existing Foundation', desc:'You already have a pad or slab \u2014 the shed sits flat on it, no leveling or blocks', price:'Included', visual:true},
     {k:'blocks',   name:'Leveled on Cinder Blocks', desc:'We level and set your shed on block piers \u2014 complimentary', price:'Included', visual:true},
     {k:'gravel',   name:'Gravel Pad + Leveled on Blocks', desc:'We pour and level gravel over the site, then set your shed on block piers',
-     price:pr(foundationBasePrice('gravel'))+' <span style="opacity:.6;font-weight:600">'+padSqft()+' sqft</span>', visual:true},
+     price:(gravelOff ? 'Not available over '+GRAVEL_MAX_SQFT+' sqft' : pr(foundationBasePrice('gravel')))+' <span style="opacity:.6;font-weight:600">'+padSqft()+' sqft</span>', visual:true, disabled:gravelOff},
     {k:'pad',      name:'Concrete Pad \u2014 Poured by Us', desc:'4\u2033 level slab, same size as your shed. '+SITE_ESTIMATE_NOTE, price:padPriceHTML(pr), visual:true}
   ];
   /* The foundation cards go in an .optrow so they scroll side by side on a
@@ -15716,7 +15728,7 @@ function renderFoundation(){
   var html='<div class="optrow">';
   opts.forEach(function(o){
     var on=(FOUNDATION===o.k);
-    html+='<div onclick="setFoundation(\''+o.k+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;margin-bottom:8px;border-radius:10px;cursor:pointer;background:'+(on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+'">'+
+    html+='<div onclick="setFoundation(\''+o.k+'\')" '+(o.disabled?'aria-disabled="true" ':'')+'style="'+(o.disabled?'opacity:.45;cursor:not-allowed;':'')+'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;margin-bottom:8px;border-radius:10px;cursor:pointer;background:'+(on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+'">'+
       '<div><div style="font-size:13px;font-weight:700;color:var(--w)">'+o.name+itemBadgeHTML('found:'+o.k)+(o.visual?' <span style="color:var(--blue);font-size:10px">· shown in 3D</span>':'')+'</div>'+
       '<div style="font-size:11px;color:var(--mu);margin-top:2px">'+o.desc+'</div></div>'+
       '<div style="font-size:12px;font-weight:800;color:'+(on?'#8fe3ff':'var(--mu)')+';white-space:nowrap">'+o.price+'</div></div>';
@@ -15793,7 +15805,7 @@ function setStain(k){
   FOUNDATION_STAIN=k; _foundApply();
   var b=document.getElementById('subPageBody'); if(b) b.innerHTML=stainPageHTML();
 }
-function setFoundation(k){ FOUNDATION=k; if(k!=='pad') FOUNDATION_STAIN='none'; _foundApply(); }
+function setFoundation(k){ if(k==='gravel' && gravelUnavailable()) return; FOUNDATION=k; if(k!=='pad') FOUNDATION_STAIN='none'; _foundApply(); }
 
 // ---- ADD-ONS (Upgrades step) ----
 // No prices here \u2014 every k below is a key into quoteCache.optionPrices.addons,
