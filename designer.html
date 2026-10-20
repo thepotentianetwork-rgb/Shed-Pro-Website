@@ -381,6 +381,16 @@ textarea.inp{resize:vertical}
 .wprog-seg{flex:1;height:4px;border-radius:2px;background:var(--br);transition:background .25s}
 .wprog-seg.done{background:var(--blue)}
 .wprog-seg.cur{background:var(--blue);opacity:.55}
+.wprog{flex-direction:column;gap:6px}
+.wprog-count{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--blue)}
+.wprog-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.wprog-tabs::-webkit-scrollbar{display:none}
+.wprog-tab{flex:1 1 0;min-width:40px;display:flex;flex-direction:column;gap:4px;align-items:stretch;background:none;border:0;padding:2px 2px 4px;cursor:pointer;color:inherit;font:inherit}
+.wprog-tab .wprog-seg{display:block;flex:none}
+.wprog-name{font-size:10.5px;opacity:.6;white-space:nowrap;text-align:center}
+.wprog-tab.cur .wprog-name{opacity:1;font-weight:700}
+.wprog-tab:hover .wprog-name{opacity:.9}
+.wskip{background:none;border:0;color:var(--blue);font-weight:600;font-size:13px;cursor:pointer;padding:6px 8px;text-decoration:underline}
 .wstep-head{padding:10px 14px 2px}
 .wstep-title{font-size:19px;font-weight:800;color:var(--w);margin-top:0;font-family:'Barlow Condensed',sans-serif;letter-spacing:.01em}
 .wstep-sub{font-size:11px;color:var(--mu);margin-top:2px}
@@ -1093,6 +1103,7 @@ textarea.inp{resize:vertical}
 
     <div class="wnav">
       <button class="wbtn wbtn-back" id="wBack" onclick="wizPrev()">&#8592; Back</button>
+      <button type="button" class="wskip" id="wSkip" style="display:none" onclick="wizSkip()">Skip &mdash; use our standard</button>
       <button class="wbtn wbtn-next" id="wNext" onclick="wizNext()">Next &#8594;</button>
       <!-- Inside .wnav, not floating below it. As a sibling it carried the
            nav's 10px bottom padding, its own 10px margin and 9px of padding
@@ -2326,11 +2337,20 @@ var sn='Gray', tn='White', rn='Black Asphalt';
 
 var scr=document.createElement('script');
 scr.src='https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js';
-scr.onload=init;
+/* PERF: three.js is preloaded, so it often finished downloading while the
+   1MB page was still parsing and init() - first build + ~40 shader compiles -
+   ran in the middle of it, holding DOMContentLoaded (and every button) back by
+   seconds. Wait for the DOM, give the browser one frame to paint the UI, then
+   build the scene. */
+function initWhenReady(){
+  var go=function(){ requestAnimationFrame(function(){ setTimeout(init,0); }); };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go,{once:true}); else go();
+}
+scr.onload=initWhenReady;
 scr.onerror=function(){
   var s2=document.createElement('script');
   s2.src='https://unpkg.com/three@0.128.0/build/three.min.js';
-  s2.onload=init;
+  s2.onload=initWhenReady;
   document.head.appendChild(s2);
 };
 document.head.appendChild(scr);
@@ -5701,6 +5721,14 @@ function positionGroundLogos(){
     m.scale.set(size, size, 1);
   });
 }
+var _deferDispose=[], _deferPending=false;
+function _scheduleDeferredDispose(){
+  if(_deferPending) return; _deferPending=true;
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    _deferPending=false; var l=_deferDispose; _deferDispose=[];
+    l.forEach(function(x){ try{ x.dispose(); }catch(e){} });
+  }); });
+}
 function buildShed(){
   if(typeof clampOpeningsToWalls==='function') clampOpeningsToWalls();
   // Properly DISPOSE old geometry, materials and textures before clearing — without
@@ -5714,14 +5742,20 @@ function buildShed(){
         mats.forEach(function(m){
           if(!m) return;
           ['map','bumpMap','normalMap','roughnessMap','metalnessMap','emissiveMap','alphaMap'].forEach(function(k){
-            if(m[k] && m[k].dispose) m[k].dispose();
+            if(m[k] && m[k].dispose) _deferDispose.push(m[k]);
           });
-          m.dispose();
+          _deferDispose.push(m);
         });
       }
     });
     shedGroup.remove(child);
   }
+  /* PERF: materials are disposed only AFTER the next frame has rendered the
+     rebuilt shed. Disposing them here dropped each shader program's use-count
+     to zero, so three.js deleted it and recompiled the identical program on
+     the very next render - ~1-1.5s of synchronous shader compiles per click.
+     Deferring lets the new materials pick up the cached programs first. */
+  _scheduleDeferredDispose();
 
   /* Foundation lift: 'blocks' raises the shed onto skids + cinder-block piers.
 
@@ -13267,40 +13301,43 @@ function animate(){
    (This was flipped once — style first, size second — then flipped back.)
    Interior finish lives with the loft and shelves rather than as an eleventh
    step: it's the same question — what's the inside like. */
+/* PANEL TITLES - one per data-step panel in the markup (index = data-step).
+   These are the original eleven step names; wizIs()/wizGoTo() still accept
+   any of them, so every caller written against the old table keeps working. */
+var WIZ_PANELS = ["Start your design","Pick your size","Foundation","Siding & color","Roof","Doors",
+  "Windows & Vents","Interior","Electrical","Add-Ons","Review & quote"];
+/* SEVEN STEPS (was eleven). Small steps are merged by listing several panels;
+   skip:true steps get a "Skip - use our standard" button that leaves the
+   current defaults in place and moves on. Prices are intentionally not shown. */
 var WIZ_STEPS = [
-  /* No "What's it for?" step. It offered two presets - Detached Garage and
-     Golf Simulator - alongside "Design My Own"; with the presets retired the
-     step had a single tile on it and asked a question nothing acted on, so the
-     designer opens on style instead.
-     Style leads, which reverses the order these sat in. Size led so that a
-     porch tile picked on the style step opened a depth ladder capped by a real
-     footprint rather than the 8x12 default. That cap still corrects itself -
-     setW and setL both call clampPorch - so the cost is a porch picker seeing
-     the 8x12 ladder first and coming back to it, against style being the
-     question a customer actually arrives with. */
-  {title:"Start your design",  sub:"Start from a ShedPro favorite, or pick a style."},
-  {title:"Pick your size",     sub:"Width, length, and wall height."},
-  {title:"Foundation",         sub:"What your shed sits on."},
-  {title:"Siding & color",     sub:"Pick your look early."},
-  {title:"Roof",               sub:"Type, color, pitch, overhang & details."},
-  {title:"Doors",              sub:"Pick a size, then a style."},
-  {title:"Windows & Vents",    sub:"Tap to add, then move or delete."},
-{title:"Interior",           sub:"Finish the inside, add a loft or shelves."},
-  /* Electrical before Add-Ons: the package decides whether bulbs and porch
-     lights are on the table at all, so choosing extras first meant picking
-     from a list that could still change under you. Nothing here is keyed to a
-     step INDEX — wizIs() and the panel lookups all go by title — so the swap
-     is this table and the two data-step attributes, nothing more. */
-  {title:"Electrical",         sub:"Power package (optional)."},
-  {title:"Add-Ons",         sub:"Optional extras."},
-  {title:"Review & quote",     sub:"Looks good? Send it over."}
+  {title:"Start your design",  short:"Start",      panels:[0], sub:"Start from a ShedPro favorite, or pick a style."},
+  {title:"Pick your size",     short:"Size",       panels:[1], sub:"Width, length, and wall height."},
+  {title:"Foundation",         short:"Base", panels:[2], skip:true, sub:"What your shed sits on."},
+  {title:"Siding & roof",      short:"Look",       panels:[3,4], sub:"Siding, colors, then roof type, pitch & details."},
+  {title:"Doors & windows",    short:"Doors", panels:[5,6], sub:"Pick doors, then tap to add windows & vents."},
+  {title:"Interior & extras",  short:"Inside",   panels:[7,8,9], skip:true, sub:"Finish, loft, shelves, power and add-ons (all optional)."},
+  {title:"Review & quote",     short:"Review",     panels:[10], sub:"Looks good? Send it over."}
 ];
+/* Old 11-step index -> new step index (autosaves written before the merge). */
+var WIZ_OLD_TO_NEW=[0,1,2,3,3,4,4,5,5,5,6];
 var wizStep = 0;
 /* Steps get merged, split and reordered; hardcoded indices do not survive it.
    Four places used to test wizStep===4/5/6/8 and every one would have pointed
    at the wrong panel the moment size folded into step 0 — then moved again
    when foundation came back out. Ask by name and reordering costs nothing. */
-function wizIs(title){ return !!(WIZ_STEPS[wizStep] && WIZ_STEPS[wizStep].title===title); }
+function wizIs(title){
+  var st=WIZ_STEPS[wizStep]; if(!st) return false;
+  if(st.title===title) return true;
+  for(var i=0;i<st.panels.length;i++) if(WIZ_PANELS[st.panels[i]]===title) return true;
+  return false;
+}
+function wizSkip(){
+  var st=WIZ_STEPS[wizStep];
+  if(typeof showToast==='function') showToast('Using our standard for '+(st?st.short.toLowerCase():'this step')+' \u2014 you can change it any time.');
+  if(window.DU && DU.track) DU.track('step_skipped',{step:st&&st.title});
+  wizNext();
+}
+function wizJump(i){ if(i>=0 && i<WIZ_STEPS.length && i!==wizStep){ wizStep=i; wizRender(); } }
 var WIZ_ADDWALL_DOOR = 'front';   // separate wall pick for the doors step
 
 /* The step already has a title and a one-line sub above it. Several panels then
@@ -13355,8 +13392,8 @@ function wizRender(){
   // dormer controls live), off everywhere else. It used to need a manual
   // "Show roof slopes" tap before you could see which slope you were editing.
   // Don't strand someone in the cutaway after they move on.
-  if(INSIDE_VIEW && WIZ_STEPS[wizStep] && WIZ_STEPS[wizStep].title!=='Interior') setInsideView(false);
-  var onRoofStep=(WIZ_STEPS[wizStep] && WIZ_STEPS[wizStep].title==='Roof');
+  if(INSIDE_VIEW && !wizIs('Interior')) setInsideView(false);
+  var onRoofStep=wizIs('Roof');
   if(typeof setDormerEdit==='function') setDormerEdit(onRoofStep);
   if(typeof renderDormerUI==='function') renderDormerUI();
   // Repaint every option panel with a computed price on step entry, not just
@@ -13373,17 +13410,22 @@ function wizRender(){
   if(typeof paintSidingTags==='function') paintSidingTags();
   if(typeof paintElecTags==='function') paintElecTags();
   var steps=document.querySelectorAll('.wstep');
-  steps.forEach(function(s){ s.classList.toggle('on', +s.getAttribute('data-step')===wizStep); });
-  // progress bar
+  var _pn=WIZ_STEPS[wizStep].panels;
+  steps.forEach(function(s){ s.classList.toggle('on', _pn.indexOf(+s.getAttribute('data-step'))>=0); });
+  // progress bar: "Step X of N" + tappable step names (jump to any step)
   var prog=document.getElementById('wprog');
   if(prog){
-    var html='';
+    var html='<div class="wprog-count">Step '+(wizStep+1)+' of '+WIZ_STEPS.length+'</div><div class="wprog-tabs" role="tablist">';
     for(var i=0;i<WIZ_STEPS.length;i++){
       var cls = i<wizStep?'done':(i===wizStep?'cur':'');
-      html+='<div class="wprog-seg '+cls+'"></div>';
+      html+='<button type="button" role="tab" class="wprog-tab '+cls+'" aria-selected="'+(i===wizStep)+'" onclick="wizJump('+i+')">'+
+        '<span class="wprog-seg '+cls+'"></span><span class="wprog-name">'+WIZ_STEPS[i].short+'</span></button>';
     }
-    prog.innerHTML=html;
+    prog.innerHTML=html+'</div>';
+    var cur=prog.querySelector('.wprog-tab.cur'); if(cur && cur.scrollIntoView) try{ cur.scrollIntoView({block:'nearest',inline:'nearest'}); }catch(e){}
   }
+  var skipB=document.getElementById('wSkip');
+  if(skipB) skipB.style.display = WIZ_STEPS[wizStep].skip ? '' : 'none';
   document.getElementById('wStepTitle').textContent=WIZ_STEPS[wizStep].title;
   document.getElementById('wStepSub').textContent=WIZ_STEPS[wizStep].sub;
   dedupeStepHeadings();
@@ -13475,7 +13517,9 @@ function wallPickVents(){
 }
 function wizGoTo(title){
   for(var i=0;i<WIZ_STEPS.length;i++){
-    if(WIZ_STEPS[i].title===title){
+    var _hit=WIZ_STEPS[i].title===title;
+    for(var j=0;!_hit && j<WIZ_STEPS[i].panels.length;j++) _hit=(WIZ_PANELS[WIZ_STEPS[i].panels[j]]===title);
+    if(_hit){
       if(wizStep!==i){ wizStep=i; wizRender(); }
       return true;
     }
@@ -13864,6 +13908,18 @@ function removeSelectedWindow(){
   showToast('Removed the window on the '+wall+' wall.');
 }
 var _toastTimer=null;
+function showNoRoom(msg, action){
+  var t=document.getElementById('toast'); if(!t){ alert(msg); return; }
+  t.textContent=msg; t.setAttribute('role','alert'); t.style.display='block'; t.style.pointerEvents='auto';
+  if(action){
+    var b=document.createElement('button'); b.type='button'; b.textContent=action.label;
+    b.style.cssText='display:block;margin:8px auto 0;padding:7px 12px;border-radius:8px;border:0;background:#2BB5E8;color:#06121a;font-weight:700;font-size:13px;cursor:pointer';
+    b.onclick=function(ev){ ev.stopPropagation(); t.style.display='none'; action.fn(); };
+    t.appendChild(b);
+  }
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(function(){ t.style.display='none'; }, 8000);
+}
 function showToast(msg){
   var t=document.getElementById('toast'); if(!t) return;
   t.textContent=msg; t.style.display='block';
@@ -14130,8 +14186,21 @@ function addWindowByKey(key, el){
   var respaced=false;
   if(slot===null){ slot=spaceWallEvenly(ADD_WALL, e.w, probe); respaced=(slot!==null); }
   if(slot===null){
-    closeSubPage();
-    showToast(noRoomMessage(ADD_WALL, e.w, probe));
+    /* Friendly, actionable no-room notice: names the wall and the size, and
+       offers a one-tap move to a wall that does have room. It stays up long
+       enough to read (the old 3.2s toast could expire unseen while the page
+       was busy), and the picker stays open so nothing seems to "just close". */
+    var alts=wallsThatFit(e.w, ADD_WALL, probe);
+    var cap=function(x){ return x.charAt(0).toUpperCase()+x.slice(1); };
+    var big=largestFitOnWall(ADD_WALL, probe);
+    var m='Not enough room on the '+cap(ADD_WALL)+' wall for a '+e.w+'" x '+e.h+'" window';
+    m += alts.length ? ' — try the '+cap(alts[0])+' wall'+(big>0?(', or pick one '+big+'" wide or less.'):'.')
+                     : (big>0?(' — the widest that fits there is '+big+'".'):' — try moving the door or a smaller window.');
+    showNoRoom(m, alts.length ? {label:'Put it on the '+cap(alts[0])+' wall', fn:function(){
+      ADD_WALL=alts[0]; if(typeof WIZ_ADDWALL_DOOR!=='undefined') WIZ_ADDWALL_DOOR=alts[0];
+      if(selectedKind==='window') selectedWindow=-1;
+      addWindowByKey(key, el);
+    }} : null);
     return;
   }
   var nw={wall:ADD_WALL, pos:slot, w:e.w, h:e.h, cy:newCy, type:e.key};

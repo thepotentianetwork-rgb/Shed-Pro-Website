@@ -365,7 +365,7 @@ function autosave(){
       var a=Object.assign({},cfg,{use:null}), b=Object.assign({},window.STOCK_CONFIG,{use:null});
       if(JSON.stringify(a)===JSON.stringify(b)) return;
     }
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({t:Date.now(), step:window.wizStep||0, cfg:cfg}));
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({t:Date.now(), v:2, step:window.wizStep||0, cfg:cfg}));
   }catch(e){}
 }
 function readSaved(){
@@ -409,7 +409,10 @@ function offerResume(){
     if(typeof window.renderUseGrid==='function') window.renderUseGrid();
     if(typeof window.renderStyleTiles==='function') window.renderStyleTiles();
     if(typeof window.updateSum==='function') window.updateSum();
-    var st=Math.max(0, Math.min((window.WIZ_STEPS||[]).length-1, +s.step||0));
+    var st=+s.step||0;
+    // Autosaves from the old 11-step wizard (no v:2) map onto the merged steps.
+    if(s.v!==2 && window.WIZ_OLD_TO_NEW && window.WIZ_OLD_TO_NEW[st]!=null) st=window.WIZ_OLD_TO_NEW[st];
+    st=Math.max(0, Math.min((window.WIZ_STEPS||[]).length-1, st));
     window.wizStep=st; window.wizRender();
     interacted=true; lastSavedHash=JSON.stringify(window.getDesignConfig())+'|'+st;
     DU.track('design_resumed', {step:st});
