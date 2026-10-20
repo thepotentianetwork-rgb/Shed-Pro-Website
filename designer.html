@@ -1132,6 +1132,7 @@ textarea.inp{resize:vertical}
       </div>
       <!-- Only when the server prices at our regular (card) price: the figure
            for paying any other way. Filled from /shed/quote's cashDiscount. -->
+      <div id="priceTbd" hidden style="font-size:11px;font-weight:600;color:#f2c94c;margin:-4px 0 10px;text-align:right;line-height:1.45"></div>
       <div id="priceCash" hidden style="font-size:11px;font-weight:600;color:#6fcf97;margin:-4px 0 10px;text-align:right"></div>
       <div id="redlinePanel" style="display:none;margin:0 0 12px;padding:11px 12px;border-radius:9px;background:rgba(220,70,70,.07);border:1px solid rgba(220,70,70,.35)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -2100,10 +2101,17 @@ var WINDOW_CATALOG = [
   {grp:"White Vinyl",    key:"White Vinyl 24x30",   w:24,h:30},
   {grp:"White Vinyl",    key:"White Vinyl 36x24",   w:36,h:24},
   {grp:"White Vinyl",    key:"White Vinyl 36x36",   w:36,h:36},
+  /* PRICE TBD (owner, 20 Oct 2026): 72x48 double-pane slider and 24x80 fixed
+     double-pane sidelight (stands beside a door). No price exists yet: shown
+     as "Price TBD" and never sent for pricing — see isTbdWin(). */
+  {grp:"White Vinyl",    key:"White Vinyl 72x48",   w:72,h:48, tbd:true},
+  {grp:"White Vinyl",    key:"White Sidelight 24x80", w:24,h:80, tbd:true},
   {grp:"Black Vinyl",    key:"Black Vinyl 18x24",   w:18,h:24},
   {grp:"Black Vinyl",    key:"Black Vinyl 24x36",   w:24,h:36},
   {grp:"Black Vinyl",    key:"Black Vinyl 36x24",   w:36,h:24},
   {grp:"Black Vinyl",    key:"Black Vinyl 36x36",   w:36,h:36},
+  {grp:"Black Vinyl",    key:"Black Vinyl 72x48",   w:72,h:48, tbd:true},
+  {grp:"Black Vinyl",    key:"Black Sidelight 24x80", w:24,h:80, tbd:true},
   {grp:"White Aluminum", key:"White Aluminum 12x12", w:12,h:12},
   {grp:"White Aluminum", key:"White Aluminum 18x27", w:18,h:27},
   {grp:"White Aluminum", key:"White Aluminum 24x36", w:24,h:36},
@@ -2152,6 +2160,18 @@ function isLiftUp(wd){ return /Lift-Up Bar/.test(String((wd && wd.type) || ''));
    either product — so a third one added later inherits all three by naming
    itself, and neither of the opening mechanisms has to know it exists. */
 function isBarWindow(wd){ return isBifold(wd) || isLiftUp(wd); }
+/* PRICE TBD windows: catalog entries flagged tbd. Their price is "Price TBD",
+   they add nothing to the total, and they are left out of the config sent to
+   /shed/quote so no server version can area-estimate them. */
+var PRICE_TBD_NOTE='final price confirmed before deposit';
+function isTbdKey(k){
+  for(var i=0;i<WINDOW_CATALOG.length;i++) if(WINDOW_CATALOG[i].key===k) return !!WINDOW_CATALOG[i].tbd;
+  return false;
+}
+function isTbdWin(wd){ return !!(wd && isTbdKey(wd.type)); }
+function tbdWindowLabels(){
+  return windowsData.filter(isTbdWin).map(function(wd){ return supplierWindowLabel(wd.type,wd.w,wd.h)||wd.type; });
+}
 function isPremiumWin(wd){
   var t=String((wd && wd.type) || '');
   for(var i=0;i<WINDOW_CATALOG.length;i++){
@@ -13659,7 +13679,7 @@ function inWH(w, h) { return w + '" W x ' + h + '" H'; }
 function nominal(i) { return Math.floor(i / 12) + '/' + (Math.round(i) % 12); }
 function supplierWindowLabel(type, w, h) {
   const k = String(type || '').trim();
-  const m = /^(White|Black|Brown)\s+(Vinyl|Aluminum|Transom|Bi-Fold Bar|Lift-Up Bar)\s+(\d+)\s*x\s*(\d+)$/.exec(k);
+  const m = /^(White|Black|Brown)\s+(Vinyl|Aluminum|Transom|Sidelight|Bi-Fold Bar|Lift-Up Bar)\s+(\d+)\s*x\s*(\d+)$/.exec(k);
   if (m) {
     const color = m[1], mat = m[2];
     let W = Number(w) || 0, H = Number(h) || 0;
@@ -13669,6 +13689,12 @@ function supplierWindowLabel(type, w, h) {
       if (mat === 'Transom' && H === 10 && (W === 3 || W === 5)) W = W * 12;
     }
     const lc = color.toLowerCase();
+    /* 72x48 slider and 24x80 sidelight (owner, 20 Oct 2026): vinyl,
+       double-pane, price TBD. Only these new keys say "Double-pane" — the
+       older vinyl lines are left exactly as they read. */
+    const fr2 = color === 'Black' ? 'Black ext / White int vinyl' : 'White vinyl';
+    if (mat === 'Sidelight') return 'Sidelight Window ' + inWH(W, H) + ' \u00b7 Fixed \u00b7 Double-pane \u00b7 ' + fr2 + ' frame';
+    if (mat === 'Vinyl' && W === 72 && H === 48) return 'Window ' + inWH(W, H) + ' \u00b7 Slider (XO) \u00b7 Double-pane \u00b7 ' + fr2 + ' frame';
     if (mat === 'Vinyl' || mat === 'Aluminum') {
       const op = (W <= 12 && H <= 12) ? 'Fixed' : 'Slider (XO)';
       /* Black vinyl is black exterior / white interior (owner, 20 Oct 2026). */
@@ -13753,7 +13779,7 @@ function openWindowOptions(cat){
     '</div><div class="tgrid">';
   cat_.forEach(function(e){
     if(winCatOf(e)!==wantCat) return;
-    var pr=priceTag(prices[e.key],'');
+    var pr=e.tbd?(PRICE_LOCKED?'':'Price TBD'):priceTag(prices[e.key],'');
     // Pick the icon by the entry's OWN actual shape (w<h stands on end),
     // not by which category tab it's under — that's what had every transom
     // showing the wide/short icon even when it was really the tall/narrow one.
@@ -13999,6 +14025,9 @@ function defaultCyFor(hIn, key, wIn){
      `band` rule below and mounted up under the eave — a pass-through bar at
      seven feet. Tested before the height rule, for that reason. */
   if(/(bi-fold|lift-up) bar/.test(k)) return BAR_SILL_IN() + hIn/2;
+  /* A SIDELIGHT stands beside a door: sill near the floor, head level with
+     an 80in door head, rather than centred at 52in like a window. */
+  if(/sidelight/.test(k)) return Math.min(hIn/2 + 1, wallIn - hIn/2 - 2);
   if(band)                return Math.max(hIn/2+4, wallIn - hIn/2 - 10);
   return 52;                                     // uprights and normal windows
 }
@@ -14153,6 +14182,7 @@ function renderPlacedWindows(){
     var sel=(selectedKind==='window' && selectedWindow===i);
     html+='<div class="placed-row" onclick="editWindowIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
       '<span>'+((wd.type&&supplierWindowLabel(wd.type,wd.w,wd.h))||wd.type||'Window')+' &middot; '+wd.wall+
+      (isTbdWin(wd) ? ' &middot; <b style="color:#f2c94c">Price TBD</b>' : '')+
       (isBifold(wd) ? (' &middot; '+(wd.open?'open':'closed')+', folds '+((wd.fold==='right')?'right':'left'))
        : isLiftUp(wd) ? (' &middot; '+(wd.open?'open':'closed')) : '')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
@@ -17225,7 +17255,7 @@ function populateWindowTypes(){
   cat.forEach(function(e){
     if(e.grp!==lastGrp){ if(lastGrp) html+='</optgroup>'; html+='<optgroup label="'+e.grp+'">'; lastGrp=e.grp; }
     var sizeLabel=e.key.replace(e.grp+' ','');
-    var _pw=priceTag(prices[e.key],'');
+    var _pw=e.tbd?(PRICE_LOCKED?'':'Price TBD'):priceTag(prices[e.key],'');
     var pr=_pw?(' — '+_pw):'';
     html+='<option value="'+e.key+'">'+sizeLabel+pr+'</option>';
   });
@@ -19017,6 +19047,11 @@ function refreshPrice(){
 }
 function fetchQuote(){
   var cfg = getDesignConfig();
+  /* Price TBD windows are priced by nobody: strip them from the pricing
+     request only (the saved / submitted design keeps them). */
+  if(cfg && Array.isArray(cfg.windows) && cfg.windows.some(isTbdWin)){
+    cfg = Object.assign({}, cfg, { windows: cfg.windows.filter(function(w){ return !isTbdWin(w); }) });
+  }
   var wantRedline = redlineUnlocked && !PRICE_LOCKED && !!shedAdminToken;
   var hash = JSON.stringify(cfg) + '|' + wantRedline;
   if(hash === _quoteLastHash && (quoteCache.total!=null || quoteCache.failed)) return;
@@ -19096,6 +19131,12 @@ function paintPrice(){
     var on = !!(cd && showing && !PRICE_LOCKED && quoteCache.total!=null && !quoteCache.failed);
     pc.hidden = !on;
     pc.textContent = on ? 'Regular price. By cash, check or ACH: '+money0(cd.cashTotal)+' (save '+cd.percentLabel+'%)' : '';
+  }
+  var pt=document.getElementById('priceTbd'), tl=tbdWindowLabels();
+  if(pt){
+    pt.hidden = !tl.length;
+    pt.innerHTML = tl.map(function(l){ return '<div>+ '+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+' &middot; <b>Price TBD</b></div>'; }).join('')+
+      (tl.length ? '<div style="opacity:.8">Not included in the price shown &mdash; '+PRICE_TBD_NOTE+'.</div>' : '');
   }
 }
 
@@ -19221,6 +19262,9 @@ function paintRedline(){
       html+=row('&nbsp;+ '+wl.label, '+'+money(wl.price), {color:'#8fe3ff'});
     });
   }
+  tbdWindowLabels().forEach(function(l){
+    html+=row('&nbsp;+ '+l, 'Price TBD', {color:'#f2c94c'});
+  });
   if(rl.intSell>0){
     html+=row('&nbsp;+ '+rl.intSellName, '+'+money(rl.intSell), {color:'#8fe3ff'});
   }
