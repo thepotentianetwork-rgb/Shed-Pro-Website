@@ -13652,6 +13652,63 @@ function itemIcon(kind){
   }
   return o+p+'</svg>';
 }
+/* SUPPLIER-ORDER LABELS — display only, copied verbatim from
+   worker/quotelines.js (supplierWindowLabel / supplierDoorLabel). Inches,
+   Width x Height; no key, size or price is derived from these strings. */
+function inWH(w, h) { return w + '" W x ' + h + '" H'; }
+function nominal(i) { return Math.floor(i / 12) + '/' + (Math.round(i) % 12); }
+function supplierWindowLabel(type, w, h) {
+  const k = String(type || '').trim();
+  const m = /^(White|Black|Brown)\s+(Vinyl|Aluminum|Transom|Bi-Fold Bar|Lift-Up Bar)\s+(\d+)\s*x\s*(\d+)$/.exec(k);
+  if (m) {
+    const color = m[1], mat = m[2];
+    let W = Number(w) || 0, H = Number(h) || 0;
+    if (!W || !H) {
+      W = Number(m[3]); H = Number(m[4]);
+      /* "3x10"/"5x10" transoms are FEET x inches: the designer places them at 36x10 / 60x10. */
+      if (mat === 'Transom' && H === 10 && (W === 3 || W === 5)) W = W * 12;
+    }
+    const lc = color.toLowerCase();
+    if (mat === 'Vinyl' || mat === 'Aluminum') {
+      const op = (W <= 12 && H <= 12) ? 'Fixed' : 'Slider (XO)';
+      return 'Window ' + inWH(W, H) + ' \u00b7 ' + op + ' \u00b7 ' + color + ' ' + mat.toLowerCase() + ' frame';
+    }
+    if (mat === 'Transom') return 'Transom Window ' + inWH(W, H) + ' \u00b7 Fixed \u00b7 ' + color + ' frame';
+    return mat + ' Window ' + inWH(W, H) + ' \u00b7 ' + color + ' frame';
+  }
+  const t = /^Transom\s+(\d+)\s*x\s*(\d+)$/.exec(k);
+  if (t) return 'Transom Window ' + inWH(Number(w) || Number(t[1]), Number(h) || Number(t[2])) + ' \u00b7 Fixed';
+  return null; // unknown key: caller keeps its existing label
+}
+const SUP_RES = {
+  res6: ['Door', 36, '6 Panel', 'White'], reshalf: ['Door', 36, 'Half Lite', 'White'], resfull: ['Door', 36, 'Full Lite', 'White'],
+  res6B: ['Door', 36, '6 Panel', 'Black'], reshalfB: ['Door', 36, 'Half Lite', 'Black'], resfullB: ['Door', 36, 'Full Lite', 'Black'],
+  resDouble: ['Double Door', 72, '6 Panel \u00b7 Steel, primed', 'White'],
+  resDoubleFull: ['Double Door', 72, 'Full Lite', 'White'], resDoubleFullB: ['Double Door', 72, 'Full Lite', 'Black']
+};
+const SUP_TRIM = { basic: 'Standard', craftsman: 'Craftsman', xtrim: 'X-Trim', arch: 'Arch Trim', panel4: '4 Panel' };
+function supplierDoorLabel(dd) {
+  if (!dd) return null;
+  const st = dd.style || 'basic';
+  const w = Number(dd.w) || 60;
+  const size = (W, H) => inWH(W, H) + ' (' + nominal(W) + ' ' + nominal(H) + ')';
+  if (SUP_RES[st]) {
+    const r = SUP_RES[st];
+    /* Residential prehung: nominal 80" slab (the 3D draws the 82.5" unit). */
+    return 'Residential Prehung ' + r[0] + ' ' + size(r[1], 80) + ' \u00b7 ' + r[2] + ' \u00b7 ' + r[3];
+  }
+  /* Sliding glass: the catalog names it "6' (60x80)" while the designer draws
+     it 70" wide — size left as the product name until that is confirmed. */
+  if (st === 'slideglass' || st === 'slideglassB') return null;
+  const h = Number(dd.h) || (st === 'rollup' ? 84 : 76);
+  if (st === 'rollup') return 'Roll-Up Garage Door ' + size(w, h);
+  if (st === 'cedar') return 'Cedar Double Door ' + size(w, h);
+  if (st === 'cedarSingle') return 'Cedar Single Door ' + size(w, h);
+  if (st === 'fairytale') return 'Fairytale Entry Door ' + size(w, h);
+  if (SUP_TRIM[st]) return (w <= 46 ? 'Single' : 'Double') + ' Door ' + size(w, h) + ' \u00b7 ' + SUP_TRIM[st] + ' \u00b7 Shop-built';
+  return null;
+}
+
 function buildWindowGrid(){
   var host=document.getElementById('windowGrid');
   if(!host) return;
@@ -13703,7 +13760,7 @@ function openWindowOptions(cat){
             :(wantCat==='transom')?(e.w<e.h?'transom-v':'transom'):'window';
     html+='<div class="tile" onclick="addWindowByKey(\''+e.key.replace(/'/g,"\\'")+'\')">'+
       '<div class="tile-img">'+itemIcon(icon)+'</div>'+
-      '<div class="tile-cap"><div class="tile-name">'+(e.label||e.key)+'</div><div class="tile-price">'+pr+'</div></div></div>';
+      '<div class="tile-cap"><div class="tile-name">'+(supplierWindowLabel(e.key,e.w,e.h)||e.label||e.key)+'</div><div class="tile-price">'+pr+'</div></div></div>';
   });
   html+='</div>';
   /* The bi-fold's own controls, shown only when one is actually selected on
@@ -14091,7 +14148,7 @@ function renderPlacedWindows(){
   windowsData.forEach(function(wd,i){
     var sel=(selectedKind==='window' && selectedWindow===i);
     html+='<div class="placed-row" onclick="editWindowIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+(wd.type||'Window')+' &middot; '+wd.wall+
+      '<span>'+((wd.type&&supplierWindowLabel(wd.type,wd.w,wd.h))||wd.type||'Window')+' &middot; '+wd.wall+
       (isBifold(wd) ? (' &middot; '+(wd.open?'open':'closed')+', folds '+((wd.fold==='right')?'right':'left'))
        : isLiftUp(wd) ? (' &middot; '+(wd.open?'open':'closed')) : '')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
@@ -14505,9 +14562,10 @@ function doorOptionsHTML(i){
         '<div class="tile-cap"><div class="tile-name">'+nm+'</div><div class="tile-price" style="white-space:normal;line-height:1.25">Too wide for the '+PORCH_LEN+' ft porch</div></div></div>';
       return;
     }
+    var supD=supplierDoorLabel({style:style,w:sw,h:hh}), supSz=supD&&/\d+" W x [\d.]+" H \([^)]*\)/.exec(supD);
     h+='<div class="tile" onclick="addDoorByStyle(\''+style+'\','+sw+','+hh+')">'+
       '<div class="tile-img">'+doorStyleIcon(style, c.kind)+'</div>'+
-      '<div class="tile-cap"><div class="tile-name">'+nm+'</div><div class="tile-price">'+pr+'</div></div></div>';
+      '<div class="tile-cap"><div class="tile-name">'+nm+(supSz?'<div style="font-size:10px;font-weight:600;opacity:.8">'+supSz[0]+'</div>':'')+'</div><div class="tile-price">'+pr+'</div></div></div>';
   });
   h+='</div>';
   return h;
@@ -14865,7 +14923,7 @@ function renderPlacedDoors(){
                                   : (dd.w<=38?"3'":(dd.w<=64?"5'":"6'"));
     var sel=(selectedKind==='door' && selectedDoor===i);
     html+='<div class="placed-row" onclick="editDoorIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+szl+' '+(names[dd.style]||dd.style)+colorSuffix(dd)+' &middot; '+dd.wall+
+      '<span>'+(supplierDoorLabel(dd)||(szl+' '+(names[dd.style]||dd.style)))+colorSuffix(dd)+' &middot; '+dd.wall+
       (dd.awning?' <span style="color:var(--blue);font-size:10px">&middot; overhang</span>':'')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
       '<span class="placed-x" onclick="event.stopPropagation();removeDoorIdx('+i+')">&times;</span></div>';
