@@ -2026,6 +2026,7 @@ function porchFitOpenings(follow){
   function fit(list, isDoor, isVent){
     list.forEach(function(o){
       var g=gaps[o.wall]; if(!g) return;
+      if(!isDoor && !isVent && winRetQ(o)) return;   // on a return wall, not this one
       var wIn=isVent ? 16 : (+o.w||24);
       var half=(wIn*0.2/12)/2 + (isVent?0.02:0.07);   // casing
       var c=posToAxis(o.wall, o.pos, wIn), c0=c;
@@ -8185,6 +8186,7 @@ function buildLeanToRoof(){
     // window holes on this wall (doors stay front/back only)
     windowsData.forEach(function(wdd){
       if(wdd.wall!==wallId) return;
+      if(winRetQ(wdd)) return;
       var f2=wallFrame(wallId);
       var wz=posToAxis(wallId, wdd.pos, wdd.w);           // world z of the centre
       // world z -> shape x: local -x is world FRONT (+Z), so sx = -wz
@@ -8230,6 +8232,7 @@ function buildLeanToRoof(){
         var segs2=[[0, tTop]];
         windowsData.forEach(function(wdd){
           if(wdd.wall!==wallId) return;
+      if(winRetQ(wdd)) return;
           var wz2=posToAxis(wallId, wdd.pos, wdd.w);
           var hw2=(wdd.w*tIN)/2, hh2=(wdd.h*tIN)/2;
           var cy2=(wdd.cy!=null?wdd.cy:52)*tIN;
@@ -9857,6 +9860,7 @@ function buildWallWithOpenings(wall, fo){
   var wallIn=h/(0.2/12);   // this wall's height, in inches
   windowsData.forEach(function(wd){
     if(wd.wall!==wall) return;
+    if(winRetQ(wd)) return;
     var ww=wd.w*0.2/12, wh=wd.h*0.2/12;
     if(wd.cy==null) wd.cy=52;
     var minCy=wd.h/2+3, maxCy=windowCeilingIn(wd.wall, wd.h);
@@ -10490,21 +10494,47 @@ function buildPorchInsetWalls(){
   var fi=porchInsetFrame();
   if(fi) buildWallWithOpenings(r.wall, fi);
   var h=H*0.2, t=0.05;
-  function ret(cx, cz, lenX, lenZ){
-    var len=Math.max(lenX, lenZ);
+  function box(cx, cy, cz, lenX, hy, lenZ, len){
+    if(lenX<=1e-4 || hy<=1e-4 || lenZ<=1e-4) return;
     var mat=DIAG ? diagMat(0x22cc88) : wallSegMatGlobal(len, h, 0, len, 0, h, false);
-    var m=new THREE.Mesh(new THREE.BoxGeometry(lenX, h, lenZ), mat);
-    m.position.set(cx, h/2, cz); m.castShadow=true; m.receiveShadow=true;
+    var m=new THREE.Mesh(new THREE.BoxGeometry(lenX, hy, lenZ), mat);
+    m.position.set(cx, cy, cz); m.castShadow=true; m.receiveShadow=true;
     shedGroup.add(m);
+  }
+  /* A return wall, solid unless a window sits on it: then it is built as
+     pieces round each opening (left/right runs, sill and head panels). */
+  function ret(cx, cz, lenX, lenZ, which){
+    var alongX=lenX>=lenZ, len=alongX?lenX:lenZ, a0=(alongX?cx:cz)-len/2;
+    var q=plReturnFor(r.wall, which), holes=[];
+    if(q) (windowsData||[]).forEach(function(wd){
+      if(wd.wall!==r.wall || wd.ret!==which) return;
+      var sR=winRetS(q, wd), c=q.pIn+(q.pOut>q.pIn?1:-1)*sR;
+      var hw=(wd.w*0.2/12)/2, cy=(wd.cy==null?52:wd.cy)*0.2/12, hh=(wd.h*0.2/12)/2;
+      holes.push({a:c-hw, b:c+hw, bot:Math.max(0,cy-hh), top:Math.min(h,cy+hh)});
+    });
+    function piece(s0, s1, y0, y1){
+      var mid=(s0+s1)/2, sl=s1-s0, yc=(y0+y1)/2, hy=y1-y0;
+      if(alongX) box(mid, yc, cz, sl, hy, lenZ, len); else box(cx, yc, mid, lenX, hy, sl, len);
+    }
+    if(!holes.length){ piece(a0, a0+len, 0, h); return; }
+    holes.sort(function(p,q2){ return p.a-q2.a; });
+    var cur=a0;
+    holes.forEach(function(hl){
+      var ha=Math.max(a0, hl.a), hb=Math.min(a0+len, hl.b);
+      if(ha>cur) piece(cur, ha, 0, h);
+      piece(ha, hb, 0, hl.bot); piece(ha, hb, hl.top, h);
+      cur=Math.max(cur, hb);
+    });
+    if(cur<a0+len) piece(cur, a0+len, 0, h);
   }
   if(r.wall==='right'){
     var rx0=r.x0-t/2, rx1=r.x1+t/2;
-    if(!r.atStart) ret((rx0+rx1)/2, r.z0-t/2, rx1-rx0, t);
-    if(!r.atEnd)   ret((rx0+rx1)/2, r.z1+t/2, rx1-rx0, t);
+    if(!r.atStart) ret((rx0+rx1)/2, r.z0-t/2, rx1-rx0, t, 'start');
+    if(!r.atEnd)   ret((rx0+rx1)/2, r.z1+t/2, rx1-rx0, t, 'end');
   } else {
     var rz0=r.z0-t/2, rz1=r.z1+t/2;
-    if(!r.atStart) ret(r.x0-t/2, (rz0+rz1)/2, t, rz1-rz0);
-    if(!r.atEnd)   ret(r.x1+t/2, (rz0+rz1)/2, t, rz1-rz0);
+    if(!r.atStart) ret(r.x0-t/2, (rz0+rz1)/2, t, rz1-rz0, 'start');
+    if(!r.atEnd)   ret(r.x1+t/2, (rz0+rz1)/2, t, rz1-rz0, 'end');
   }
 }
 function buildFoundation(){
@@ -10787,6 +10817,7 @@ function buildWindows(){
        window near the peak has to be narrow enough AND centred enough to fit
        between the two rakes — otherwise it hangs out over the roof edge. */
     var _above=(wd.cy + wd.h/2) - H*12;
+    if(winRetQ(wd) && _above>0){ wd.cy=H*12-wd.h/2-3; _above=0; }   // a return is wall-height only
     if(_above > 0){
       var _halfIn=gableHalfAt(_above);
       var _ctrIn=(wd.pos-0.5)*(encWft()*12);
@@ -10796,6 +10827,7 @@ function buildWindows(){
         wd.pos = 0.5 + Math.max(-Math.abs(_slack), Math.min(Math.abs(_slack), wd.pos-0.5));
       }
     }
+    var retQ=winRetQ(wd);
     var winCY=wd.cy*0.2/12;
     // Build the window in a LOCAL group facing +z (glass spans local X-Z plane),
     // then rotate/position onto the wall — same approach as doors.
@@ -10933,13 +10965,28 @@ function buildWindows(){
       grp.add(vbar(winW+fT, fT, 0, -winH/2));   // bottom
       grp.add(vbar(fT, winH+fT, winW/2, 0));    // right
       grp.add(vbar(fT, winH+fT, -winW/2, 0));   // left
-      grp.add(vbar(winW, fT*0.7, 0, 0));        // center divider
+      /* The new 72x48 slider and 24x80 sidelight are no-grid units (owner,
+         21 Oct 2026): no horizontal centre bar. The slider gets the
+         vertical meeting rail an XO actually has; the sidelight is clear.
+         Every other window keeps its centre divider exactly as before. */
+      if(!winNoGrid(wd)) grp.add(vbar(winW, fT*0.7, 0, 0));        // center divider
+      else if(/72x48$/.test(String(wd.type))) grp.add(vbar(fT*0.8, winH, 0, 0));   // XO meeting rail
     }
     if(EDIT_MODE && selectedKind==='window' && selectedWindow===idx){
       var ring=new THREE.Mesh(
         new THREE.BoxGeometry(winW+0.16, winH+0.16, 0.006),
         new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.5, side:THREE.DoubleSide}));
       ring.position.set(0, winCY, outZ+0.02); grp.add(ring);
+    }
+    if(retQ){
+      // On a porch return wall: faces into the porch, like a return light.
+      var sR=winRetS(retQ, wd), pR=retQ.pIn+(retQ.pOut>retQ.pIn?1:-1)*sR;
+      grp.rotation.y = retQ.front ? (retQ.n>0 ? Math.PI/2 : -Math.PI/2) : (retQ.n>0 ? 0 : Math.PI);
+      if(retQ.front) grp.position.set(retQ.a, 0, pR); else grp.position.set(pR, 0, retQ.a);
+      grp.userData.wall=null; grp.userData.ret=wd.ret;
+      shedGroup.add(grp);
+      windowMeshes.push({group:grp, index:idx});
+      return;
     }
     // transform onto wall
     var rotY=0;
@@ -11598,7 +11645,7 @@ function plObstacles(wall){
               awA:c-dw/2-0.12, awB:c+dw/2+0.12, awTop:dh+0.25});
   });
   (windowsData||[]).forEach(function(w){
-    if(w.wall!==wall) return;
+    if(w.wall!==wall || winRetQ(w)) return;
     var ww=w.w*PL_IN, wh=w.h*PL_IN, cy=(w.cy==null?52:w.cy)*PL_IN;
     var side=0.055;
     if(typeof ADDONS!=='undefined' && ADDONS.shutters) side+=0.006+Math.min(ww*0.42,0.16);
@@ -11704,6 +11751,27 @@ function plReturns(wall){
 }
 function plReturnFor(wall, ret){
   return plReturns(wall).filter(function(q){ return q.ret===ret; })[0]||null;
+}
+/* WINDOWS ON A PORCH RETURN WALL. Same {wall, ret:'start'|'end', pos} as a
+   porch light: pos runs 0 at the stepped-in wall to 1 at the porch's outer
+   edge. Returns the return's geometry, or null when the window is on an
+   ordinary wall (no ret, or its return is gone - then it renders on its own
+   wall as before). Old designs carry no ret, so nothing changes for them. */
+function winRetQ(wd){
+  if(!wd || !wd.ret || typeof plReturnFor!=='function') return null;
+  return plReturnFor(wd.wall, wd.ret);
+}
+/* Centre of a return-wall window, as a distance s from the stepped-in wall. */
+function winRetS(q, wd){
+  var hw=(wd.w*0.2/12)/2, m=0.04, lo=hw+m, hi=q.d-hw-m;
+  var s=(+wd.pos||0)*q.d;
+  if(hi<lo) return q.d/2;
+  return Math.max(lo, Math.min(hi, s));
+}
+/* Is this one of the new no-grid units (72x48 XO slider, 24x80 sidelight)? */
+function winNoGrid(wd){
+  var t=String((wd&&wd.type)||'');
+  return /Sidelight/.test(t) || /Vinyl 72x48$/.test(t);
 }
 /* Allowed centre positions along the main wall, as [lo,hi] runs of s, for a
    fixture half-width hw: off the corner trim, and on a partial porch off the
@@ -12557,6 +12625,7 @@ function buildInterior(){
     var out=[];
     windowsData.forEach(function(wd){
       if(wd.wall!==wall) return;
+      if(winRetQ(wd)) return;
       var cy=(wd.cy!=null?wd.cy:52), top=(cy+wd.h/2)*IN_, bot=(cy-wd.h/2)*IN_;
       if(top<=h+0.004) return;
       var xc=posToAxis(wall, wd.pos, wd.w), hw=wd.w*IN_/2;
@@ -12632,6 +12701,7 @@ function buildInterior(){
       var trapHoles=[];
       windowsData.forEach(function(wdd){
         if(wdd.wall!==wall) return;
+      if(winRetQ(wdd)) return;
         var wz=posToAxis(wall, wdd.pos, wdd.w);
         var hw=(wdd.w*0.2/12)/2, hh=(wdd.h*0.2/12)/2;
         var cy=(wdd.cy!=null?wdd.cy:52)*0.2/12;
@@ -12707,6 +12777,7 @@ function buildInterior(){
     var holes=[];
     windowsData.forEach(function(wd){
       if(wd.wall!==wall) return;
+      if(winRetQ(wd)) return;
       var ww=wd.w*0.2/12, wh=wd.h*0.2/12;
       if(wd.cy==null) wd.cy=52;
       var minCy=wd.h/2+3, maxCy=windowCeilingIn(wd.wall, wd.h);
@@ -13992,7 +14063,7 @@ function showToast(msg){
 function wallFreeSpan(wall){
   var wallLenIn = ((wall==='front'||wall==='back') ? W : L) * 12;
   var edge=3, gap=4, occ=[];
-  windowsData.forEach(function(wd){ if(wd.wall===wall){ var c=wd.pos*wallLenIn; occ.push([c-wd.w/2-gap, c+wd.w/2+gap]); } });
+  windowsData.forEach(function(wd){ if(wd.wall===wall && !winRetQ(wd)){ var c=wd.pos*wallLenIn; occ.push([c-wd.w/2-gap, c+wd.w/2+gap]); } });
   (typeof ventsData!=='undefined'?ventsData:[]).forEach(function(vd){
     if(vd.wall===wall){ var c=(vd.pos!=null?vd.pos:0.5)*wallLenIn, vw=(vd.w||14); occ.push([c-vw/2-gap, c+vw/2+gap]); } });
   (typeof doorsData!=='undefined'?doorsData:[]).forEach(function(dd){ if(dd.wall===wall){ var c=dd.pos*wallLenIn; occ.push([c-dd.w/2-gap, c+dd.w/2+gap]); } });
@@ -14121,7 +14192,7 @@ function openingFootprint(wIn, kind){
    much room is left, or which wall to try instead. */
 function wallContents(wall){
   var out=[];
-  windowsData.forEach(function(wd){ if(wd.wall===wall) out.push({w:wd.w, what:'window'}); });
+  windowsData.forEach(function(wd){ if(wd.wall===wall && !winRetQ(wd)) out.push({w:wd.w, what:'window'}); });
   (typeof doorsData!=='undefined'?doorsData:[]).forEach(function(dd){
     if(dd.wall===wall) out.push({w:dd.w, what:(dd.w>=51?'double door':'door')}); });
   (typeof ventsData!=='undefined'?ventsData:[]).forEach(function(vd){
@@ -14165,7 +14236,7 @@ function noRoomMessage(wall, wIn, probe){
 }
 function wallOpenings(wall){
   var out=[];
-  windowsData.forEach(function(wd,i){ if(wd.wall===wall)
+  windowsData.forEach(function(wd,i){ if(wd.wall===wall && !winRetQ(wd))
     out.push({kind:'w', i:i, w:wd.w, h:wd.h, cy:wd.cy, pos:wd.pos, what:'window'}); });
   (typeof doorsData!=='undefined'?doorsData:[]).forEach(function(dd,i){ if(dd.wall===wall)
     out.push({kind:'d', i:i, w:dd.w, h:dd.h, pos:dd.pos, what:(dd.w>=51?'double door':'door')}); });
@@ -14344,6 +14415,14 @@ function removeShelfIdx(i){
 
 // Tap a placed-window row -> select it and open the type page; picking a type
 // then SWAPS it in place (addWindowByKey already handles the selected case).
+function setWindowRet(v){
+  if(selectedKind!=='window' || selectedWindow<0) return;
+  var wd=windowsData[selectedWindow]; if(!wd) return;
+  if(v){ wd.ret=v; wd.pos=0.5; if(wd.cy==null || wd.cy+wd.h/2>H*12-3) wd.cy=Math.max(wd.h/2+3, Math.min(52, H*12-wd.h/2-3)); }
+  else { delete wd.ret; wd.pos=0.5; }
+  buildShed(); syncEditorPanel();
+  if(typeof refreshPrice==='function') refreshPrice();
+}
 function editWindowIdx(i){
   if(!windowsData[i]) return;
   selectedKind='window'; selectedWindow=i; selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
@@ -17440,6 +17519,18 @@ function syncEditorPanel(){
     var label=isDoor?('Door ('+sel.style+') on '+sel.wall+' wall'):(sel.w+'\u2033 \u00d7 '+sel.h+'\u2033 window on '+sel.wall+' wall');
     if(info) info.innerHTML='Selected: '+label+
       '<br><span style="color:var(--w)">'+d.heightLine+' &middot; '+_fi(d.left)+' from left corner &middot; '+_fi(d.right)+' from right corner</span>';
+    /* Porch return walls: a window on the porch wall can move onto either
+       short return wall (the ones porch lights use), and back again. */
+    if(info && !isDoor && typeof plReturns==='function'){
+      var _rets=plReturns(sel.wall);
+      if(_rets.length){
+        var _b=function(v,t){ var on=(sel.ret||'')===v;
+          return '<button type="button" onclick="setWindowRet(\''+v+'\')" style="margin:6px 6px 0 0;padding:4px 9px;border-radius:6px;border:1px solid '+(on?'#2BB5E8':'#555')+';background:'+(on?'rgba(43,181,232,.15)':'transparent')+';color:inherit;font:inherit;font-size:12px;cursor:pointer">'+t+'</button>'; };
+        var _h='<br><span style="font-size:12px">Place on: </span>'+_b('','Main wall');
+        _rets.forEach(function(q){ _h+=_b(q.ret, 'Porch return ('+(q.ret==='start'?'near':'far')+' end)'); });
+        info.innerHTML+=_h;
+      }
+    }
     if(wctr) wctr.style.display=isDoor?'none':'block';
     if(dctr) dctr.style.display=isDoor?'block':'none';
     if(!isDoor){ var ss=document.getElementById('winTypeSel'); if(ss && sel.type) ss.value=sel.type; }
