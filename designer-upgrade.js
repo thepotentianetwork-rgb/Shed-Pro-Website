@@ -126,12 +126,12 @@ DU.snapshot = function(w){
 DU.specRows = function(){
   var S=window, rows=[];
   var porch = (S.PORCH_LOC && S.PORCH_LOC!=='none' && S.SIDE_PORCH>0);
-  rows.push(['Style & size', S.W+'×'+S.L+' ft '+DU.styleName()+' · '+S.H+' ft walls'+(porch?' · '+S.SIDE_PORCH+' ft '+S.PORCH_LOC+' porch':''), 'Pick your size']);
+  rows.push(['Style & size', (S.shedSizeW?S.shedSizeW():S.W)+'×'+(S.shedSizeL?S.shedSizeL():S.L)+' ft '+DU.styleName()+' · '+S.H+' ft walls'+(porch?' · '+S.SIDE_PORCH+' ft '+S.PORCH_LOC+' porch'+((S.PORCH_ADDS&&S.porchEatFt&&(S.porchEatFt().w||S.porchEatFt().l))?' added ('+S.W+'×'+S.L+' overall)':''):''), 'Pick your size']);
   rows.push(['Foundation', FOUNDATION_NAMES[S.FOUNDATION]||S.FOUNDATION, 'Foundation']);
   /* Siding, trim and door colour each get their own row, so a brand paint pick
      (paint-codes.js) reads in full: "Siding · Sherwin-Williams SW 7006 Extra White". */
   rows.push(['Siding', (SIDING_NAMES[S.SIDING]||S.SIDING)+(S.SIDING!=='pine' && S.sn ? ' · '+S.sn : ''), 'Siding & color']);
-  rows.push(['Trim', S.TRIM_FINISH==='cedar' ? 'Natural cedar' : (S.tn||''), 'Siding & color']);
+  rows.push(['Trim', S.TRIM_FINISH==='cedar' ? 'Natural cedar' : S.TRIM_FINISH==='stain' ? S.trimStainEntry().name+' wood stain' : (S.tn||''), 'Siding & color']);
   var pcNames=null;
   try{ if(S.PC && S.PC.decorateConfig) pcNames=S.PC.decorateConfig({}).colorNames; }catch(e){}
   if(pcNames && pcNames.door) rows.push(['Door color', pcNames.door, 'Siding & color']);

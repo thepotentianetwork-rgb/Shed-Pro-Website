@@ -35,7 +35,7 @@ function makeCanvas() {
   return c;
 }
 
-export function loadDesigner() {
+export function loadDesigner(opts) {
   const el = () => ({
     innerHTML: '', textContent: '', value: '', checked: false, className: '', id: '', style: {},
     classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
@@ -107,6 +107,11 @@ export function loadDesigner() {
     try { vm.runInContext(s, c, { filename: 'designer.html' }); }
     catch (e) { warns.push(e.message); }
   }
+  /* The geometry suites set W/L as the FOOTPRINT and add a porch inside it —
+     the pre-porchAdds rule, which saved designs still use. Pin that mode so
+     they keep testing that geometry; tests/ui/porchadds.test.mjs opts in
+     with loadDesigner({ porchAdds: true }). */
+  if (!(opts && opts.porchAdds)) c.PORCH_ADDS = false;
   return { c, warns };
 }
 

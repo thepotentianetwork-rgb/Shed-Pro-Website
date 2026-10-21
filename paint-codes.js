@@ -157,7 +157,7 @@ function applyPick(part, b, e){
   var hex=hexInt(p), lab=label(p);
   PICKS[part]=p;
   if(part==='s'){ W.sc=hex; W.sn=lab; swatch('hexSwatch', p.hex); }
-  if(part==='t'){ W.tc=hex; W.tn=lab; if(W.TRIM_FINISH==='cedar') W.TRIM_FINISH='paint'; swatch('hexSwatchTrim', p.hex); }
+  if(part==='t'){ W.tc=hex; W.tn=lab; if(W.TRIM_FINISH==='cedar'||W.TRIM_FINISH==='stain') W.TRIM_FINISH='paint'; swatch('hexSwatchTrim', p.hex); }
   if(part==='d'){ W.DOOR_PAINT=hex; }
   if(part==='i'){
     if(typeof W.setInteriorColor==='function') W.setInteriorColor(hex, lab);
@@ -193,6 +193,7 @@ function decorateConfig(c){
   var names={};
   if(W.SIDING!=='pine' && W.sn) names.siding=String(W.sn);
   if(W.tn) names.trim=(W.TRIM_FINISH==='cedar') ? 'Natural cedar' : String(W.tn);
+  if(W.TRIM_FINISH==='stain' && typeof W.trimStainEntry==='function') names.trim=W.trimStainEntry().name+' wood stain';
   if(W.rn) names.roof=String(W.rn);
   if(typeof W.DOOR_PAINT==='number'){
     var dp=livePick('d');
@@ -225,7 +226,7 @@ function restoreConfig(c){
   if(PICKS.s) W.sn=label(PICKS.s);
   else if(c.colorNames && c.colorNames.siding) W.sn=String(c.colorNames.siding);
   if(PICKS.t) W.tn=label(PICKS.t);
-  else if(c.colorNames && c.colorNames.trim && c.colorNames.trim!=='Natural cedar') W.tn=String(c.colorNames.trim);
+  else if(c.colorNames && c.colorNames.trim && c.colorNames.trim!=='Natural cedar' && !/ wood stain$/.test(String(c.colorNames.trim))) W.tn=String(c.colorNames.trim);
   refreshAll();
 }
 

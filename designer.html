@@ -1674,6 +1674,32 @@ function buildPorchDeck(x0,x1,z0,z1,topY,opts){
   });
 } // A-frame porch: "none" | "side" (along length) | "front" (off width)
 var SIDE_PORCH=0;     // porch depth in feet (0 = none). Gable only.
+/* ── PORCH ADDS TO THE SHED (porchAdds) ────────────────────────────────────
+   The size the customer picks is the ENCLOSED shed; a full-length porch is
+   built beyond it, so the overall footprint W x L = shed + porch depth. W and
+   L stay the FOOTPRINT internally (geometry, roof and the server all key off
+   them), and syncPorchFootprint() — run at the top of every buildShed — grows
+   or shrinks them by however much the porch changed since the last build.
+   PORCH_ADDS=false is the old rule (porch carved out of the chosen size). It
+   is only ever false for a saved/sent design that has a full porch and no
+   porchAdds flag, so every existing #d= link and saved quote opens, builds and
+   prices exactly as it was sent. A partial porch is still a notch out of the
+   rectangle in both modes (porchEatFt is zero for it). */
+var PORCH_ADDS=true;
+var _PORCH_ADD_EAT={w:0,l:0};
+function syncPorchFootprint(){
+  var e=porchEatFt();
+  if(PORCH_ADDS){ W+=e.w-_PORCH_ADD_EAT.w; L+=e.l-_PORCH_ADD_EAT.l; }
+  _PORCH_ADD_EAT={w:e.w,l:e.l};
+}
+/* The size the customer chose: the enclosed shed in porchAdds mode, the
+   footprint under the old rule. Every size label reads these. */
+function shedSizeW(){ return PORCH_ADDS ? W-_PORCH_ADD_EAT.w : W; }
+function shedSizeL(){ return PORCH_ADDS ? L-_PORCH_ADD_EAT.l : L; }
+function shedLimitMax(k){
+  var lim=(typeof SHED_LIMITS_APPLIED!=='undefined' && SHED_LIMITS_APPLIED && SHED_LIMITS_APPLIED[k]);
+  return (lim && lim.max>0) ? lim.max : (k==='w'?26:34);
+}
 /* ── PARTIAL PORCH ───────────────────────────────────────────────────────
    PORCH_LEN is how much of the wall the porch runs along, in feet; 0 (or the
    whole wall) is the full-length porch every design saved before this has,
@@ -5277,7 +5303,34 @@ function shingleMat(color, tex, dbl){
 // in the dark scene without blowing out.
 /* CEDAR TRIM — every trim board in the model goes through paintMat, so this is
    the one place that has to know. Painted trim stays exactly as it was. */
-var TRIM_FINISH='paint';        // 'paint' | 'cedar'
+var TRIM_FINISH='paint';        // 'paint' | 'cedar' | 'stain'
+/* WOOD-STAIN TRIM reuses the siding's wood stains (PINE_STAINS: Honey /
+   Golden Cedar / Walnut) — same names, swatches and multiply strength. */
+var TRIM_STAIN='golden';
+function trimStainEntry(){
+  for(var i=0;i<PINE_STAINS.length;i++) if(PINE_STAINS[i].k===TRIM_STAIN) return PINE_STAINS[i];
+  return PINE_STAINS[1];
+}
+function makeStainedTrim(){
+  var st=trimStainEntry(), key='trimStain:'+st.k, cv=_canvasCache[key];
+  if(!cv){
+    var S=256; cv=document.createElement('canvas'); cv.width=cv.height=S;
+    var g=cv.getContext('2d');
+    g.fillStyle='#'+PINE_RAW.toString(16); g.fillRect(0,0,S,S);
+    for(var i=0;i<70;i++){            // long grain, runs along the board
+      var y=Math.random()*S; g.strokeStyle='rgba(120,80,40,'+(0.08+Math.random()*0.18)+')';
+      g.lineWidth=0.6+Math.random()*1.6; g.beginPath(); g.moveTo(0,y);
+      for(var x=0;x<=S;x+=32) g.lineTo(x, y+Math.sin((x+i*13)/40)*2.2);
+      g.stroke();
+    }
+    g.globalCompositeOperation='multiply'; g.globalAlpha=st.op;
+    g.fillStyle=st.css; g.fillRect(0,0,S,S);
+    g.globalCompositeOperation='source-over'; g.globalAlpha=1;
+    _canvasCache[key]=cv;
+  }
+  return texFromCanvas(cv, true);
+}
+function setTrimStain(k){ TRIM_STAIN=k; TRIM_FINISH='stain'; if(typeof renderWallColors==='function') renderWallColors(); buildShed(); }
 
 /* INTERIOR FINISH — 'none' leaves the OSB and studs showing, which is what a
    bare shed looks like. Drywall covers them; paint colours them. */
@@ -5650,6 +5703,11 @@ function applyHexInterior(val){
   setInteriorColor(parseInt(v,16), '#'+v.toUpperCase());
 }
 function paintMat(color, emi){
+  if(TRIM_FINISH==='stain'){
+    var stt=makeStainedTrim();
+    stt.wrapS=stt.wrapT=THREE.RepeatWrapping; stt.repeat.set(3,1);
+    return new THREE.MeshStandardMaterial({ map:stt, roughness:0.7, metalness:0.0 });
+  }
   if(TRIM_FINISH==='cedar'){
     var ct=makeCedar();
     ct.wrapS=ct.wrapT=THREE.RepeatWrapping;
@@ -5723,6 +5781,7 @@ function _scheduleDeferredDispose(){
   }); });
 }
 function buildShed(){
+  if(typeof syncPorchFootprint==='function') syncPorchFootprint();
   if(typeof clampOpeningsToWalls==='function') clampOpeningsToWalls();
   // Properly DISPOSE old geometry, materials and textures before clearing — without
   // this, every rebuild leaks GPU memory until the WebGL context is lost (crash).
@@ -10060,6 +10119,9 @@ function porchEatFt(){
 }
 // Deepest porch this footprint can give up and still leave a usable room.
 function maxPorchFt(loc){
+  /* porchAdds: the porch no longer eats the room, so the only cap is the
+     largest footprint the server prices (it silently clamps past that). */
+  if(PORCH_ADDS) return Math.max(0, (loc==='front') ? shedLimitMax('l')-shedSizeL() : shedLimitMax('w')-shedSizeW());
   var span=(loc==='front') ? L : W;
   return Math.max(0, span-MIN_ENCLOSED);
 }
@@ -13583,6 +13645,7 @@ function pickStyle(style, el){
   // to clear the porch — otherwise picking Barn would leave a porch attached to
   // a shell that can't build one.
   if(typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none'){ PORCH_LOC='none'; SIDE_PORCH=0; PORCH_LEN=0; PORCH_OFF=0; }
+  syncPorchFootprint();   // drop the porch's added depth BEFORE a style start size lands
   document.querySelectorAll('.style-btn').forEach(function(b){b.classList.remove('on');});
   /* Before buildShed, so the size change and the style change land in one
      rebuild rather than drawing the new roof over the old footprint first. */
@@ -15074,6 +15137,11 @@ function clampPorch(){
 function _sizeLabel(){
   var el=document.getElementById('sqft'); if(!el) return;
   var eat=porchEatFt(), enc=enclosedSqft();
+  if(PORCH_ADDS && (eat.w||eat.l)){
+    el.textContent=enc+' sq ft \u00b7 + '+SIDE_PORCH+' ft porch ('+W+'\u00d7'+L+' overall)';
+    return;
+  }
+  if(PORCH_ADDS && porchIsPartial()){ el.textContent=enc+' sq ft enclosed \u00b7 '+(W*L)+' sq ft under roof'; return; }
   el.textContent=(W*L)+' sq ft'+((eat.w||eat.l||porchIsPartial())?(' \u00b7 '+enc+' enclosed'):'');
 }
 // _sizeStripSync: the preset highlight has to follow the sliders too, or
@@ -15106,7 +15174,7 @@ function applyShedLimits(lim){
   SHED_LIMITS_APPLIED = lim;
   var rows = document.querySelectorAll('.wstep[data-step="1"] input[type=range]');
   var keys = ['w','l','h'], setters = { w:setW, l:setL, h:setH };
-  var cur  = { w:W, l:L, h:H };
+  var cur  = { w:shedSizeW(), l:shedSizeL(), h:H };
   for(var i=0;i<keys.length && i<rows.length;i++){
     var k=keys[i], b=lim[k];
     if(!b || !(b.max>b.min)) continue;
@@ -15118,8 +15186,8 @@ function applyShedLimits(lim){
     if(v !== cur[k]) setters[k](v);
   }
 }
-function setW(v){W=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();_sizeStripSync();buildShed();autoFrame(false);}
-function setL(v){L=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();_sizeStripSync();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
+function setW(v){if(PORCH_ADDS){v=Math.min(+v,shedLimitMax('w')-_PORCH_ADD_EAT.w);W=v+_PORCH_ADD_EAT.w;}else W=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('wv').textContent=v+' ft';clampPorch();_sizeLabel();_sizeStripSync();buildShed();autoFrame(false);}
+function setL(v){if(PORCH_ADDS){v=Math.min(+v,shedLimitMax('l')-_PORCH_ADD_EAT.l);L=v+_PORCH_ADD_EAT.l;}else L=+v;SIZE_SET_BY_CUSTOMER=true;document.getElementById('lv').textContent=v+' ft';clampPorch();_sizeLabel();_sizeStripSync();buildShed();autoFrame(false);if(typeof renderFloorJoist==='function')renderFloorJoist();}
 function setH(v){
   H=+v;
   var wh = quoteCache.optionPrices && quoteCache.optionPrices.wallHeight;
@@ -15521,7 +15589,7 @@ var POPULAR_SIZES = [
 ];
 function currentSizeKey(){
   for(var i=0;i<POPULAR_SIZES.length;i++){
-    if(POPULAR_SIZES[i].w===W && POPULAR_SIZES[i].l===L) return i;
+    if(POPULAR_SIZES[i].w===shedSizeW() && POPULAR_SIZES[i].l===shedSizeL()) return i;
   }
   return -1;      // a size off the presets is not a preset; nothing highlights
 }
@@ -15597,7 +15665,7 @@ function renderWallColors(){
     : _swatchStrip(WALL_COLORS, sc, 's', (typeof sn!=='undefined'?sn:''));
   var ht=document.getElementById('cg-t');
   if(ht){
-    var cedar=(TRIM_FINISH==='cedar');
+    var cedar=(TRIM_FINISH==='cedar'||TRIM_FINISH==='stain'), stained=(TRIM_FINISH==='stain');
     // Cedar sits alongside the paint swatches — it's a trim FINISH, so picking
     // it overrides the colour rather than being another colour.
     var strip=cedar
@@ -15616,10 +15684,22 @@ function renderWallColors(){
         (cedar?'var(--br)':'#2BB5E8')+';color:var(--w)">Painted</div>'+
         '<div onclick="setTrimFinish(\'cedar\')" style="flex:1;cursor:pointer;text-align:center;'+
         'padding:9px;border-radius:8px;font-size:12px;font-weight:700;background:'+
-        (cedar?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+
-        (cedar?'#2BB5E8':'var(--br)')+';color:var(--w)">Cedar</div>'+
+        ((cedar&&!stained)?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+
+        ((cedar&&!stained)?'#2BB5E8':'var(--br)')+';color:var(--w)">Cedar</div>'+
+        '<div onclick="setTrimStain(TRIM_STAIN)" style="flex:1;cursor:pointer;text-align:center;'+
+        'padding:9px;border-radius:8px;font-size:12px;font-weight:700;background:'+
+        (stained?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+
+        (stained?'#2BB5E8':'var(--br)')+';color:var(--w)">Wood stain</div>'+
       '</div>' +
-      (cedar?'<div style="font-size:11px;color:var(--mu);margin-top:6px">Natural cedar \u2014 the trim colour doesn\'t apply.</div>':'');
+      (stained ? '<div style="display:flex;gap:8px;margin-top:8px">'+PINE_STAINS.map(function(c){
+          var on=(TRIM_STAIN===c.k);
+          return '<div onclick="setTrimStain(\''+c.k+'\')" style="flex:1;cursor:pointer;text-align:center">'+
+            '<div style="height:30px;border-radius:7px;background:'+c.css+';border:2px solid '+(on?'#fff':'rgba(255,255,255,.18)')+
+            ';box-shadow:'+(on?'0 0 0 2px #2BB5E8':'none')+'"></div>'+
+            '<div style="font-size:10.5px;margin-top:4px;color:'+(on?'#8fe3ff':'var(--mu)')+'">'+c.name+'</div></div>';
+        }).join('')+'</div><div style="font-size:11px;color:var(--mu);margin-top:6px">'+trimStainEntry().name+
+        ' wood stain \u2014 the trim colour doesn\'t apply.</div>'
+      : cedar ? '<div style="font-size:11px;color:var(--mu);margin-top:6px">Natural cedar \u2014 the trim colour doesn\'t apply.</div>' : '');
   }
 }
 function renderRoofColors(){
@@ -16555,7 +16635,10 @@ function porchPageHTML(){
        then silently clamps, which reads as the designer ignoring the tap. */
     var _cap=maxPorchFt(PORCH_LOC);
     var _shown=depthOptions.filter(function(d){ return d<=_cap; });
-    if(!_shown.length){
+    if(!_shown.length && PORCH_ADDS){
+      h+='<div style="font-size:12px;color:#ffb4b4;margin:6px 0 12px">This shed is already at the largest size we build \u2014 '+
+         'a porch is added beyond it. Go down a size on the previous step.</div>';
+    } else if(!_shown.length){
       h+='<div style="font-size:12px;color:#ffb4b4;margin:6px 0 12px">This footprint is too '+
          (PORCH_LOC==='front'?'short':'narrow')+' for a porch \u2014 the porch comes out of the '+
          (PORCH_LOC==='front'?'length':'width')+' and '+MIN_ENCLOSED+'ft must stay enclosed. '+
@@ -16571,7 +16654,7 @@ function porchPageHTML(){
       h+=btn(SIDE_PORCH===d,'setPorchDepth('+d+')',d+' ft'+(priceTxt?' <span style="opacity:.65;font-size:11px">'+priceTxt+'</span>':''));
     });
     h+='</div>';
-    if(_shown.length<depthOptions.length){
+    if(_shown.length<depthOptions.length && !PORCH_ADDS){
       h+='<div style="font-size:11px;color:var(--mu);margin:-2px 0 10px">'+
          'Deeper porches need a longer shed \u2014 the porch comes out of the '+
          (PORCH_LOC==='front'?'length':'width')+', leaving '+MIN_ENCLOSED+'ft enclosed at minimum.</div>';
@@ -18194,7 +18277,7 @@ function applyHexTrim(val){
   _hexFieldState('hexInputTrim', true);
   var sw=document.getElementById('hexSwatchTrim'); if(sw) sw.style.background='#'+v;
   tc=parseInt(v,16); tn='Custom #'+v;
-  if(TRIM_FINISH==='cedar') setTrimFinish('paint');   // else the colour is ignored
+  if(TRIM_FINISH==='cedar'||TRIM_FINISH==='stain') setTrimFinish('paint');   // else the colour is ignored
   if(typeof renderWallColors==='function') renderWallColors();
   buildShed();
 }
@@ -18334,6 +18417,14 @@ function getDesignConfig(){
   /* Only when there are any, so every design saved without sprinklers keeps
      exactly the config (and the share code) it always had. */
   if(SPRINKLERS.length) cfg.sprinklers=SPRINKLERS.slice();
+  /* Only on a design with a full porch, so every other config (and its share
+     code) is byte-for-byte what it was. w/l stay the FOOTPRINT (what is built
+     and priced); shedW/shedL are the enclosed size the customer picked. */
+  var _e=porchEatFt();
+  if(PORCH_ADDS && (_e.w||_e.l)){ cfg.porchAdds=1; cfg.shedW=shedSizeW(); cfg.shedL=shedSizeL(); }
+  /* Trim finish only when it is not plain paint — same reason. */
+  if(TRIM_FINISH && TRIM_FINISH!=='paint') cfg.trimFinish=TRIM_FINISH;
+  if(TRIM_FINISH==='stain'){ cfg.trimStain=TRIM_STAIN; cfg.trimStainName=trimStainEntry().name; }
   // Brand paint picks (paint, colorNames, doorColor, intColor) - paint-codes.js.
   if(window.PC && PC.decorateConfig) PC.decorateConfig(cfg);
   return cfg;
@@ -18429,11 +18520,11 @@ function syncControlsFromState(){
     // setW/setL/setH — those run clampPorch, which is a mutation, not a redraw.
     var sl=document.querySelectorAll('.wstep[data-step="1"] input[type=range]');
     if(sl.length>=3 && typeof W!=='undefined'){
-      sl[0].value=W; sl[1].value=L; sl[2].value=H;
+      sl[0].value=shedSizeW(); sl[1].value=shedSizeL(); sl[2].value=H;
     }
     var wv=document.getElementById('wv'), lv=document.getElementById('lv'), hv=document.getElementById('hv');
-    if(wv && typeof W!=='undefined') wv.textContent=W+' ft';
-    if(lv && typeof L!=='undefined') lv.textContent=L+' ft';
+    if(wv && typeof W!=='undefined') wv.textContent=shedSizeW()+' ft';
+    if(lv && typeof L!=='undefined') lv.textContent=shedSizeL()+' ft';
     if(hv && typeof H!=='undefined') hv.textContent=H+' ft';
     if(typeof _sizeLabel==='function') _sizeLabel();
 
@@ -18492,6 +18583,12 @@ function applyDesignConfig(c){
       PORCH_OFF=(c.porchOff!=null)?(+c.porchOff||0):0;
     }
     if(c.porchTier)PORCH_TIER=c.porchTier;
+    /* A full porch saved WITHOUT porchAdds was built and priced the old way
+       (porch inside w x l) — open it exactly that way. */
+    PORCH_ADDS = (c.porchAdds===1 || c.porchAdds===true) || !(porchEatFt().w || porchEatFt().l);
+    _PORCH_ADD_EAT = porchEatFt();      // w/l in a config are already the footprint
+    TRIM_FINISH = (c.trimFinish==='cedar'||c.trimFinish==='stain') ? c.trimFinish : 'paint';
+    if(c.trimStain) TRIM_STAIN=c.trimStain;
     // Saved by getDesignConfig but never read back, so a reopened design lost its deck choice.
     if(c.porchDeck)PORCH_DECK=c.porchDeck; if(c.deckColor)DECK_COLOR=c.deckColor; if(c.porchH!=null)PORCH_H=+c.porchH;
     if(c.dormerL!=null)DORMER_L=+c.dormerL; if(c.dormerR!=null)DORMER_R=+c.dormerR;
