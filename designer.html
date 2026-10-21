@@ -16737,6 +16737,7 @@ function openPorchPage(){
 }
 function porchRefresh(){
   buildShed();                       // must run BEFORE the page re-renders, so
+  if(typeof _sizeLabel==='function') _sizeLabel();   // porch depth moves the sq ft / overall readout
   syncPorchBtn();                    // the readout below shows THIS build
   if(typeof renderPlacedDoors==='function') renderPlacedDoors();
   if(_spStack.length){ _spStack[_spStack.length-1].b=porchPageHTML(); _spRender(true); }
