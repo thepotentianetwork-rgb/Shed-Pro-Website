@@ -66,7 +66,7 @@ function applyStaff(){ document.body.classList.toggle('du-staff', isStaff()); }
 
 /* ── names ── */
 var STYLE_NAMES = {gable:'Gable / A-Frame', barn:'Barn', leanto:'Modern Single Slope', hip:'Poolhouse / Hip', '3peak':'3-Peak', '4peak':'4-Peak'};
-DU.styleName = function(){ return STYLE_NAMES[window.STYLE] || window.STYLE || ''; };
+DU.styleName = function(){ return (STYLE_NAMES[window.STYLE] || window.STYLE || '') + (typeof window.porchStyleSuffix==='function' ? window.porchStyleSuffix() : ''); };
 var FOUNDATION_NAMES = {pad:'Concrete pad, poured by us', blocks:'Leveled on cinder blocks', gravel:'Gravel pad + leveled on blocks', existing:'Existing foundation'};
 var ELEC_NAMES = {none:'None', basic:'Basic (power-ready)', core:'Core package (power-ready)', essential:'Essential package (power-ready)'};
 var SIDING_NAMES = {vertical:'Vertical siding', horizontal:'Horizontal lap siding', 'board-batten':'Board & batten', pine:'Pine'};
@@ -126,7 +126,7 @@ DU.snapshot = function(w){
 DU.specRows = function(){
   var S=window, rows=[];
   var porch = (S.PORCH_LOC && S.PORCH_LOC!=='none' && S.SIDE_PORCH>0);
-  rows.push(['Style & size', (S.shedSizeW?S.shedSizeW():S.W)+'×'+(S.shedSizeL?S.shedSizeL():S.L)+' ft '+DU.styleName()+' · '+S.H+' ft walls'+(porch?' · '+S.SIDE_PORCH+' ft '+S.PORCH_LOC+' porch'+((S.PORCH_ADDS&&S.porchEatFt&&(S.porchEatFt().w||S.porchEatFt().l))?' added ('+S.W+'×'+S.L+' overall)':''):''), 'Pick your size']);
+  rows.push(['Style & size', (S.shedSizeW?S.shedSizeW():S.W)+'×'+(S.shedSizeL?S.shedSizeL():S.L)+' ft '+DU.styleName()+' · '+S.H+' ft walls'+(porch?' · '+S.SIDE_PORCH+' ft '+S.PORCH_LOC+' '+(S.porchKindWord?S.porchKindWord():'porch')+((S.PORCH_ADDS&&S.porchEatFt&&(S.porchEatFt().w||S.porchEatFt().l))?' added, not counted in sq ft ('+S.W+'×'+S.L+' overall)':' (counts toward sq ft)'):''), 'Pick your size']);
   rows.push(['Foundation', FOUNDATION_NAMES[S.FOUNDATION]||S.FOUNDATION, 'Foundation']);
   /* Siding, trim and door colour each get their own row, so a brand paint pick
      (paint-codes.js) reads in full: "Siding · Sherwin-Williams SW 7006 Extra White". */
