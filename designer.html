@@ -10454,14 +10454,14 @@ function buildFloor(){
   if(onSlab){
     var fHex=0xc4c4bf;
     if(!ourPour) fHex=0xB9BAB4;      // their slab, weathered, never stained by us
-    // Stain is a finish WE apply, and it is only sold on a pad we pour. Gating
-    // on ourPour rather than on the stain value alone means a stain left over
-    // from an earlier pick can't colour somebody's existing slab.
-    if(ourPour && typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none' && typeof STAIN_COLORS!=='undefined'){
+    // Stain/paint is a finish WE apply: on a pad we pour, or (23 Oct 2026)
+    // Behr floor paint on the customer's own slab. Gated on the coated finish
+    // too, so a stain left over from an earlier pick can't colour a floor.
+    if(onSlab && FOUNDATION_FINISH==='coated' && typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none' && typeof STAIN_COLORS!=='undefined'){
       var scf=STAIN_COLORS.filter(function(c){return c.k===FOUNDATION_STAIN;})[0];
       if(scf) fHex=parseInt(scf.hex.slice(1),16);
     }
-    var stained=(ourPour && typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none');
+    var stained=(onSlab && FOUNDATION_FINISH==='coated' && typeof FOUNDATION_STAIN!=='undefined' && FOUNDATION_STAIN!=='none');
     /* Sealing the slab is the Foundation step's Stained & Sealed Coating, and
        it is already drawn from FOUNDATION_STAIN above — there is deliberately
        no second sealed tier here to render. */
@@ -13595,7 +13595,7 @@ function wizRender(){
   ensureEditMode(wizIs('Windows & Vents') || wizIs('Doors') || wizIs('Interior') || wizIs('Electrical'));
   // Fade the walls only when working INSIDE — shelves & loft (upgrades step).
   // Windows/doors sit in the wall and are viewed from outside, so no x-ray there.
-  var wantXray = wizIs('Interior') || (wizIs('Foundation') && typeof FOUNDATION!=='undefined' && FOUNDATION==='pad' && FOUNDATION_FINISH==='coated');
+  var wantXray = wizIs('Interior') || (wizIs('Foundation') && typeof FOUNDATION!=='undefined' && (FOUNDATION==='pad' || FOUNDATION==='existing') && FOUNDATION_FINISH==='coated');
   if(wantXray !== WALLS_XRAY){ WALLS_XRAY = wantXray; buildShed(); }
   if(wizIs('Review & quote')) buildReview();
   // keep the scroll at top of the step
@@ -15926,8 +15926,14 @@ function renderFoundation(){
   // When the concrete pad is chosen, offer the interior finish + benefits.
   // Built into the SAME string rather than appended with innerHTML+=, which
   // re-parses the cards a second time and loses the scroll position again.
-  if(FOUNDATION==='pad'){
-    var fin=[
+  if(FOUNDATION==='pad' || FOUNDATION==='existing'){
+    var onOwnSlab=(FOUNDATION==='existing');
+    var fin=onOwnSlab ? [
+      {k:'plain', name:'No Floor Coating', price:'Included'},
+      /* Behr concrete floor paint over the customer's own slab (Nando,
+         23 Oct 2026): same coated price as on a pad we pour. */
+      {k:'coated',name:'Behr Concrete Floor Paint (2 coats, your color)', price:(PRICE_LOCKED?'':'+'+priceTag(foundationFinishPrice('coated',0),''))}
+    ] : [
       {k:'plain', name:'No Color, No Finish', price:'Included'},
       // Live tier price, and the area it was worked out from — the number moves
       // with the shed size, so showing it silently would look arbitrary.
@@ -15938,7 +15944,7 @@ function renderFoundation(){
     ];
     var sc='<div style="margin-top:12px;padding:12px;border-radius:10px;background:var(--d2);border:1px solid var(--br)">';
     sc+='<div style="font-size:13px;font-weight:800;color:var(--w);margin-bottom:2px">Interior Floor Finish</div>';
-    sc+='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">Applied to the inside floor. The outside pad stays natural concrete.</div>';
+    sc+='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">'+(onOwnSlab?'Behr concrete floor paint on your existing slab, inside the shed. Two coats, your choice of color.':'Applied to the inside floor. The outside pad stays natural concrete.')+'</div>';
     fin.forEach(function(o){
       var on=(FOUNDATION_FINISH===o.k);
       sc+='<div onclick="setFinish(\''+o.k+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;margin-bottom:6px;border-radius:8px;cursor:pointer;background:'+(on?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+(on?'#2BB5E8':'var(--br)')+'">'+
@@ -15979,7 +15985,7 @@ function renderFoundation(){
 }
 function _foundApply(){
   // Show the INSIDE (x-ray) when picking a pad color, like the loft step.
-  var wantX = (typeof wizIs==='function' && wizIs('Foundation') && FOUNDATION==='pad' && FOUNDATION_FINISH==='coated');
+  var wantX = (typeof wizIs==='function' && wizIs('Foundation') && (FOUNDATION==='pad' || FOUNDATION==='existing') && FOUNDATION_FINISH==='coated');
   WALLS_XRAY = wantX;
   renderFoundation(); buildShed();
 }
@@ -15994,7 +16000,14 @@ function setStain(k){
   FOUNDATION_STAIN=k; _foundApply();
   var b=document.getElementById('subPageBody'); if(b) b.innerHTML=stainPageHTML();
 }
-function setFoundation(k){ if(k==='gravel' && gravelUnavailable()) return; FOUNDATION=k; if(k!=='pad') FOUNDATION_STAIN='none'; _foundApply(); }
+function setFoundation(k){ if(k==='gravel' && gravelUnavailable()) return; FOUNDATION=k;
+  /* A finish only applies on concrete: pad (all three) or the customer's own
+     slab (coated only - broom is done to wet concrete). Anything else clears
+     it, so a coat picked on one foundation is never billed on another. */
+  if(k==='existing' && FOUNDATION_FINISH==='broom') FOUNDATION_FINISH='plain';
+  if(k!=='pad' && k!=='existing') FOUNDATION_FINISH='plain';
+  if(FOUNDATION_FINISH!=='coated') FOUNDATION_STAIN='none';
+  _foundApply(); }
 
 // ---- ADD-ONS (Upgrades step) ----
 // No prices here \u2014 every k below is a key into quoteCache.optionPrices.addons,
