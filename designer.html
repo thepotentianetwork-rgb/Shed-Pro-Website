@@ -15860,7 +15860,7 @@ function subPageBack(){
 }
 function closeSubPage(){ _spStack=[]; var sp=document.getElementById('subPage'); if(sp) sp.style.display='none'; }
 function stainPageHTML(){
-  var h='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">Applied to the inside floor only — the outside pad stays natural concrete. Watch the floor update in the 3D view.</div>';
+  var h='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">'+(FOUNDATION==='existing'?'Paint applied to your existing slab inside the shed. Two coats, your choice of color. Watch the floor update in the 3D view.':'Applied to the inside floor only — the outside pad stays natural concrete. Watch the floor update in the 3D view.')+'</div>';
   h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">';
   STAIN_COLORS.forEach(function(c){
     if(c.k==='none') return;
