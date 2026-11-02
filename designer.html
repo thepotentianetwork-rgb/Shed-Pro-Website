@@ -5201,8 +5201,11 @@ function makeMetal(color){
     return 'rgb('+Math.max(0,Math.min(255,r+amt))+','+Math.max(0,Math.min(255,g+amt))+','+Math.max(0,Math.min(255,b+amt))+')';
   }
   ctx.fillStyle=shade(0); ctx.fillRect(0,0,512,512);
-  // panels: vertical ribs every ~64px, with a soft highlight in the panel center
-  var panelW=64;
+  /* panels: ONE metal sheet look for every roof style (barn, gable, lean-to,
+     hip, peaks, porch, awning all take roofTex -> makeMetal at the same
+     SHINGLE_TILE scale). Ribs every 512/5 px = 9in on centre, the ag/R-panel
+     spacing in the reference photos; was 5.6in, which read as fine ribbing. */
+  var panelW=512/5;
   for(var x=0;x<512;x+=panelW){
     // subtle center highlight gradient across the panel
     var grad=ctx.createLinearGradient(x,0,x+panelW,0);
@@ -5215,9 +5218,10 @@ function makeMetal(color){
     ctx.fillStyle=shade(-26); ctx.fillRect(x+1,0,2,512);
   }
   // faint horizontal striations for a brushed-metal feel
-  ctx.globalAlpha=0.05;
-  for(var yy=0;yy<512;yy+=3){ ctx.fillStyle = (yy%6===0)?shade(20):shade(-20); ctx.fillRect(0,yy,512,1); }
-  ctx.globalAlpha=1;
+  /* (No horizontal brushed striations: at viewing distance they aliased into
+     horizontal course lines, so metal roofs read as shingles on some styles.)
+     A minor stiffening rib between the major ribs instead. */
+  for(var mx2=panelW/3;mx2<512;mx2+=panelW/3){ if(Math.abs((mx2%panelW))<1) continue; ctx.fillStyle=shade(8); ctx.fillRect(Math.round(mx2),0,1,512); }
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; t.encoding=THREE.sRGBEncoding;
   // bump map: emphasize the vertical seams
@@ -8476,7 +8480,7 @@ function buildBarnRoof(){
   // extOuter: extend the low/outer end too. Only the knee-to-ridge panels want
   // that; on the eave panels it pushed the board ~1.2" past the fascia, which is
   // the board seen sticking out beyond the roof edge.
-  function barnPanel(x1,y1,x2,y2,sign,extOuter){
+  function barnPanel(x1,y1,x2,y2,sign,extOuter,extInner,lift){
     // Mirror X for the left side
     var X1=sign*x1, X2=sign*x2;
     var dx=X2-X1, dy=y2-y1;
@@ -8490,10 +8494,11 @@ function buildBarnRoof(){
     var mat=roofMat(rc,tex);
     // Extend past both segment ends: adjacent panels overlap at the knees and
     // the ridge, closing the V-gaps that showed as breaks in the roof edge.
-    var extLo=extOuter?jointExt:0;
-    var panel=new THREE.Mesh(new THREE.BoxGeometry(segLen+jointExt+extLo,halfThk*2,roofDepth),mat);
+    var extLo=(typeof extOuter==='number')?extOuter:(extOuter?jointExt:0);
+    var extHi=(typeof extInner==='number')?extInner:jointExt;
+    var panel=new THREE.Mesh(new THREE.BoxGeometry(segLen+extHi+extLo,halfThk*2,roofDepth),mat);
     // Midpoint, shifted up-slope by half the asymmetric extension.
-    var shift=(jointExt-extLo)/2;
+    var shift=(extHi-extLo)/2;
     var ux=Math.cos(ang), uy=Math.sin(ang);
     var mx=(X1+X2)/2 + ux*shift, my=(y1+y2)/2 + uy*shift;
     // Outward (upper) normal of the segment: rotate the segment direction +90°.
@@ -8501,7 +8506,8 @@ function buildBarnRoof(){
     // one with +y. For the right side that's (sin*-1?,..) — compute and flip to +y.
     var nx=-Math.sin(ang), ny=Math.cos(ang);
     if(ny<0){ nx=-nx; ny=-ny; }             // ensure normal points upward
-    panel.position.set(mx + nx*halfThk, my + ny*halfThk, 0);
+    var lf=lift||0;
+    panel.position.set(mx + nx*(halfThk+lf), my + ny*(halfThk+lf), 0);
     panel.rotation.z = ang;                 // align the box's long (X) axis to segment
     panel.castShadow=true;
     shedGroup.add(panel);
@@ -8528,10 +8534,26 @@ function buildBarnRoof(){
   var eaveTipY=h    + slopeM*eaveOvB;
 
   // Four panels: right-lower, right-upper, left-lower, left-upper
+  /* METAL: SELF-OVERLAP AT THE KNEE (Nando's sage barn photos, 2 Nov 2026).
+     On a metal gambrel the upper sheets are laid LAST and run out past the
+     break, overhanging the top of the lower sheets by a few inches — a stepped
+     lap with a shadow line under it, not a folded cap. So on metal: the lower
+     sheet stops at the knee (tucked under), the upper sheet carries ~3in past
+     it and sits a hair proud, and the knee caps are skipped. Shingles keep the
+     capped knee they always had. */
+  var _metalLap=(ROOFTYPE==='metal');
+  var LAP=3*INCH;
+  if(_metalLap){
+    barnPanel(eaveTipX, eaveTipY, kneeX, kneeY, +1, false, 0);         // right lower, tucked
+    barnPanel(kneeX, kneeY, 0, ridgeY, +1, LAP, jointExt, 0.004);      // right upper, laps over
+    barnPanel(eaveTipX, eaveTipY, kneeX, kneeY, -1, false, 0);         // left lower
+    barnPanel(kneeX, kneeY, 0, ridgeY, -1, LAP, jointExt, 0.004);      // left upper
+  } else {
   barnPanel(eaveTipX, eaveTipY, kneeX, kneeY, +1, false);  // right lower (steep)
   barnPanel(kneeX, kneeY, 0, ridgeY, +1, true);            // right upper (shallow)
   barnPanel(eaveTipX, eaveTipY, kneeX, kneeY, -1, false);  // left lower
   barnPanel(kneeX, kneeY, 0, ridgeY, -1, true);            // left upper
+  }
 
   /* ---- CAPS: the gambrel has THREE joints per side to cover, not one. The
      ridge at the peak, plus a knee on each side where the steep lower slope
@@ -8565,8 +8587,10 @@ function buildBarnRoof(){
       CAPb.run([0, ridgeY+nOff+bvH, sg[0]], [0, ridgeY+nOff+bvH, sg[1]], fRU, fLU, 0, null, null);
     });
   }
+  if(!_metalLap){
   CAPb.run([ kneeX, kneeY+nOff, zA], [ kneeX, kneeY+nOff, zB], fRL, fRU, 0, null, null);
   CAPb.run([-kneeX, kneeY+nOff, zA], [-kneeX, kneeY+nOff, zB], fLL, fLU, 0, null, null);
+  }
 
   // ---- GAMBREL END WALLS (front & back) — siding filling the barn silhouette ----
   function gambrelEnd(zPos){
@@ -8910,7 +8934,13 @@ function buildDoor(){
     var ofH=dh+0.04, ofW=dw+tw*2, tcz=0.03;
     bx(ofW, tw, 0.018, casingMat, 0, dh+0.02, tcz);            // head board
     if(isCedar) bx(ofW+0.024, 0.022, 0.026, casingMat, 0, dh+0.05+0.011, tcz+0.004);  // head cap
-    bx(ofW, tw, 0.018, casingMat, 0, 0.0,    tcz);             // bottom board (sill)
+    /* ON BLOCKS the whole underside is visible, and a sill centred on the
+       floor line hung 1.8in below the siding — the door read as dropping past
+       the walls (Nando, 2 Nov 2026, with the sage barn photos: the bottom trim
+       finishes flush with the wall bottom). Seat the sill on the floor line
+       there. Other foundations keep the old placement. */
+    var _sillY=(typeof FOUNDATION!=='undefined' && FOUNDATION==='blocks') ? tw/2 : 0.0;
+    bx(ofW, tw, 0.018, casingMat, 0, _sillY, tcz);             // bottom board (sill)
     bx(tw, ofH, 0.018, casingMat, -(dw/2+tw/2), dh/2+0.02, tcz); // left board
     bx(tw, ofH, 0.018, casingMat,  (dw/2+tw/2), dh/2+0.02, tcz); // right board
   }
