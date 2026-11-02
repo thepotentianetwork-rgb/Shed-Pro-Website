@@ -9157,7 +9157,17 @@ function buildDoor(){
   // different product.
   if(isResid&&residBlack) muntinMat=new THREE.MeshStandardMaterial({color:0x1B1D1E, roughness:0.45});
 
-  var isSingle = dw < 0.85;
+  /* Pass 8: single vs double comes from the DOOR CONFIG (DOOR_SIZES kind via
+     doorKindOf), never from the decorative style or the drawn width. A
+     fairytale or cedar single is ONE leaf whatever width it is drawn at; a
+     cedar/plain/residential double is two. Width is only the fallback for a
+     style the catalog doesn't know. */
+  var _dk=(typeof doorKindOf==='function') ? doorKindOf(dd.style||'basic', +dd.w) : null;
+  var isSingle;
+  if(_dk==='single' || _dk==='fairytale' || dd.style==='cedarSingle') isSingle=true;
+  else if(_dk==='double' || _dk==='rollup' || (_dk==='cedar' && dd.style==='cedar')) isSingle=false;
+  else if(_dk==='residential') isSingle=!/^(resDouble|slideglass)/.test(dd.style||'');
+  else isSingle = dw < 0.85;
   var leaves = isRollup ? [{x:0, w:dw-0.02}]                      // rollup = one curtain
              : isSingle ? [{x:0, w:dw-0.03}]
                         : [{x:-leafW/2, w:leafW-0.02},{x:leafW/2, w:leafW-0.02}];
@@ -15676,15 +15686,30 @@ function renderPineStains(){
         ' \u00b7 semi-transparent, grain shows through</span></div>';
 }
 
+/* Pass 8: a style button only changes the style, so picking a fixed-size
+   style (Fairytale 36", Cedar Single 36/42") while a 60" double was placed
+   left an off-catalog combo (fairytale@60: no price, drawn as a 60" pair).
+   When the style has no catalog entry at the current width, take its first
+   catalog size. Valid combos are left alone. */
+function _snapDoorToCatalog(dd){
+  if(!dd || typeof DOOR_SIZES==='undefined') return;
+  var first=null, ok=false;
+  DOOR_SIZES.forEach(function(c){ c.styles.forEach(function(st){
+    if(st[0]!==dd.style) return;
+    var w=st[3]||c.w; if(!first) first={w:w,h:st[2]};
+    if(w===+dd.w) ok=true;
+  });});
+  if(first && !ok){ dd.w=first.w; dd.h=first.h; }
+}
 function setDoor(style,el){
   DOOR=style;
   document.querySelectorAll('.door-btn').forEach(function(b){b.classList.remove('on');});
   el.classList.add('on');
   // Apply to the selected door if one is selected, else the first/front door.
   if(selectedKind==='door' && selectedDoor>=0 && doorsData[selectedDoor]){
-    doorsData[selectedDoor].style=style;
+    doorsData[selectedDoor].style=style; _snapDoorToCatalog(doorsData[selectedDoor]);
   } else if(doorsData.length>0){
-    doorsData[0].style=style;
+    doorsData[0].style=style; _snapDoorToCatalog(doorsData[0]);
   }
   buildShed();
   syncEditorPanel();
