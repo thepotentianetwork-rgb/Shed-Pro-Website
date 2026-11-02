@@ -6359,8 +6359,8 @@ function buildShed(){
      genuinely stops where the cross roof takes over. */
   function crossGapZ(){
     if(!isCrossGable()) return null;
-    var cg=crossGableGeom();
-    return [cg.zc-cg.cwOut, cg.zc+cg.cwOut];
+    var cg=crossGableGeom(), dJ=crossJunction().dJ;   // Pass 12: deck junction
+    return [cg.zc-dJ, cg.zc+dJ];
   }
   function panelSegments(gap){
     var z0=-roofEdgeZ, z1=zFront;          // z1-z0 === roofDepth
@@ -6385,7 +6385,7 @@ function buildShed(){
      amount of tuning the patch's repeats fixes that; the only way the courses
      can be continuous is if the patch is drawn with the SAME texture object and
      UVs in the SAME space. So record each segment as it is built. */
-  function addRoofPanel(len, midX, midY, ang, mat, gap, repUseg, collect){
+  function addRoofPanel(len, midX, midY, ang, mat, gap, repUseg, collect, plumbX){
     panelSegments(gap).forEach(function(s){
       var d=s[1]-s[0]; if(d<=0.01) return;
       var m=mat;
@@ -6394,7 +6394,22 @@ function buildShed(){
         orientShingle(t, repUseg, d/shingleCourseSize);
         m=roofMat(rc, t);
       }
-      var p=new THREE.Mesh(new THREE.BoxGeometry(len,ROOF_THK,d), m);
+      var _bg=new THREE.BoxGeometry(len,ROOF_THK,d);
+      /* Pass 12 — PLUMB-CUT EAVE EDGE on a cross-gable side, on the shared
+         plane x = xOut+e (crossJunction), same as the cross slab, so the two
+         shingle edges are the same height and meet on one vertical line at
+         J_e. Geometry only; metal rebuilds from the box parameters. */
+      if(plumbX){
+        var _ca=Math.cos(ang), _sa=Math.sin(ang), _sgx=(midX>0)?1:-1, _ba=_bg.attributes.position;
+        var _eL=(_sgx*(midX+(len/2)*_ca) > _sgx*(midX-(len/2)*_ca)) ? len/2 : -len/2;
+        for(var _bi=0;_bi<_ba.count;_bi++){
+          if(Math.abs(_ba.getX(_bi)-_eL)>1e-6) continue;
+          var _ly=_ba.getY(_bi);
+          _ba.setX(_bi, (_sgx*plumbX - midX + _ly*_sa)/_ca);
+        }
+        _ba.needsUpdate=true; _bg.computeVertexNormals();
+      }
+      var p=new THREE.Mesh(_bg, m);
       p.position.set(midX, midY, (s[0]+s[1])/2);
       p.rotation.z=ang; p.castShadow=true; roofG.add(p);
       if(collect) collect.push({s0:s[0], s1:s[1], d:d, mat:m});
@@ -6405,14 +6420,16 @@ function buildShed(){
   var _lSegs=[];
   addRoofPanel(panelLen+ridgeExt, lMidX + (ridgeExt/2)*cosA, lMidY + (ridgeExt/2)*sinA,
                roofAng, matRL,
-               (STYLE==='4peak' ? crossGapZ() : dormerGapZ(DORMER_L, -1)), repU, _lSegs);
+               (STYLE==='4peak' ? crossGapZ() : dormerGapZ(DORMER_L, -1)), repU, _lSegs,
+               (STYLE==='4peak' && !(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal')) ? crossJunction().xEdge : null);
 
   var texR=roofTex(rc); orientShingle(texR, repUR, repV);
   var matRR=roofMat(rc, texR);
   var _xSegs=[];
   addRoofPanel(panelLenR+ridgeExt, rMidX - (ridgeExt/2)*cosA, rMidY + (ridgeExt/2)*sinA,
                -roofAng, matRR,
-               (isCrossGable() ? crossGapZ() : dormerGapZ(DORMER_R, 1)), repUR, _xSegs);
+               (isCrossGable() ? crossGapZ() : dormerGapZ(DORMER_R, 1)), repUR, _xSegs,
+               (isCrossGable() && !(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal')) ? crossJunction().xEdge : null);
   /* buildCrossGable runs later and outside this scope, so the mapping it needs
      has to be published. BoxGeometry's +Y face maps u across local X and v
      across local Z, and each panel's local X starts ridgeExt BEFORE the ridge —
@@ -7816,6 +7833,33 @@ function crossGableGeom(){
   return {w:w,l:l,h:h,g:g,cw:cw,cwOut:cwOut,zc:zc,rY:rY,eaveY:eaveY,
           xEnd:xEnd,xOut:xOut,tanC:g.tan,ovh:ovh};
 }
+/* Pass 12 — SHARED JUNCTION. The main eave line, the cross gable's rake line
+   and the valley (x = xEnd + |z-zc|, equal pitches) all meet at ONE point,
+   J = (xOut, eaveY+roofVDrop, zc +/- cwOut), because xOut = xEnd + cwOut.
+   Every termination at the corner is derived from it instead of carrying its
+   own offset:
+     - boards (fascia, rake) meet AT J, outer faces at xOut, same width W,
+       in-plane MITRE on the bisector: top at d=cwOut, heel at
+       d = cwOut - W*tan(theta/2) on the shared bottom line yTop-W;
+     - the shingle edge projects e = 3/8in past the boards on BOTH slabs, cut
+       PLUMB on the plane x = xOut+e. Extending the valley to that plane moves
+       the deck junction to J_e = (xOut+e, yTop-e*tan, zc +/- (cwOut+e)), so the
+       main panel's gap and the cross slab's eave end both stop at cwOut+e.
+   Metal keeps its Pass 5/6 construction (e = 0, no plumb cut). */
+function crossJunction(sx, side){
+  var c=crossGableGeom(), ct=(typeof CROSS_TRIM_CTX!=='undefined' && CROSS_TRIM_CTX)||{};
+  var metal=(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal');
+  var th=Math.atan(c.g.tan);
+  var e=metal ? 0 : 0.375*0.2/12;                    // 3/8in shingle overhang
+  var rvd=(ct.roofVDrop!=null) ? ct.roofVDrop : (ROOF_THK/2)/Math.cos(th);
+  var W=(ct.eaveFasciaH>0) ? ct.eaveFasciaH : (4*0.2/12 + rvd);
+  var yTop=c.eaveY+rvd, sg=(side==null)?1:side, s=(sx==null)?1:sx;
+  return { c:c, metal:metal, theta:th, e:e, W:W, yTop:yTop, yBot:yTop-W,
+           xOut:c.xOut, xEdge:c.xOut+e, dJ:c.cwOut+e, yEdge:yTop-e*c.g.tan,
+           heelD:c.cwOut-W*Math.tan(th/2),
+           J:[s*c.xOut, yTop, c.zc+sg*c.cwOut],
+           Je:[s*(c.xOut+e), yTop-e*c.g.tan, c.zc+sg*(c.cwOut+e)] };
+}
 /* One cross gable, on the side wall at X sign sx (+1 = the +X wall, -1 = -X).
    Everything below is written in POSITIVE magnitudes off the ridge and mirrored
    at the point of placement through X(), so the two sides cannot drift apart
@@ -7922,7 +7966,8 @@ function buildCrossGable(sx){
      exterior view. Run the cross slab to the same xOut+0.006 so the edge
      line wraps the corner and carries up the rake. Shingle only; metal keeps
      its Pass 5/6 trim (it brings its own rake flashing). */
-  if(!(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal')) pXo=c.xOut+0.006;
+  var CJ=crossJunction(sx);                               // Pass 12 shared junction
+  if(!CJ.metal) pXo=CJ.xEdge;                             // plumb edge plane xOut+e
   var pXi=c.xEnd-Math.min(0.05, c.xEnd*0.6);
   var pLen=Math.max(0.02, pXo-pXi);
   var _isMetal=(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal');   // Pass 10
@@ -7978,6 +8023,15 @@ function buildCrossGable(sx){
       }
       // top (8-11) and bottom (12-15) faces: u = (x + w/2)/w, as BoxGeometry does
       for(var _j=0;_j<_pa.count;_j++) if(_yFace[_j]) _pu.setX(_j, (_pa.getX(_j)+pLen/2)/pLen);
+      /* Pass 12 — PLUMB-CUT THE EAVE END at |z-zc| = cwOut+e (J_e), the same
+         vertical plane the main panel's gap now starts on. It was square to
+         the slope and overran the junction by (thk/2)*sin into the main slab.
+         Magnitude off zc: d = cwOut/2 + lz*cos(ang) + sg*ly*sin(ang). */
+      var _ac=Math.cos(ang), _as=Math.sin(ang);
+      for(var _e2=0;_e2<_pa.count;_e2++){
+        if(Math.abs(_pa.getZ(_e2)-slope/2)>1e-6) continue;
+        _pa.setZ(_e2, (CJ.dJ - c.cwOut/2 - sg*_pa.getY(_e2)*_as)/_ac);
+      }
       _pa.needsUpdate=_pu.needsUpdate=true; pGeo.computeVertexNormals();
     }
     var p=new THREE.Mesh(pGeo, pMat);
@@ -8068,11 +8122,12 @@ function buildCrossGable(sx){
      overlap does not vanish on a low pitch where xEnd is tiny. */
   var pOver=Math.min(0.05, c.cwOut*0.25);
   [1,-1].forEach(function(sg){
-    var z0=c.zc, z1=c.zc+sg*c.cwOut;
+    var _PJ=crossJunction(sx);                       // Pass 12: corner C = J_e
+    var z0=c.zc, z1=c.zc+sg*_PJ.dJ, xC=_PJ.xEdge, yC=c.g.ridgeY-xC*c.g.tan;
     var xv=Math.min(c.xEnd+pOver, c.xOut-0.02);
     var yv=c.g.ridgeY-xv*c.g.tan;
     var pts=[ 0,c.g.ridgeY+pLift,z0,        0,c.g.ridgeY+pLift,z1,
-              X(c.xOut),c.eaveY+pLift,z1,  X(xv),yv+pLift,z0 ];
+              X(xC),yC+pLift,z1,  X(xv),yv+pLift,z0 ];
     var geo=new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
     /* v341-C — WIND EACH SIDE THE RIGHT WAY ROUND. v340 diagnosed this
@@ -8114,7 +8169,7 @@ function buildCrossGable(sx){
     if(side){
       // sg>0 borders the segment that STARTS at the gap's far edge; sg<0
       // borders the one that ENDS at the near edge.
-      var zEdge=c.zc+sg*c.cwOut;
+      var zEdge=z1;
       for(var i=0;i<side.segs.length;i++){
         var q=side.segs[i];
         if(Math.abs((sg>0?q.s0:q.s1)-zEdge)<1e-4){ seg=q; break; }
@@ -8129,14 +8184,14 @@ function buildCrossGable(sx){
       };
       var pv=function(z){ return (seg.s1-z)/seg.d; };
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(
-        [pu(0),pv(z0), pu(0),pv(z1), pu(c.xOut),pv(z1), pu(xv),pv(z0)], 2));
+        [pu(0),pv(z0), pu(0),pv(z1), pu(xC),pv(z1), pu(xv),pv(z0)], 2));
     } else {
       // Fallback: gap ran to the roof edge so there is no neighbour to match.
       // Old self-scaled mapping, which at least keeps shingle size sane.
       var slopeMax=c.xOut/_cosA;
       var su=function(x){ return (x/_cosA)/slopeMax; };
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(
-        [su(0),0, su(0),1, su(c.xOut),1, su(xv),0], 2));
+        [su(0),0, su(0),1, su(xC),1, su(xv),0], 2));
     }
     /* NORMALS SET EXPLICITLY, not derived from winding. computeVertexNormals()
        reads the triangle order, and the two patches are mirror images in z — so
@@ -8214,6 +8269,9 @@ function buildCrossGable(sx){
   /* ftMat was declared in the fascia block removed in v428 and the rake uses
      it too — restoring it here with the rake it belongs to. */
   var ftMat=paintMat(tc, 0.1);
+  // Pass 12: rake top lies in the cross deck's plane under the shingle edge;
+  // a depth bias (no geometry offset) lets the deck win that coplanar strip.
+  var _rbMat=ftMat.clone(); _rbMat.polygonOffset=true; _rbMat.polygonOffsetFactor=1; _rbMat.polygonOffsetUnits=1;
 
   /* RAKE — the flat board down each slope of the cross gable's end. This IS
      the trim the eye reads at that edge, and in the reference build it is the
@@ -8241,16 +8299,22 @@ function buildCrossGable(sx){
        z-fought (white flecks through the shingle). Tuck the TOP edge 0.003
        under the slab; the bottom edge stays put, and at the tail the 0.003 is
        inside the slab's proud cut edge, which also covers the fascia top. */
-    var _rkTuck=_isMetal ? 0 : 0.003;    var sh=new THREE.Shape();
-    sh.moveTo(0,           yTop0-_rkTuck);
+    /* Pass 12 — CONSTANT-WIDTH RAKE, MITRED TO THE FASCIA AT J. Same board as
+       the eave fascia (W = eaveFasciaH, perpendicular), tail cut on the
+       bisector from J (d=cwOut, top) to the heel (d=heelD, yTop-W); the
+       fascia's matching heel triangle is added below. No tuck: the coplanar
+       top under the shingle is resolved with a depth bias on the board. */
+    var _J=crossJunction(sx, sg), _W=_J.W;
+    var sh=new THREE.Shape();
+    sh.moveTo(0,           yTop0);
     /* local +x maps to world -z at rotation +90, +z at -90, so the shape's own
        x term carries sx as well or the left rake lands on the wrong rafter. */
-    sh.lineTo(-sg*sx*c.cwOut, yTop1-_rkTuck);
-    sh.lineTo(-sg*sx*c.cwOut, yTop1-rDropEave);
-    sh.lineTo(0,           yTop0-rDropApex);
+    sh.lineTo(-sg*sx*c.cwOut, yTop1);
+    sh.lineTo(-sg*sx*_J.heelD, yTop1-_W);
+    sh.lineTo(0,           yTop0-_W/Math.cos(ang));
     sh.closePath();
     var rb=new THREE.Mesh(
-      new THREE.ExtrudeGeometry(sh,{depth:fth,bevelEnabled:false}), ftMat);
+      new THREE.ExtrudeGeometry(sh,{depth:fth,bevelEnabled:false}), _rbMat);
     rb.rotation.y=sx*Math.PI/2;
     // Extrude runs along local +z, which the Y rotation sends outward on either
     // side, so the board still grows from the eave tip out to xOut.
@@ -8259,6 +8323,16 @@ function buildCrossGable(sx){
     rb.position.set(X(c.xOut+rakeProud-fth), 0, c.zc);
     if(TINT) rb.material=diagMat(0xff2d2d);               // DIAG: cross RAKE = red
     rb.castShadow=true; shedGroup.add(rb);
+    // Fascia side of the mitre: the triangle between the fascia's square end
+    // at d=cwOut and the bisector, so fascia + rake meet on the mitre line.
+    var _hs=new THREE.Shape();
+    _hs.moveTo(-sg*sx*c.cwOut, yTop1);
+    _hs.lineTo(-sg*sx*c.cwOut, yTop1-_W);
+    _hs.lineTo(-sg*sx*_J.heelD, yTop1-_W);
+    _hs.closePath();
+    var fh=new THREE.Mesh(new THREE.ExtrudeGeometry(_hs,{depth:fth,bevelEnabled:false}), ftMat);
+    fh.rotation.y=sx*Math.PI/2; fh.position.copy(rb.position);
+    fh.castShadow=true; shedGroup.add(fh);
 
     /* v434 — RAKE SOFFIT. The rake stands 3.4in off the gable siding — that is
        the overhang — and nothing closed the underside, so you saw the rake
@@ -8269,7 +8343,8 @@ function buildCrossGable(sx){
        Planar by construction: the rake's bottom edge is a straight line in
        (z,y), so the strip from the wall face out to the rake's inner face at
        those same two heights lies flat, with no warp to fight. */
-    var soA=yTop0-rDropApex, soB=yTop1-rDropEave;   // rake underside, apex & tail
+    var soA=yTop0-_W/Math.cos(ang), soB=yTop1-_W/Math.cos(ang);   // Pass 12: rake underside line
+    if(_isMetal){ soA=yTop0-rDropApex; soB=yTop1-rDropEave; }      // metal: Pass 9 soffit unchanged
     var zB=-sg*sx*c.cwOut;
     /* Pass 10 — FOLD THE RAKE SOFFIT INTO THE EAVE SOFFIT; no wedge.
        Pass 9 dropped the tail to the cross roof's underside (_soCap), ~1in
@@ -8285,7 +8360,8 @@ function buildCrossGable(sx){
        Metal keeps the Pass 9 piece (its slab is not clipped). */
     var _sDrop=(ROOF_THK/2 + ((_ct.soffThk>0)?_ct.soffThk:0.012))/Math.cos(Math.atan(c.g.tan));
     var _Ms=function(x){ return c.g.ridgeY - x*c.g.tan - _sDrop; };   // eave soffit underside
-    var xI=c.g.run, xO=c.xOut-fth, zA=c.zc, zT=c.zc-sg*c.cwOut;
+    // Pass 12: one tuck rule with the eave soffit (outer edge half into the board)
+    var xI=c.g.run, xO=c.xOut-(_isMetal ? fth : fth/2), zA=c.zc, zT=c.zc-sg*c.cwOut;
     var sq=new THREE.BufferGeometry(), _sp, _six;
     if(!_isMetal){
       // rake-parallel line R(d) from soA (d=0) to soB (d=cwOut); fold where R = Ms(x)
