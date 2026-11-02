@@ -9372,6 +9372,22 @@ function buildDoor(){
   var leaves = isRollup ? [{x:0, w:dw-0.02}]                      // rollup = one curtain
              : isSingle ? [{x:0, w:dw-0.03}]
                         : [{x:-leafW/2, w:leafW-0.02},{x:leafW/2, w:leafW-0.02}];
+  /* DOOR GAPS (2 Nov 2026). Hinged shed-style doors get REAL clearance instead
+     of painted shadow strips: side jambs of one width (SG_JAMB, singles and
+     doubles alike) and a 5/16in clearance (SG_GAP) leaf->jamb, leaf->leaf at
+     the centre, leaf->head jamb at the top and leaf->sill at the bottom. dw
+     (the wall cut / casing) is unchanged; only the leaf sizes move. Stops
+     behind every gap close it off so no daylight shows through. Residential,
+     slider and roll-up doors keep the old fill-the-reveal jamb. */
+  var shedGap = !isResid && !isRollup && !isSlider;
+  var SG_GAP = 5/16*(0.2/12), SG_JAMB = 0.010;
+  if(shedGap && !isFairytale){
+    if(isSingle) leaves=[{x:0, w:dw-2*SG_JAMB-2*SG_GAP}];
+    else {
+      var _lw=dw/2-SG_JAMB-1.5*SG_GAP;
+      leaves=[{x:-(SG_GAP/2+_lw/2), w:_lw},{x:(SG_GAP/2+_lw/2), w:_lw}];
+    }
+  }
 
   // ---- JAMB FRAME — lines the cut opening like a real prehung unit. The leaf is
   // deliberately narrower than the opening, and without a jamb that reveal reads
@@ -9387,6 +9403,7 @@ function buildDoor(){
   // reveal = opening half-width minus the leaf's outermost edge
   var leafOuterEdge = isSingle ? (dw-0.03)/2 : (leafW/2 + (leafW-0.02)/2);
   var reveal = dw/2 - leafOuterEdge + 0.004;     // slight tuck behind the leaf edge
+  if(shedGap && !isFairytale){ leafOuterEdge = dw/2-SG_JAMB-SG_GAP; reveal = SG_JAMB; }  // jamb stops SG_GAP short of the leaf
   /* The JAMB is three straight boards lining a rectangular opening — head and
      two sides. On the arched door that's the leftover white rectangle showing
      behind the curve: a square frame drawn inside a round hole. The arched
@@ -9748,7 +9765,7 @@ function buildDoor(){
       fillO.lineTo( dw/2+_fl, dh+_fl); fillO.lineTo( dw/2+_fl, -_fl); fillO.closePath();
       // Hug the leaf for real: its own inset, plus a lap so the two edges
       // overlap instead of meeting on the same line.
-      fillO.holes.push(fairytaleShape(lw, dh, FT_LEAF_INSET + FT_FILL_LAP));
+      fillO.holes.push(fairytaleShape(lw, dh, shedGap ? FT_LEAF_INSET - SG_GAP : FT_LEAF_INSET + FT_FILL_LAP));  // door gaps: clear the leaf by SG_GAP
       /* Match the WALL'S board layout, not just its scale. The wall rounds to a
          whole number of boards across the run so none is cut at a corner, then
          offsets by how far along the wall it is. A plain 1/tile repeat with no
@@ -9772,6 +9789,21 @@ function buildDoor(){
         applyXray(sidingMat(sc, sdTex, SIDING==='board-batten'?0.58:0.28)));
       fillM.position.set(x, 0, -0.025);                  // flush with the wall
       fillM.castShadow=true; DG.add(fillM);
+      if(shedGap){
+        // the arch's STOP: a ring behind the leaf edge the real gap closes against,
+        // with a soft contact shadow on it so the gap reads as a recess, not a slot
+        var ftStop=fairytaleShape(lw, dh, FT_LEAF_INSET - SG_GAP - 0.004);
+        ftStop.holes.push(fairytaleShape(lw, dh, FT_LEAF_INSET + 0.006));
+        var ftStopM=new THREE.Mesh(new THREE.ExtrudeGeometry(ftStop,{depth:0.008,bevelEnabled:false}), casingMat);
+        ftStopM.position.set(x, 0, -0.0335); DG.add(ftStopM);
+        // the gap itself as a shaded volume: darkens the siding return, the
+        // leaf edge and the stop seen through it, all at once
+        var ftSh=fairytaleShape(lw, dh, FT_LEAF_INSET - SG_GAP + 0.0003);
+        ftSh.holes.push(fairytaleShape(lw, dh, FT_LEAF_INSET - 0.0003));
+        var ftShM=new THREE.Mesh(new THREE.ExtrudeGeometry(ftSh,{depth:0.0502,bevelEnabled:false}),
+          new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.42, depthWrite:false, side:THREE.DoubleSide}));
+        ftShM.position.set(x, 0, -0.0253); ftShM.renderOrder=2; DG.add(ftShM);
+      }
 
       /* THE ROOM SIDE OF THE SAME INFILL. From inside a finished shed the arch
          corners were the raw back of that siding panel — a grey band round the
@@ -9822,7 +9854,8 @@ function buildDoor(){
       // straight into bare siding with nothing finishing it.
       var csW=0.024;                                     // ~1.4in
       var csO=archRing(lw/2+csW, dh+csW);
-      csO.holes.push(archRing(lw/2-0.002, dh-0.002));    // right up to the leaf
+      csO.holes.push(shedGap ? archRing(lw/2-FT_LEAF_INSET+SG_GAP, dh-FT_LEAF_INSET+SG_GAP)   // stops at the gap's edge
+                             : archRing(lw/2-0.002, dh-0.002));    // right up to the leaf
       var csM=new THREE.Mesh(
         new THREE.ExtrudeGeometry(csO,{depth:0.016,bevelEnabled:false}), FT_ARCH_MAT);
       csM.position.set(x, 0, 0.025);
@@ -9880,6 +9913,7 @@ function buildDoor(){
     }
   }
 
+  var _leafN0=DG.children.length;
   leaves.forEach(function(lf){
     var g=glassRegion();
     buildLeaf(lf.x, lf.w, g);
@@ -9961,7 +9995,30 @@ function buildDoor(){
   // leaves meeting in the middle — exactly the "French doors" look a slider
   // shouldn't have. A slider's own frame members (built into buildLeaf, plus
   // the track below) do that job instead.
-  if(!isSingle && !isRollup && !isSlider) bx(0.03, dh-0.04, 0.05, doorDk, 0, dh/2, 0.012);
+  /* Leaf travel, top and bottom: the leaves (and their trim, glass and room-
+     side skin) are built 0..dh, then mapped into [sill top + gap, head jamb
+     - gap] as one group, so every rail keeps its proportion. */
+  var _sgY0=0, _sgS=1;
+  if(shedGap && !isFairytale){
+    var _sillTop=((typeof FOUNDATION!=='undefined' && FOUNDATION==='blocks') ? tw/2 : 0.0)+tw/2;
+    var _yTop=dh-jt+0.002-SG_GAP;
+    _sgY0=_sillTop+SG_GAP; _sgS=(_yTop-_sgY0)/dh;
+    var LG=new THREE.Group();
+    DG.children.slice(_leafN0).forEach(function(m){ LG.add(m); });
+    LG.scale.y=_sgS; LG.position.y=_sgY0; DG.add(LG);
+  }
+  function sgY(y){ return _sgY0+y*_sgS; }        // leaf-space y -> door y
+  if(shedGap && !isFairytale){
+    // STOPS: boards behind the leaf edges that every gap closes against.
+    var _SZ=-0.0295, _SD=0.008, _lB=_sgY0, _lT=sgY(dh), _jf=dw/2-SG_JAMB;
+    [-1,1].forEach(function(sd){
+      bx(SG_GAP+0.011, _lT-_lB+0.012, _SD, jambMat, sd*(_jf+0.003-(SG_GAP+0.011)/2), (_lB+_lT)/2, _SZ);
+    });
+    bx(dw-2*SG_JAMB, (dh-jt+0.002)-_lT+0.010, _SD, jambMat, 0, ((dh-jt+0.002)+_lT-0.010)/2+0.001, _SZ);  // head stop
+    bx(dw-2*SG_JAMB, _lB-_sillTop+0.014, _SD, jambMat, 0, (_lB+_sillTop-0.014)/2+0.003, _SZ);        // bottom stop
+    // the astragal is the double's centre stop: on the room side, behind the gap
+    if(!isSingle) bx(0.03, _lT-_lB+0.006, _SD, doorDk, 0, (_lB+_lT)/2, _SZ);
+  } else if(!isSingle && !isRollup && !isSlider) bx(0.03, dh-0.04, 0.05, doorDk, 0, dh/2, 0.012);
   /* ---- Pass 7: DOOR GAPS + CONTACT SHADOWS (hinged shed-style doors only) ----
      Soft gradient planes, not black outlines: a dark falloff that reads as a
      recess. Gap widths are fixed in inches, so they stay ~5/16in on any size.
@@ -9982,21 +10039,40 @@ function buildDoor(){
         polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}));
       m.rotation.z=rot||0; m.position.set(x,y,z); m.renderOrder=2; DG.add(m); return m;
     }
-    var GAP=5/16*_IN;                       // visible leaf gap
-    var zLeaf=0.0262, zJamb=0.0285, zSide=0.0255;
-    // centre: a recess either side of the astragal, darkest at its edge
-    if(!isSingle){
-      [-1,1].forEach(function(sd){
-        softShade(GAP*2.4, dh-0.05, sd*(0.0175+GAP*1.2), dh/2, 0.0397, sd>0?0:Math.PI, 0.95);   // on the leaf stile face, against the astragal
-      });
+    var zSide=0.0255;
+    /* The gaps are real now (see SG_GAP), so the painted strips that faked
+       them are gone. What stays is contact shadow INSIDE each gap: on the stop
+       face seen through it, and on the jamb / head returns it runs past. */
+    function gapShade(w2,h2,x,y,z,ry,rz,op){
+      var m=softShade(w2,h2,x,y,z,rz,op); m.material.side=THREE.DoubleSide;
+      m.material.map=null; m.material.needsUpdate=true;      // a slot this narrow is in shade its whole depth
+      m.rotation.set(0,ry,rz); return m;
     }
     if(!isFairytale){
-      // perimeter: leaf edge -> jamb, darkest against the leaf, both sides + head
-      var _lo=leafOuterEdge;
+      var _gT=sgY(dh), _gB=_sgY0, _gZ=-0.0255+0.0001, _jf2=dw/2-SG_JAMB, _hj=dh-jt+0.002;
+      // the stop face seen straight through each gap: in shade, evenly
+      function gapFloor(w2,h2,x,y,op){
+        var m=new THREE.Mesh(new THREE.PlaneGeometry(w2,h2), new THREE.MeshBasicMaterial({color:0x000000,
+          transparent:true, opacity:op, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}));
+        m.position.set(x,y,_gZ); m.renderOrder=2; DG.add(m); return m;
+      }
       [-1,1].forEach(function(sd){
-        softShade(GAP*1.8, dh-0.01, sd*(_lo+GAP*0.9), dh/2, zJamb, sd>0?0:Math.PI, 0.8);
+        gapFloor(SG_GAP+0.002, _hj-_gB+0.004, sd*(_jf2-SG_GAP/2), (_gB+_hj)/2, 0.66);
+        gapShade(0.05, _hj-_gB, sd*(_jf2-0.0002), (_gB+_hj)/2, 0.0, -Math.PI/2, 0, 0.7);   // jamb return
       });
-      softShade(GAP*1.8, dw-0.01, 0, dh-jt-GAP*0.2, zJamb, Math.PI/2, 0.7);
+      gapFloor(dw-2*SG_JAMB, SG_GAP+0.001, 0, _gT+SG_GAP/2, 0.66);
+      if(!isSingle) gapFloor(SG_GAP+0.002, _gT-_gB, 0, (_gB+_gT)/2, 0.66);                    // centre, on the astragal           // head
+      gapFloor(dw-2*SG_JAMB, SG_GAP+0.006, 0, _gB-SG_GAP/2+0.0025, 0.7);     // bottom
+      var _hjm=gapShade(0.05, dw-2*SG_JAMB, 0, _hj-0.0002, 0.0, 0, 0, 0.6);                 // under the head jamb
+      _hjm.rotation.set(Math.PI/2, 0, Math.PI/2);
+      // the leaf's own edges facing each gap, and its top edge under the head
+      leaves.forEach(function(lf){
+        [-1,1].forEach(function(sd){
+          gapShade(0.05, _gT-_gB, lf.x+sd*(lf.w/2+0.0002), (_gB+_gT)/2, 0.0, -Math.PI/2, 0, 0.7);
+        });
+        var tp=gapShade(0.05, lf.w, lf.x, _gT+0.0002, 0.0, 0, 0, 0.55);
+        tp.rotation.set(Math.PI/2, 0, Math.PI/2);
+      });
       // trim contact shadow on the siding just outside the casing (sides + head)
       var _cs=0.9*_IN, _ox=dw/2+tw;
       [-1,1].forEach(function(sd){
@@ -10173,6 +10249,8 @@ function buildDoor(){
   } else {
     hgY=hingeYs(3, hgS);
   }
+  // straps ride the rails, and the rails moved with the leaf (door gaps)
+  if(shedGap && !isFairytale) hgY=hgY.map(sgY);
   // ---- RESIDENTIAL doors get entirely different hardware ----
   // Concealed-barrel butt hinges on the edge (not decorative straps), and a round
   // satin-nickel knob with a deadbolt above it.
@@ -10248,7 +10326,10 @@ function buildDoor(){
     });
     // Handle sits DEAD CENTRE on the astragal — the centre trim strip between
     // the leaves — whose face is proud of the leaves (0.012 + 0.025).
-    doorKnob(0, dh*0.44, 0.037);
+    /* Door gaps: the astragal went to the room side as the centre stop, so the
+       handle sits on the active (right) leaf's edge stile instead. */
+    if(shedGap) doorKnob(SG_GAP/2+0.021, sgY(dh*0.44), 0.039);
+    else doorKnob(0, dh*0.44, 0.037);
   }
 
     // ---- DOOR OVERHANG (optional) — the shed-roof canopy over double doors that
