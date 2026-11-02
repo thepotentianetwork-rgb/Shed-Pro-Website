@@ -6317,7 +6317,12 @@ function buildShed(){
          butt joint — it always shows a seam, and at a shallow angle the two
          faces fight for the same pixels. An overlap can't do either: the rake
          covers the join and the eye reads one continuous line. */
-      var cg=crossGableGeom(), o3=[], lap=0.020;   // ~1.2in tuck
+      /* Pass 9: lap 0. The "tuck under the rake" never tucked: the rake's
+         outer face is flush with the fascia's (v408), so the 1.2in lap was two
+         coplanar boards z-fighting, with the taller fascia standing proud of
+         the rake tail as a step. A butt joint of two boards of the same height
+         in the same plane is the real corner. */
+      var cg=crossGableGeom(), o3=[], lap=0;
       var a=cg.zc-cg.cwOut+lap, b=cg.zc+cg.cwOut-lap;
       if(a > lo+0.02) o3.push([lo, a]);
       if(b < hi-0.02) o3.push([b, hi]);
@@ -6708,7 +6713,12 @@ function buildShed(){
       var midX = sx*(ew/2 + (soffInX + soffOutX)/2);
       var midY = h + rh - Math.abs(midX)*Math.tan(roofAngLocal) - underDrop;
       var sideFt=(sx>0)?DORMER_R:DORMER_L;
-      dormerSegs(sideFt, soffZC-soffSpanZ/2, soffZC+soffSpanZ/2, sx).forEach(function(sg){
+      /* Pass 9: a cross gable interrupts this eave's SOFFIT as well as its
+         fascia (same -1 flag the fascia uses). Without it the sloped eave
+         soffit ran straight through under the cross gable and stuck out of the
+         gable wall as a grey shelf below the belt trim. */
+      var _xgSide=isCrossGable() && crossSides().indexOf(sx)>=0;
+      dormerSegs(_xgSide ? -1 : sideFt, soffZC-soffSpanZ/2, soffZC+soffSpanZ/2, sx).forEach(function(sg){
         var d=sg[1]-sg[0]; if(d<=0.01) return;
         var sof=new THREE.Mesh(new THREE.BoxGeometry(slopeLen, soffThk, d), soffitMat);
         sof.position.set(midX, midY, (sg[0]+sg[1])/2);
@@ -6719,7 +6729,12 @@ function buildShed(){
       var frY = h - underDrop;
       // Full length: stopping tw short left its end hanging 0.9" proud of the
       // wall with nothing closing it.
-      dormerSegs(sideFt, -el/2, el/2, sx).forEach(function(sg){
+      // Pass 9: under a cross gable the gable's own belt trim is the band, so
+      // the frieze breaks across the gable wall instead of doubling it.
+      var _frSegs=dormerSegs(sideFt, -el/2, el/2, sx);
+      if(_xgSide){ var _cg=crossGableGeom(), _f0=_cg.zc-_cg.cw/2, _f1=_cg.zc+_cg.cw/2;
+        _frSegs=[]; if(_f0>-el/2+0.01) _frSegs.push([-el/2,_f0]); if(_f1<el/2-0.01) _frSegs.push([_f1,el/2]); }
+      _frSegs.forEach(function(sg){
         var d=sg[1]-sg[0]; if(d<=0.01) return;
         var fz=new THREE.Mesh(new THREE.BoxGeometry(tw*0.5, tw, d), matT);
         fz.position.set(sx*(ew/2 + tw*0.25), frY - tw/2, (sg[0]+sg[1])/2);
@@ -7106,7 +7121,7 @@ function buildShed(){
      over there claims "same board width as the rest of the shed"; it was never
      true, it just wasn't measurable until the corner got looked at closely.
      Thickness was off the same way: 1.32in and 1.8in boards against 2.4in. */
-  CROSS_TRIM_CTX = { fb:fb, ft2:ft2, roofVDrop:roofVDrop,
+  CROSS_TRIM_CTX = { fb:fb, ft2:ft2, roofVDrop:roofVDrop, soffThk:0.012,
                      eaveFasciaH:eaveFasciaH, eaveCenterY:eaveCenterY };
 
   // MITRED ends, same as the barn: in plan the outer edge runs the full roof
@@ -7907,9 +7922,18 @@ function buildCrossGable(sx){
        the EAVE, the axes are already swapped. The 90-degree rotation exists
        precisely to swap them, so applying it here double-swaps and puts the
        courses back the wrong way. Straight repeats, no rotation. */
+    /* Pass 9 — MATCH THE MAIN ROOF'S TAB WIDTH. Course exposure already
+       matched, but measured top-down (n-peak-before-3peak-top) the cross
+       gable's tabs rendered 2x as wide along the eave as the main roof's,
+       which goes through orientShingle's rotated path. The difference is a
+       constant factor of the tile, not of the panel size, so doubling the
+       eave repeat matches the main roof at every size/pitch/overhang
+       (verified 8x12 4/12, 10x16 6/12, 12x20 10/12). Metal ignores this map
+       (addMetalPanels swaps the material). */
     var pTex=roofTex(rc);
-    pTex.repeat.set(pLen/_st, slope/_st);
-    if(pTex.bumpMap) pTex.bumpMap.repeat.set(pLen/_st, slope/_st);
+    var _xgEave=2*pLen/_st;
+    pTex.repeat.set(_xgEave, slope/_st);
+    if(pTex.bumpMap) pTex.bumpMap.repeat.set(_xgEave, slope/_st);
     var pMat=tintMat(roofMat(rc, pTex), sg>0 ? 0x00cc44 : 0x0088ff);  // +Z green, -Z blue
     var p=new THREE.Mesh(new THREE.BoxGeometry(pLen, ROOF_THK, slope), pMat);
     p.position.set(X((pXi+pXo)/2), (c.rY+c.eaveY)/2, c.zc+sg*c.cwOut/2);
@@ -8150,7 +8174,10 @@ function buildCrossGable(sx){
      the trim the eye reads at that edge, and in the reference build it is the
      piece that lands on the shed's continuous eave fascia. It was removed by
      accident in v428 along with the horizontal board beside it; restored. */
-  var rTof=0;
+  /* Pass 9: rake top at the DECK TOP, like the shed's eave fascia (v410),
+     so at the tail the rake and the fascia it lands on are the same height
+     and meet as one board instead of the fascia stepping up past it. */
+  var rTof=(_ct.roofVDrop!=null) ? _ct.roofVDrop : rVDrop;
   var rDropEave=fbw;                               // level cut at the tail
   var rDropApex=fbw/Math.cos(ang);                 // perpendicular band at the peak
   [1,-1].forEach(function(sg){
@@ -8185,12 +8212,24 @@ function buildCrossGable(sx){
        those same two heights lies flat, with no warp to fight. */
     var soA=yTop0-rDropApex, soB=yTop1-rDropEave;   // rake underside, apex & tail
     var zB=-sg*sx*c.cwOut;
+    /* Pass 9: at the TAIL the rake soffit has to land on the shed's eave
+       soffit, which follows the roof plane (y = ridgeY - x*tan - drop). It was
+       level at the rake bottom, ~1in below the eave soffit at the fascia and
+       ~5in below it at the wall, so its cut end showed as a white wedge under
+       the corner. Tail corners now sit on the eave soffit's underside; the
+       apex end is unchanged (still under the rake). */
+    var _sDrop=(ROOF_THK/2 + ((_ct.soffThk>0)?_ct.soffThk:0.012))/Math.cos(Math.atan(c.g.tan));
+    // ...but never above the cross roof's own underside at the tail, or the
+    // board pokes up through the cross shingles near the valley.
+    var _soCap=c.eaveY - rVDrop - 0.004;
+    var _soY=function(x){ return Math.min(soA, _soCap, c.g.ridgeY - x*c.g.tan - _sDrop); };
+    var soBo=Math.max(soB, _soY(c.xOut-fth)), soBi=Math.max(soB, _soY(c.g.run));
     var sq=new THREE.BufferGeometry();
     sq.setAttribute('position', new THREE.Float32BufferAttribute([
       X(c.g.run),     soA, c.zc,
       X(c.xOut-fth),  soA, c.zc,
-      X(c.xOut-fth),  soB, c.zc-sg*c.cwOut,
-      X(c.g.run),     soB, c.zc-sg*c.cwOut
+      X(c.xOut-fth),  soBo, c.zc-sg*c.cwOut,
+      X(c.g.run),     soBi, c.zc-sg*c.cwOut
     ], 3));
     sq.setIndex([0,1,2, 0,2,3]);
     sq.computeVertexNormals();
