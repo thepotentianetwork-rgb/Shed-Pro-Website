@@ -7916,6 +7916,7 @@ function buildCrossGable(sx){
   var pXo=c.xOut-0.004;
   var pXi=c.xEnd-Math.min(0.05, c.xEnd*0.6);
   var pLen=Math.max(0.02, pXo-pXi);
+  var _isMetal=(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal');   // Pass 10
   [1,-1].forEach(function(sg){
     /* NO rotation on this one. The main panel is BoxGeometry(slopeLen, thk,
        eaveLen) — X is the slope. Mine is BoxGeometry(pLen, thk, slope) — X is
@@ -7935,7 +7936,34 @@ function buildCrossGable(sx){
     pTex.repeat.set(_xgEave, slope/_st);
     if(pTex.bumpMap) pTex.bumpMap.repeat.set(_xgEave, slope/_st);
     var pMat=tintMat(roofMat(rc, pTex), sg>0 ? 0x00cc44 : 0x0088ff);  // +Z green, -Z blue
-    var p=new THREE.Mesh(new THREE.BoxGeometry(pLen, ROOF_THK, slope), pMat);
+    var pGeo=new THREE.BoxGeometry(pLen, ROOF_THK, slope);
+    /* Pass 10 — CLIP THE CROSS SLAB TO ITS VALLEY. The slab was a full
+       rectangle in plan (pXi..pXo by the whole slope), but the cross roof only
+       owns the valley TRIANGLE: at the ridge end it starts at xEnd, at the eave
+       end only at xOut. Everything inboard of the valley sat under the main
+       roof — invisible from above, but at the eave its lower corner hung
+       ~1in BELOW the main eave soffit inside the overhang, which is the black
+       sliver + white wedge seen from underneath. Slide the inboard vertices
+       onto the valley line (a hair inside it so the main patch still laps the
+       join) and re-derive U from x so the shingle scale is untouched.
+       Metal keeps the rectangle: addMetalPanels rebuilds from the box
+       parameters (Pass 5/6) and is left alone. */
+    if(!_isMetal){
+      var _pm=(pXi+pXo)/2, _pa=pGeo.attributes.position, _pu=pGeo.attributes.uv;
+      for(var _i=0;_i<_pa.count;_i++){
+        var _lx=_pa.getX(_i), _mag=_pm+sx*_lx;            // magnitude off the ridge
+        if(Math.abs(_mag-pXi)>1e-6) continue;           // inboard end only
+        var _t=(_pa.getZ(_i)+slope/2)/slope;            // 0 ridge .. 1 eave (local +z = eave)
+        // ...but never past the rake board's inner face, so the shingle still
+        // covers the rake top (v407) right down to the tail.
+        var _min=Math.min(pXi+(c.xOut-0.012-pXi)*_t, c.xOut-fth-0.006);
+        _pa.setX(_i, sx*(_min-_pm));
+      }
+      // top (8-11) and bottom (12-15) faces: u = (x + w/2)/w, as BoxGeometry does
+      for(var _j=8;_j<16;_j++) _pu.setX(_j, (_pa.getX(_j)+pLen/2)/pLen);
+      _pa.needsUpdate=_pu.needsUpdate=true; pGeo.computeVertexNormals();
+    }
+    var p=new THREE.Mesh(pGeo, pMat);
     p.position.set(X((pXi+pXo)/2), (c.rY+c.eaveY)/2, c.zc+sg*c.cwOut/2);
     p.rotation.x = (sg>0) ? ang : (Math.PI-ang);
     p.castShadow=true; shedGroup.add(p);
@@ -8178,7 +8206,16 @@ function buildCrossGable(sx){
      so at the tail the rake and the fascia it lands on are the same height
      and meet as one board instead of the fascia stepping up past it. */
   var rTof=(_ct.roofVDrop!=null) ? _ct.roofVDrop : rVDrop;
-  var rDropEave=fbw;                               // level cut at the tail
+  /* Pass 10 — SAME BOARD AS THE EAVE FASCIA IT BUTTS. The tail was a level
+     cut fbw (4in) tall, but the shed's eave fascia is eaveFasciaH (fb +
+     roofVDrop) tall, so with the tops matched (Pass 9) the fascia's bottom
+     stood ~0.9in below the rake tail — the step at the junction. The tail's
+     level cut is now the fascia's own height, so its end face IS the
+     fascia's end face: same top, same bottom, same plane, same thickness.
+     The apex keeps the shed's fb band (matches the main gable rakes); the
+     ~0.4in vertical taper over the rake run is not readable. */
+  var _efH=(_ct.eaveFasciaH>0) ? _ct.eaveFasciaH : fbw;
+  var rDropEave=Math.max(fbw, _efH);               // level cut at the tail = fascia end
   var rDropApex=fbw/Math.cos(ang);                 // perpendicular band at the peak
   [1,-1].forEach(function(sg){
     var yTop0=c.rY+rTof, yTop1=c.eaveY+rTof;       // top edge ON the slope line
@@ -8212,26 +8249,39 @@ function buildCrossGable(sx){
        those same two heights lies flat, with no warp to fight. */
     var soA=yTop0-rDropApex, soB=yTop1-rDropEave;   // rake underside, apex & tail
     var zB=-sg*sx*c.cwOut;
-    /* Pass 9: at the TAIL the rake soffit has to land on the shed's eave
-       soffit, which follows the roof plane (y = ridgeY - x*tan - drop). It was
-       level at the rake bottom, ~1in below the eave soffit at the fascia and
-       ~5in below it at the wall, so its cut end showed as a white wedge under
-       the corner. Tail corners now sit on the eave soffit's underside; the
-       apex end is unchanged (still under the rake). */
+    /* Pass 10 — FOLD THE RAKE SOFFIT INTO THE EAVE SOFFIT; no wedge.
+       Pass 9 dropped the tail to the cross roof's underside (_soCap), ~1in
+       below the eave soffit at the fascia and ~5in at the wall. Nothing closed
+       that drop, so its cut end hung under the corner as the white triangle.
+       Real geometry: the rake soffit runs parallel to the rake until it meets
+       the main eave soffit plane (y = ridgeY - x*tan - drop, the same formula
+       the eave soffit uses), then the eave soffit carries on to the cross
+       eave line. The fold line sits inside the cross roof's valley triangle
+       at every x, and the cross slab is now clipped to that valley (above),
+       so neither surface pokes through the other and the tail edge lands
+       exactly on the eave soffit's end edge — closed, no gap, no step.
+       Metal keeps the Pass 9 piece (its slab is not clipped). */
     var _sDrop=(ROOF_THK/2 + ((_ct.soffThk>0)?_ct.soffThk:0.012))/Math.cos(Math.atan(c.g.tan));
-    // ...but never above the cross roof's own underside at the tail, or the
-    // board pokes up through the cross shingles near the valley.
-    var _soCap=c.eaveY - rVDrop - 0.004;
-    var _soY=function(x){ return Math.min(soA, _soCap, c.g.ridgeY - x*c.g.tan - _sDrop); };
-    var soBo=Math.max(soB, _soY(c.xOut-fth)), soBi=Math.max(soB, _soY(c.g.run));
-    var sq=new THREE.BufferGeometry();
-    sq.setAttribute('position', new THREE.Float32BufferAttribute([
-      X(c.g.run),     soA, c.zc,
-      X(c.xOut-fth),  soA, c.zc,
-      X(c.xOut-fth),  soBo, c.zc-sg*c.cwOut,
-      X(c.g.run),     soBi, c.zc-sg*c.cwOut
-    ], 3));
-    sq.setIndex([0,1,2, 0,2,3]);
+    var _Ms=function(x){ return c.g.ridgeY - x*c.g.tan - _sDrop; };   // eave soffit underside
+    var xI=c.g.run, xO=c.xOut-fth, zA=c.zc, zT=c.zc-sg*c.cwOut;
+    var sq=new THREE.BufferGeometry(), _sp, _six;
+    if(!_isMetal){
+      // rake-parallel line R(d) from soA (d=0) to soB (d=cwOut); fold where R = Ms(x)
+      var _fold=function(x){ var t=(soA-_Ms(x))/(soA-soB); return Math.max(0, Math.min(1, t))*c.cwOut; };
+      var dI=_fold(xI), dO=_fold(xO), zz=function(d){ return c.zc-sg*d; };
+      _sp=[ X(xI),soA,zA,  X(xO),soA,zA,                  // 0,1 apex
+            X(xO),_Ms(xO),zz(dO),  X(xI),_Ms(xI),zz(dI),  // 2,3 fold
+            X(xO),_Ms(xO),zT,      X(xI),_Ms(xI),zT ];    // 4,5 tail = eave soffit end
+      _six=[0,1,2, 0,2,3, 3,2,4, 3,4,5];
+    } else {
+      var _soCap=c.eaveY - rVDrop - 0.004;
+      var _soY=function(x){ return Math.min(soA, _soCap, _Ms(x)); };
+      _sp=[ X(xI),soA,zA,  X(xO),soA,zA,
+            X(xO),Math.max(soB,_soY(xO)),zT,  X(xI),Math.max(soB,_soY(xI)),zT ];
+      _six=[0,1,2, 0,2,3];
+    }
+    sq.setAttribute('position', new THREE.Float32BufferAttribute(_sp, 3));
+    sq.setIndex(_six);
     sq.computeVertexNormals();
     var so=new THREE.Mesh(sq, ftMat);
     so.material.side=THREE.DoubleSide;              // winding flips with sg and sx
