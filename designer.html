@@ -5222,12 +5222,25 @@ function makeMetal(color){
      horizontal course lines, so metal roofs read as shingles on some styles.)
      A minor stiffening rib between the major ribs instead. */
   for(var mx2=panelW/3;mx2<512;mx2+=panelW/3){ if(Math.abs((mx2%panelW))<1) continue; ctx.fillStyle=shade(8); ctx.fillRect(Math.round(mx2),0,1,512); }
+  /* MULTI-SHEET (Nov 2 2026): one tile = one 45in sheet (5 ribs). At the tile
+     edge (x=0) the next sheet laps over: a doubled lap rib, a cast shadow line
+     off the overlapping edge, and a slight per-sheet tone step so adjacent
+     sheets read as separate panels side by side, on every metal style. */
+  var lg=ctx.createLinearGradient(0,0,512,0);
+  lg.addColorStop(0,'rgba(255,255,255,0.07)'); lg.addColorStop(1,'rgba(0,0,0,0.09)');
+  ctx.fillStyle=lg; ctx.fillRect(0,0,512,512);
+  ctx.fillStyle=shade(-60); ctx.fillRect(0,0,4,512);      // shadow under lap edge
+  ctx.fillStyle=shade(34); ctx.fillRect(4,0,3,512);       // lap rib highlight
+  ctx.fillStyle=shade(-34); ctx.fillRect(7,0,2,512);
+  ctx.fillStyle=shade(28); ctx.fillRect(507,0,3,512);     // underlap rib on the far side
+  ctx.fillStyle=shade(-45); ctx.fillRect(510,0,2,512);
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; t.encoding=THREE.sRGBEncoding;
   // bump map: emphasize the vertical seams
   var bc=document.createElement('canvas');bc.width=512;bc.height=512;
   var bx2=bc.getContext('2d'); bx2.fillStyle='#808080'; bx2.fillRect(0,0,512,512);
   for(var x2=0;x2<512;x2+=panelW){ bx2.fillStyle='#fff'; bx2.fillRect(x2-1,0,2,512); bx2.fillStyle='#000'; bx2.fillRect(x2+1,0,2,512); }
+  bx2.fillStyle='#000'; bx2.fillRect(0,0,4,512); bx2.fillStyle='#fff'; bx2.fillRect(4,0,5,512); bx2.fillRect(507,0,5,512); // sheet lap
   var bt=new THREE.CanvasTexture(bc); bt.wrapS=bt.wrapT=THREE.RepeatWrapping; bt.anisotropy=8;
   t.bumpMap=bt;
   _canvasCache[ckey]={color:c, bump:bc};
@@ -9628,9 +9641,12 @@ function buildDoor(){
        straight, square-ended rectangular strap on the leaf. No finials, no
        taper, no spade tip. Same reach as the old T-strap so it still lands
        inside the leaf on every door width. */
-    var plateW=0.026*S, plateH=0.066*S;
+    /* Stubby (Nov 2 2026): was a 0.136 x 0.030 strap (8.2in x 1.8in) that
+       read long and skinny vs the customer hinge photos. Now a short, fat
+       plate-style leaf ~4.6in x 3.1in and a squarer casing plate. */
+    var plateW=0.034*S, plateH=0.060*S;
     hwPiece(plateW, plateH, cx, cy, CASING_Z);         // rectangular plate, on the trim
-    var sw=0.136*S, sh=0.030*S;                        // straight rectangular strap, on the leaf
+    var sw=0.077*S, sh=0.052*S;                        // straight rectangular strap, on the leaf
     hwPiece(sw, sh, cx+dir*(plateW/2+sw/2), cy, LEAF_Z);
   }
   /* SHED DOOR HANDLE — a T-HANDLE with the lock built into the plate, which is
