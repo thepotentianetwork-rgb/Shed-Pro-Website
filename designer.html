@@ -9751,6 +9751,56 @@ function buildDoor(){
   // shouldn't have. A slider's own frame members (built into buildLeaf, plus
   // the track below) do that job instead.
   if(!isSingle && !isRollup && !isSlider) bx(0.03, dh-0.04, 0.05, doorDk, 0, dh/2, 0.012);
+  /* ---- Pass 7: DOOR GAPS + CONTACT SHADOWS (hinged shed-style doors only) ----
+     Soft gradient planes, not black outlines: a dark falloff that reads as a
+     recess. Gap widths are fixed in inches, so they stay ~5/16in on any size.
+     Residential, slider and roll-up doors are left exactly as they were. */
+  if(!isResid && !isRollup && !isSlider){
+    var _IN=0.2/12;
+    if(!window.__softShadowTex){
+      var _sc=document.createElement('canvas'); _sc.width=64; _sc.height=4;
+      var _sg=_sc.getContext('2d'), _gr=_sg.createLinearGradient(0,0,64,0);
+      _gr.addColorStop(0,'rgba(0,0,0,1)'); _gr.addColorStop(0.35,'rgba(0,0,0,0.55)'); _gr.addColorStop(1,'rgba(0,0,0,0)');
+      _sg.fillStyle=_gr; _sg.fillRect(0,0,64,4);
+      window.__softShadowTex=new THREE.CanvasTexture(_sc);
+    }
+    function softShade(w2,h2,x,y,z,rot,op){
+      // gradient runs dark->clear along local +x of the plane; rot turns it
+      var m=new THREE.Mesh(new THREE.PlaneGeometry(w2,h2), new THREE.MeshBasicMaterial({
+        map:window.__softShadowTex, color:0x000000, transparent:true, opacity:op, depthWrite:false,
+        polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}));
+      m.rotation.z=rot||0; m.position.set(x,y,z); m.renderOrder=2; DG.add(m); return m;
+    }
+    var GAP=5/16*_IN;                       // visible leaf gap
+    var zLeaf=0.0262, zJamb=0.0285, zSide=0.0255;
+    // centre: a recess either side of the astragal, darkest at its edge
+    if(!isSingle){
+      [-1,1].forEach(function(sd){
+        softShade(GAP*2.4, dh-0.05, sd*(0.0175+GAP*1.2), dh/2, 0.0397, sd>0?0:Math.PI, 0.95);   // on the leaf stile face, against the astragal
+      });
+    }
+    if(!isFairytale){
+      // perimeter: leaf edge -> jamb, darkest against the leaf, both sides + head
+      var _lo=leafOuterEdge;
+      [-1,1].forEach(function(sd){
+        softShade(GAP*1.8, dh-0.01, sd*(_lo+GAP*0.9), dh/2, zJamb, sd>0?0:Math.PI, 0.8);
+      });
+      softShade(GAP*1.8, dw-0.01, 0, dh-jt-GAP*0.2, zJamb, Math.PI/2, 0.7);
+      // trim contact shadow on the siding just outside the casing (sides + head)
+      var _cs=0.9*_IN, _ox=dw/2+tw;
+      [-1,1].forEach(function(sd){
+        softShade(_cs, dh+0.04, sd*(_ox+_cs/2), (dh+0.04)/2, zSide, sd>0?0:Math.PI, 0.4);
+      });
+      softShade(_cs, dw+tw*2, 0, dh+0.02+tw/2+_cs/2, zSide, Math.PI/2, 0.4);
+      // bottom sill: on blocks the sill ends at the wall bottom, so shade its
+      // lower edge (contact AO); otherwise a soft shadow on the siding below.
+      var _sy=(typeof FOUNDATION!=='undefined' && FOUNDATION==='blocks') ? tw/2 : 0.0;
+      if(typeof FOUNDATION!=='undefined' && FOUNDATION==='blocks')
+        softShade(0.6*_IN, dw+tw*2, 0, _sy-tw/2+0.3*_IN, 0.0395, Math.PI/2, 0.30);
+      else
+        softShade(0.7*_IN, dw+tw*2, 0, _sy-tw/2-0.35*_IN, zSide, -Math.PI/2, 0.30);
+    }
+  }
   if(isSlider){
     // TOP + BOTTOM TRACK — the aluminum channel the panels actually ride in.
     // This alone does more to sell "slider" than anything on the leaf faces;
@@ -9773,7 +9823,8 @@ function buildDoor(){
     return bx(w2, h2, d, hwMat2, x, y, seat+d/2);
   }
   /* HINGE MATERIAL (Nov 2 2026 brief): #111111 satin powder coat. */
-  var hingeMat=new THREE.MeshStandardMaterial({color:0x111111, metalness:0.7, roughness:0.45});
+  if(!window.__hingeMat) window.__hingeMat=new THREE.MeshStandardMaterial({color:0x111111, metalness:0.7, roughness:0.45});
+  var hingeMat=window.__hingeMat;   // Pass 7: shared across doors/rebuilds
   function _roundRectGeo(w,h,r,d){
     var sh=new THREE.Shape(), x=-w/2, y=-h/2;
     sh.moveTo(x+r,y); sh.lineTo(x+w-r,y); sh.quadraticCurveTo(x+w,y,x+w,y+r);
@@ -9799,10 +9850,11 @@ function buildDoor(){
     br.position.set(barrelX, cy, HW_FACE+0.001); br.castShadow=true; DG.add(br);
     var sg=_roundRectGeo(strapL, strapH, rr, d+0.002);
     var sm=new THREE.Mesh(sg, hingeMat); sm.position.set(barrelX+dir*strapL/2, cy, LEAF_Z); sm.castShadow=true; DG.add(sm);
-    var bolt=new THREE.SphereGeometry(0.22*IN*k,8,5);
+    if(!window.__hingeBolt) window.__hingeBolt=new THREE.SphereGeometry(0.22*IN,8,5);
+    var bolt=window.__hingeBolt;    // shared unit bolt, scaled per hinge
     [[cx-dir*plateW*0.1,cy+plateH*0.32],[cx-dir*plateW*0.1,cy-plateH*0.32],
      [barrelX+dir*strapL*0.45,cy],[barrelX+dir*strapL*0.82,cy]].forEach(function(q){
-      var bh=new THREE.Mesh(bolt, hingeMat); bh.scale.z=0.45; bh.position.set(q[0],q[1],HW_FACE+0.0025); DG.add(bh);
+      var bh=new THREE.Mesh(bolt, hingeMat); bh.scale.set(k,k,0.45*k); bh.position.set(q[0],q[1],HW_FACE+0.0025); DG.add(bh);
     });
   }
   /* SHED DOOR HANDLE — a T-HANDLE with the lock built into the plate, which is
@@ -9857,7 +9909,10 @@ function buildDoor(){
      at 2.6in and the reach at about 4.2in, which is what the photo measures,
      and keeps the tip well clear of the glass on every leaf width. */
   var isCraft=(DOOR==='craftsman');
-  var hgS=isCedar?1.5:(isFairytale?0.62:(isCraft?0.55:1.0));
+  /* Pass 7: one real hinge size across styles. Was cedar 1.5 / fairytale 0.62 /
+     craftsman 0.55, so the same hardware read oversized on cedar and toy-sized
+     on the other two. Placement/qty/design unchanged. */
+  var hgS=isCedar?1.0:(isFairytale?0.9:(isCraft?0.9:1.0));
   // Hinge heights come from the door's SOLID bands, never the glass. The cedar
   // strap was landing straight across the transom lites; this walks the leaf,
   // subtracts the glazed band, and spreads the hinges over what's left.
