@@ -4365,9 +4365,9 @@ function makeSiding(color, style){
   function softGrooveV(x){
     var grad=ctx.createLinearGradient(x-3,0,x+3,0);
     grad.addColorStop(0,   shade(0));
-    grad.addColorStop(0.4, shade(-0.09));
-    grad.addColorStop(0.5, shade(-0.12));
-    grad.addColorStop(0.6, shade(-0.09));
+    grad.addColorStop(0.4, shade(-0.055));
+    grad.addColorStop(0.5, shade(-0.075));
+    grad.addColorStop(0.6, shade(-0.055));
     grad.addColorStop(1,   shade(0));
     ctx.fillStyle=grad; ctx.fillRect(x-3,0,6,512);
     /* The catch-light on the groove's edge. shade() is ADDITIVE, so +0.04 is
@@ -4379,9 +4379,9 @@ function makeSiding(color, style){
   function softGrooveH(y){
     var grad=ctx.createLinearGradient(0,y-3,0,y+3);
     grad.addColorStop(0,   shade(0));
-    grad.addColorStop(0.4, shade(-0.09));
-    grad.addColorStop(0.5, shade(-0.12));
-    grad.addColorStop(0.6, shade(-0.09));
+    grad.addColorStop(0.4, shade(-0.055));
+    grad.addColorStop(0.5, shade(-0.075));
+    grad.addColorStop(0.6, shade(-0.055));
     grad.addColorStop(1,   shade(0));
     ctx.fillStyle=grad; ctx.fillRect(0,y-3,512,6);
     ctx.fillStyle=shade(0.04*edgeLift); ctx.fillRect(0,y+3,512,1);
@@ -5273,7 +5273,8 @@ function roofMat(color, tex, dbl){
 function sidingMat(color, tex, rough){
   // LP SmartSide paint finish — glossy enough that light visibly reflects off the
   // panels (critical for dark colors, which otherwise absorb everything).
-  var bump=0.14, envI=1.35, r=(rough==null?0.5:rough);
+  // Pass 5: painted-siding relief softened (0.14 -> 0.085) for subtler grooves/grain.
+  var bump=0.085, envI=1.35, r=(rough==null?0.5:rough);
   // HORIZONTAL LAP — dialled back: less relief and less shine than T1-11 or
   // board & batten. Lap siding is a flat painted board with only the lap edge
   // catching light, so the same bump and gloss that suit a grooved panel read
@@ -5282,7 +5283,7 @@ function sidingMat(color, tex, rough){
   //   roughness  0.28 -> 0.40   (+43%: highlight spreads out, stops looking wet)
   //   envMapInt  1.35 -> 1.05   (-22% reflected sky)
   if(typeof SIDING!=='undefined' && SIDING==='horizontal'){
-    bump=0.095;
+    bump=0.06;
     r=r+0.12;
     envI=1.05;
   }
@@ -7459,8 +7460,40 @@ function buildShed(){
    - instanced black screw heads in rows across the slope, in the flats;
    - thin folded trim: eave drip, rake edges and a ridge/top cap.
    The slab itself becomes plain satin metal (the flats between ribs). */
-var METAL_PANEL={COVER:36, RIB_SPACING:12, RIB_H:0.85, RIB_TOP:1.0, RIB_BASE:2.4,
-  SCREW_ROW:24, SCREW_D:0.45, TRIM_T:0.35, TRIM_LIP:1.5, CAP_W:4};
+var METAL_PANEL={COVER:36, RIB_SPACING:9, RIB_H:0.75, RIB_TOP:0.75, RIB_BASE:2.25,
+  SCREW_ROW:24, SCREW_D:0.4, TRIM_T:0.12, TRIM_LIP:0.9, CAP_W:3, LIFT:0.08};
+/* Pass 5: ONE continuous formed sheet per roof slab — a single mesh whose
+   cross-section is the ag/R-panel profile (flat pan, angled rib side, narrow
+   flat rib top, angled side, flat pan ...) swept ridge->eave. Ribs are 9in OC
+   (36in coverage, 4 ribs/panel; matches the rib density in the sage-barn
+   photos). No separate rib bars, no overlap ribs. Trim is thin folded sheet. */
+var _metalSheetMats={};
+function metalSheetMat(color){
+  if(!_metalSheetMats[color]){
+    _metalSheetMats[color]={
+      sheet:new THREE.MeshStandardMaterial({color:color,metalness:0.7,roughness:0.5,envMapIntensity:0.55}),
+      screw:new THREE.MeshStandardMaterial({color:0x161616,metalness:0.6,roughness:0.55,envMapIntensity:0.5})};
+  }
+  return _metalSheetMats[color];
+}
+function formedSheetGeo(Lr, Ls){
+  var IN=0.2/12, P=METAL_PANEL, sp=P.RIB_SPACING*IN, h=P.RIB_H*IN,
+      bh=P.RIB_BASE*IN/2, th=P.RIB_TOP*IN/2;
+  var n=Math.floor(Lr/sp)+1, x0=-((n-1)*sp)/2, xs=[[-Lr/2,0]];
+  for(var i=0;i<n;i++){ var c=x0+i*sp;
+    if(c-bh<=-Lr/2+0.001||c+bh>=Lr/2-0.001) continue;
+    xs.push([c-bh,0],[c-th,h],[c+th,h],[c+bh,0]); }
+  xs.push([Lr/2,0]);
+  var pos=[], z0=-Ls/2, z1=Ls/2;
+  for(var j=0;j<xs.length-1;j++){
+    var A=xs[j],B=xs[j+1];
+    pos.push(A[0],A[1],z1, B[0],B[1],z1, B[0],B[1],z0,  A[0],A[1],z1, B[0],B[1],z0, A[0],A[1],z0);
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.computeVertexNormals();             // non-indexed -> crisp facet per face
+  return {geo:g, ribs:xs};
+}
 function addMetalPanels(root){
   var IN=0.2/12, P=METAL_PANEL, targets=[];
   root.updateMatrixWorld(true);
@@ -7470,85 +7503,75 @@ function addMetalPanels(root){
     if(!o.geometry||o.geometry.type!=='BoxGeometry'||o.userData.__mp) return;
     targets.push(o);
   });
-  // shared geometry
-  function ribGeo(base){
-    var sh=new THREE.Shape(), b=base*IN/2, t=P.RIB_TOP*IN/2, h=P.RIB_H*IN;
-    sh.moveTo(-b,0); sh.lineTo(-t,h); sh.lineTo(t,h); sh.lineTo(b,0); sh.lineTo(-b,0);
-    var g=new THREE.ExtrudeGeometry(sh,{depth:1,bevelEnabled:false});
-    return g; // cross-section in XY, length along +Z (0..1)
-  }
-  var RIB=ribGeo(P.RIB_BASE), LAPRIB=ribGeo(P.RIB_BASE+0.8);
-  var SCREW=new THREE.CylinderGeometry(P.SCREW_D*IN/2,P.SCREW_D*IN/2,0.25*IN,6);
+  var SCREW=new THREE.CylinderGeometry(P.SCREW_D*IN/2,P.SCREW_D*IN/2,0.2*IN,6);
   var UNIT=new THREE.BoxGeometry(1,1,1);
-  var mats={};
-  function mFor(color){
-    if(!mats[color]) mats[color]={
-      flat:new THREE.MeshStandardMaterial({color:color,metalness:0.72,roughness:0.48}),
-      screw:new THREE.MeshStandardMaterial({color:0x151515,metalness:0.6,roughness:0.5})};
-    return mats[color];
-  }
   var mtx=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(), ps=new THREE.Vector3();
-  targets.forEach(function(o){
+  // Pass 5: find the slope ends of every slab first so a KNEE (one slab's low
+  // end meeting another's high end, e.g. the gambrel break) gets no eave drip
+  // and no ridge cap — those read as wrong overlap strips across the roof.
+  var ends=targets.map(function(o){
+    var pr=o.geometry.parameters, d=[pr.width,pr.height,pr.depth], th=d.indexOf(Math.min.apply(null,d));
+    var ot=[0,1,2].filter(function(i){return i!==th;}), e=o.matrixWorld.elements;
+    var ys=ot.map(function(i){return Math.abs(new THREE.Vector3(e[i*4],e[i*4+1],e[i*4+2]).normalize().y);});
+    var sl=(Math.abs(ys[0]-ys[1])>0.005)?(ys[0]>ys[1]?ot[0]:ot[1]):(d[ot[0]]<d[ot[1]]?ot[0]:ot[1]);
+    var v=[0,0,0]; v[sl]=d[sl]/2; var A=new THREE.Vector3(v[0],v[1],v[2]).applyMatrix4(o.matrixWorld);
+    v[sl]=-d[sl]/2; var B=new THREE.Vector3(v[0],v[1],v[2]).applyMatrix4(o.matrixWorld);
+    return A.y<B.y?{lo:A,hi:B}:{lo:B,hi:A};
+  });
+  function nearKnee(pt, key){ return ends.some(function(q){ return q[key].distanceTo(pt)<0.12 && q[key]!==pt; }); }
+  targets.forEach(function(o, ti){
     o.userData.__mp=true;
+    var kneeLo=nearKnee(ends[ti].lo,'hi'), kneeHi=nearKnee(ends[ti].hi,'lo');
     var pr=o.geometry.parameters, dims=[pr.width,pr.height,pr.depth];
     var thin=dims.indexOf(Math.min.apply(null,dims));
     var others=[0,1,2].filter(function(i){return i!==thin;});
     var e=o.matrixWorld.elements;
     function axisW(i){ return new THREE.Vector3(e[i*4],e[i*4+1],e[i*4+2]).normalize(); }
-    var a0=axisW(others[0]), a1=axisW(others[1]);
-    var slope, ridge;
+    var a0=axisW(others[0]), a1=axisW(others[1]), slope, ridge;
     if(Math.abs(Math.abs(a0.y)-Math.abs(a1.y))>0.005){ slope=Math.abs(a0.y)>Math.abs(a1.y)?others[0]:others[1]; }
     else slope=dims[others[0]]<dims[others[1]]?others[0]:others[1];
     ridge=others[0]===slope?others[1]:others[0];
     var nW=axisW(thin), up=nW.y>=0?1:-1;
-    var slW=axisW(slope), slUp=slW.y>=0?1:-1;            // +slope local dir that rises
-    var flat=Math.abs(slW.y)<0.005;
+    var slW=axisW(slope), slUp=slW.y>=0?1:-1, flat=Math.abs(slW.y)<0.005;
     var Ls=dims[slope], Lr=dims[ridge], T=dims[thin];
-    var col=(o.material.userData.metalColor!=null)?o.material.userData.metalColor:0x191919;
-    var M=mFor(col);
-    var keepX=o.material.transparent;
-    o.material=M.flat; if(keepX){ o.material=o.material.clone(); o.material.transparent=true; o.material.opacity=0; o.material.depthWrite=false; }
-    // local basis: put rib X along ridge, Y along thin(up), Z along slope
+    var col=(o.material.userData.metalColor!=null)?o.material.userData.metalColor:0x1A1A1A;
+    var M=metalSheetMat(col), xray=o.material.transparent;
+    var sheetMat=M.sheet;
+    if(xray){ sheetMat=M.sheet.clone(); sheetMat.transparent=true; sheetMat.opacity=0; sheetMat.depthWrite=false; }
+    o.material=sheetMat;
     function vecFor(axis,len){ var v=[0,0,0]; v[axis]=len; return new THREE.Vector3(v[0],v[1],v[2]); }
     var bx=vecFor(ridge,1), by=vecFor(thin,up), bz=vecFor(slope,1);
     var basis=new THREE.Matrix4().makeBasis(bx,by,bz);
     if(basis.determinant()<0){ bx.negate(); basis.makeBasis(bx,by,bz); }
     var holder=new THREE.Group(); holder.matrixAutoUpdate=false;
-    holder.matrix.copy(basis); holder.matrix.setPosition(vecFor(thin,up*T/2));
+    holder.matrix.copy(basis); holder.matrix.setPosition(vecFor(thin,up*(T/2+P.LIFT*IN)));
     o.add(holder);
+    var fs=formedSheetGeo(Lr, Ls);
+    var sheet=new THREE.Mesh(fs.geo, sheetMat); sheet.receiveShadow=true; sheet.castShadow=false; holder.add(sheet);
+    // screws: in the flat pans, ~1in off each rib foot, rows every SCREW_ROW
     var sp=P.RIB_SPACING*IN, n=Math.floor(Lr/sp)+1, x0=-((n-1)*sp)/2;
-    var per=Math.round(P.COVER/P.RIB_SPACING), laps=[], ribs=[];
-    for(var i=0;i<n;i++){ (i%per===0?laps:ribs).push(x0+i*sp); }
-    function ribIM(geo,xs){
-      if(!xs.length) return;
-      var im=new THREE.InstancedMesh(geo,M.flat,xs.length);
-      xs.forEach(function(x,j){ mtx.makeScale(1,1,Ls); mtx.setPosition(x,0,-Ls/2); im.setMatrixAt(j,mtx); });
-      im.castShadow=true; im.receiveShadow=true; holder.add(im);
-    }
-    ribIM(RIB,ribs); ribIM(LAPRIB,laps);
-    // screws: rows every SCREW_ROW along slope, each side of every rib in the flat
     var rows=Math.max(2,Math.round((Ls/IN)/P.SCREW_ROW)), pts=[];
-    for(var r=0;r<rows;r++){ var z=-Ls/2+ (r+0.5)*Ls/rows;
-      for(var i2=0;i2<n;i2++){ var xr=x0+i2*sp; [-1,1].forEach(function(sd){ var xx=xr+sd*(P.RIB_BASE/2+1.2)*IN; if(Math.abs(xx)<Lr/2-IN) pts.push([xx,z]); }); } }
+    for(var r=0;r<rows;r++){ var z=-Ls/2+(r+0.5)*Ls/rows;
+      for(var i2=0;i2<n;i2++){ var xx=x0+i2*sp+(P.RIB_BASE/2+1.0)*IN; if(Math.abs(xx)<Lr/2-1.5*IN) pts.push([xx,z]); } }
     if(pts.length){ var sim=new THREE.InstancedMesh(SCREW,M.screw,pts.length);
-      pts.forEach(function(p,j){ mtx.makeTranslation(p[0],0.12*IN,p[1]); sim.setMatrixAt(j,mtx); }); holder.add(sim); }
-    // trim (thin folded sheet pieces, same color as panel)
-    var tT=P.TRIM_T*IN, lip=P.TRIM_LIP*IN, hTop=P.RIB_H*IN;
-    var trims=[];
-    // rake edges (both ridge-axis ends): vertical fascia strip + top flange over the ribs
+      pts.forEach(function(p,j){ mtx.makeTranslation(p[0],0.1*IN,p[1]); sim.setMatrixAt(j,mtx); }); holder.add(sim); }
+    // thin folded trim (sheet thickness TRIM_T)
+    var tT=P.TRIM_T*IN, lip=P.TRIM_LIP*IN, hTop=P.RIB_H*IN, base=-(T+P.LIFT*IN), trims=[];
     [-1,1].forEach(function(sd){
-      trims.push([tT, T+hTop+lip, Ls+tT*2, sd*(Lr/2+tT/2), (hTop+lip-T)/2 - 0*T, 0]);
-      trims.push([P.CAP_W*0.5*IN, tT, Ls+tT*2, sd*(Lr/2-P.CAP_W*0.25*IN), hTop+tT/2, 0]);
+      trims.push([tT, hTop-base+lip*0.3, Ls+tT*2, sd*(Lr/2+tT/2), (hTop+base)/2+lip*0.15, 0]);   // rake face
+      trims.push([P.CAP_W*0.5*IN, tT, Ls, sd*(Lr/2-P.CAP_W*0.25*IN), hTop+tT/2, 0]);              // rake top flange
     });
     if(!flat){
-      var lo=-slUp, hi=slUp;            // local z sign of low (eave) and high ends
-      // eave drip: thin strip down the low end face
-      trims.push([Lr+tT*2, T+lip, tT, 0, -(T+lip)/2+hTop*0.3, lo*(Ls/2+tT/2)]);
-      // ridge/top cap: flat cap over the high end of the ribs + a short down-turn
-      trims.push([Lr+tT*2, tT, P.CAP_W*IN, 0, hTop+tT/2, hi*(Ls/2-P.CAP_W*IN/2+tT)]);
-      trims.push([Lr+tT*2, hTop+lip, tT, 0, (hTop-lip)/2, hi*(Ls/2+tT/2)]);
+      var lo=-slUp, hi=slUp;
+      if(!kneeLo) trims.push([Lr+tT*2, -base+hTop+lip*0.4, tT, 0, (base+hTop)/2-lip*0.2, lo*(Ls/2+tT/2)]);  // eave drip (thin)
+      if(!kneeHi){
+        trims.push([Lr+tT*2, tT, P.CAP_W*IN, 0, hTop+tT/2, hi*(Ls/2-P.CAP_W*IN/2+tT)]);              // ridge cap
+        trims.push([Lr+tT*2, hTop+lip*0.5, tT, 0, hTop/2-lip*0.25, hi*(Ls/2+tT/2)]);                 // cap down-turn
+      }
+    } else {
+      [-1,1].forEach(function(sd){ trims.push([Lr+tT*2, -base+hTop+lip*0.3, tT, 0, (hTop+base)/2, sd*(Ls/2+tT/2)]); });
     }
-    var tim=new THREE.InstancedMesh(UNIT,M.flat,trims.length);
+    var tim=new THREE.InstancedMesh(UNIT,M.sheet,trims.length);
     trims.forEach(function(t,j){ sc.set(t[0],t[1],t[2]); ps.set(t[3],t[4],t[5]); q.identity(); mtx.compose(ps,q,sc); tim.setMatrixAt(j,mtx); });
     tim.castShadow=true; holder.add(tim);
   });
