@@ -2,9 +2,36 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
-    { "source": "/offers", "destination": "/", "permanent": true },
-    { "source": "/offers.html", "destination": "/", "permanent": true },
-    { "source": "/materials", "destination": "/gallery#materials", "permanent": true },
-    { "source": "/materials.html", "destination": "/gallery#materials", "permanent": true }
+    {
+      "source": "/offers",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/offers.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/materials",
+      "destination": "/gallery#materials",
+      "permanent": true
+    },
+    {
+      "source": "/materials.html",
+      "destination": "/gallery#materials",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/vendor/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
   ]
 }

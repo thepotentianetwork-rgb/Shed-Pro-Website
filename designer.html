@@ -29,7 +29,7 @@
      crossorigin attribute on purpose, so the preload matches the plain script
      tag the loader below injects and the browser reuses it. -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js">
+<link rel="preload" as="script" href="/vendor/three-0.128.0.min.js">
 <link rel="stylesheet" href="designer-upgrade.css">
 <script src="lead-source.js"></script>
 <!-- Vercel Web Analytics (already enabled on this project). Custom events go
@@ -920,6 +920,14 @@ textarea.inp{resize:vertical}
           <input id="ventHeightSlider" type="range" min="0" max="100" value="80" oninput="setVentHeight(this.value)" style="width:100%;margin-top:4px">
           <span class="lbl" style="font-size:10px;color:var(--mu)">Slide up to place it in the gable</span>
         </div>
+        <div id="ventColorCtrl" style="margin-top:10px">
+          <span class="lbl" style="font-size:11px">Vent color</span>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button type="button" class="vent-color-opt sel" data-vc="black" onclick="setVentColor('black')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--br);background:#1f1f1f;color:#fff;font-weight:700;cursor:pointer">Black</button>
+            <button type="button" class="vent-color-opt" data-vc="white" onclick="setVentColor('white')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--br);background:#f5f5f2;color:#111;font-weight:700;cursor:pointer">White</button>
+          </div>
+        </div>
+        <style>.vent-color-opt.sel{outline:2px solid #2BB5E8;outline-offset:1px}</style>
         <div id="editToggle" onclick="toggleEditMode()" style="display:none"></div>
       </div>
 
@@ -2386,7 +2394,10 @@ var sc=0x6E7377, tc=0xF2F0EC, rc=0x28282A;
 var sn='Gray', tn='White', rn='Black Asphalt';
 
 var scr=document.createElement('script');
-scr.src='https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js';
+/* PERF (2026-11-02): three.js served same-origin — no extra DNS/TLS handshake
+   to jsdelivr on first open, and an immutable cache header (vercel.json).
+   The CDN copies stay as the fallback chain. */
+scr.src='/vendor/three-0.128.0.min.js';
 /* PERF: three.js is preloaded, so it often finished downloading while the
    1MB page was still parsing and init() - first build + ~40 shader compiles -
    ran in the middle of it, holding DOMContentLoaded (and every button) back by
@@ -2399,6 +2410,7 @@ function initWhenReady(){
 scr.onload=initWhenReady;
 scr.onerror=function(){
   var s2=document.createElement('script');
+  s2.onerror=function(){ var s3=document.createElement('script'); s3.src='https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'; s3.onload=initWhenReady; document.head.appendChild(s3); };
   s2.src='https://unpkg.com/three@0.128.0/build/three.min.js';
   s2.onload=initWhenReady;
   document.head.appendChild(s2);
@@ -9581,20 +9593,15 @@ function buildDoor(){
     return bx(w2, h2, d, hwMat2, x, y, seat+d/2);
   }
   function strapHinge(cx, cy, dir, S){
-    var plateW=0.026*S, plateH=0.078*S;
-    hwPiece(plateW, plateH, cx, cy, CASING_Z);         // pintle plate, on the trim
-    [1,-1].forEach(function(sgn){                      // pointed finials
-      var d=hwPiece(plateW*0.72, plateW*0.72, cx, cy+sgn*plateH/2, CASING_Z);
-      d.rotation.z=Math.PI/4;
-    });
-    var run=cx+dir*plateW/2;                           // tapering strap, on the leaf
-    [[0.052,0.030],[0.044,0.024],[0.032,0.018]].forEach(function(sg){
-      var sw=sg[0]*S, sh=sg[1]*S;
-      hwPiece(sw, sh, run+dir*sw/2, cy, LEAF_Z);
-      run+=dir*sw;
-    });
-    var tip=hwPiece(0.024*S, 0.024*S, run+dir*0.008*S, cy, LEAF_Z);
-    tip.rotation.z=Math.PI/4;                          // spade tip
+    /* RECTANGULAR HINGE (Nov 2026) — ShedPro now hangs doors on square-cut
+       rectangular hinges: a plain rectangular plate on the casing and a
+       straight, square-ended rectangular strap on the leaf. No finials, no
+       taper, no spade tip. Same reach as the old T-strap so it still lands
+       inside the leaf on every door width. */
+    var plateW=0.026*S, plateH=0.066*S;
+    hwPiece(plateW, plateH, cx, cy, CASING_Z);         // rectangular plate, on the trim
+    var sw=0.136*S, sh=0.030*S;                        // straight rectangular strap, on the leaf
+    hwPiece(sw, sh, cx+dir*(plateW/2+sw/2), cy, LEAF_Z);
   }
   /* SHED DOOR HANDLE — a T-HANDLE with the lock built into the plate, which is
      what actually goes on these doors. This was a domed round knob with a key
@@ -11531,12 +11538,23 @@ function buildRamps(){
   });
 }
 
+var VENT_COLOR='black';
+function setVentColor(c){
+  VENT_COLOR=(c==='white')?'white':'black';
+  document.querySelectorAll('.vent-color-opt').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-vc')===VENT_COLOR); });
+  if(typeof buildShed==='function') buildShed();
+  if(typeof saveState==='function') try{ saveState(); }catch(e){}
+}
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
   var vW=VENT_W, vH=VENT_H;           // 16" wide x 8" tall
   var frameMat=new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
-  var slatMat=new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.7, metalness:0.1});
+  // VENT COLOR — the louvre itself is black or white (user choice); the casing
+  // around it stays trim colour like every window.
+  var _vw=(VENT_COLOR==='white');
+  var slatMat=new THREE.MeshStandardMaterial({color:_vw?0xd9d9d6:0x1f1f1f, roughness:0.7, metalness:0.1});
+  var louvMat=new THREE.MeshStandardMaterial({color:_vw?0xf5f5f2:0x333333, roughness:0.6, metalness:0.1});
   ventsData.forEach(function(vd, idx){
     // Vents ride near the wall top. Measure "the top" from THIS wall's real
     // height — the lean-to's back wall is shorter than H, so (H*12)-12 sat
@@ -11570,7 +11588,7 @@ function buildVents(){
     var slats=4;
     for(var s=0;s<slats;s++){
       var sy=cy - vH/2 + (s+0.5)*(vH/slats);
-      grp.add(mk(new THREE.BoxGeometry(vW-0.02, vH/slats*0.5, 0.012), frameMat, 0, sy, WALL_Z+0.010));
+      grp.add(mk(new THREE.BoxGeometry(vW-0.02, vH/slats*0.5, 0.012), louvMat, 0, sy, WALL_Z+0.010));
     }
     if(EDIT_MODE && selectedKind==='vent' && selectedVent===idx){
       grp.add(mk(new THREE.BoxGeometry(vW+0.12, vH+0.12, 0.006),
@@ -18556,7 +18574,7 @@ function getDesignConfig(){
     dormerL:DORMER_L, dormerR:DORMER_R, dormerLOff:DORMER_L_OFF, dormerROff:DORMER_R_OFF,
     foundation:FOUNDATION, foundationFinish:FOUNDATION_FINISH, foundationStain:FOUNDATION_STAIN,
     loft:LOFT, loftSide:LOFT_SIDE, elec:ELEC, intFinish:INT_FINISH, floor:FLOOR, addons:ADDONS,
-    doors:doorsData, windows:windowsData, vents:ventsData, shelves:shelvesData,
+    doors:doorsData, windows:windowsData, vents:ventsData, ventColor:VENT_COLOR, shelves:shelvesData,
     porchLights:porchLightsData
   };
   /* Only when there are any, so every design saved without sprinklers keeps
@@ -18781,6 +18799,8 @@ function applyDesignConfig(c){
        two at the identical coordinate are one shelf and a billing error, and
        there is no build in which the second one could ever be seen. */
     if(Array.isArray(c.vents))ventsData=dropStacked(c.vents, ['wall','pos','cy']);
+    VENT_COLOR=(c.ventColor==='white')?'white':'black';
+    try{ document.querySelectorAll('.vent-color-opt').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-vc')===VENT_COLOR); }); }catch(e){}
     if(Array.isArray(c.shelves))shelvesData=dropStacked(c.shelves, ['wall','pos','cy','depth','len']);
     if(Array.isArray(c.porchLights))porchLightsData=dropStacked(c.porchLights, ['wall','pos','style']);
     if(typeof syncBulbVisibility==='function') syncBulbVisibility();
