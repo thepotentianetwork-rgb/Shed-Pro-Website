@@ -7461,7 +7461,7 @@ function buildShed(){
    - thin folded trim: eave drip, rake edges and a ridge/top cap.
    The slab itself becomes plain satin metal (the flats between ribs). */
 var METAL_PANEL={COVER:36, RIB_SPACING:9, RIB_H:0.75, RIB_TOP:0.75, RIB_BASE:2.25,
-  SCREW_ROW:24, SCREW_D:0.4, TRIM_T:0.12, TRIM_LIP:0.9, CAP_W:3, LIFT:0.08};
+  SCREW_ROW:24, SCREW_D:0.4, TRIM_T:0.12, TRIM_LIP:0.9, CAP_W:2, LIFT:0.08};
 /* Pass 5: ONE continuous formed sheet per roof slab — a single mesh whose
    cross-section is the ag/R-panel profile (flat pan, angled rib side, narrow
    flat rib top, angled side, flat pan ...) swept ridge->eave. Ribs are 9in OC
@@ -7501,6 +7501,13 @@ function addMetalPanels(root){
     if(!o.isMesh||o.isInstancedMesh||!o.material||Array.isArray(o.material)) return;
     if(!o.material.userData||!o.material.userData.metalRoof) return;
     if(!o.geometry||o.geometry.type!=='BoxGeometry'||o.userData.__mp) return;
+    /* Pass 6: narrow pieces (ridge/knee/rake caps, < ~9in wide) are TRIM, not
+       roof panels — give them the plain satin sheet material, no ribs/screws
+       (ribbing them is what made the barn ridge/knee band look busy). */
+    var _pp=o.geometry.parameters, _d=[_pp.width,_pp.height,_pp.depth].sort(function(a,b){return a-b;});
+    if(_d[1]<0.15){ o.userData.__mp=true;
+      var _c=(o.material.userData.metalColor!=null)?o.material.userData.metalColor:0x1A1A1A;
+      if(!o.material.transparent) o.material=metalSheetMat(_c).sheet; return; }
     targets.push(o);
   });
   var SCREW=new THREE.CylinderGeometry(P.SCREW_D*IN/2,P.SCREW_D*IN/2,0.2*IN,6);
@@ -7558,11 +7565,14 @@ function addMetalPanels(root){
     // thin folded trim (sheet thickness TRIM_T)
     var tT=P.TRIM_T*IN, lip=P.TRIM_LIP*IN, hTop=P.RIB_H*IN, base=-(T+P.LIFT*IN), trims=[];
     [-1,1].forEach(function(sd){
-      trims.push([tT, hTop-base+lip*0.3, Ls+tT*2, sd*(Lr/2+tT/2), (hTop+base)/2+lip*0.15, 0]);   // rake face
+      trims.push([tT, hTop-base+lip*0.6, Ls+tT*2, sd*(Lr/2+tT/2), (hTop+base)/2-lip*0.3+tT, 0]);   // rake face: thin, laps down over the rake board
       trims.push([P.CAP_W*0.5*IN, tT, Ls, sd*(Lr/2-P.CAP_W*0.25*IN), hTop+tT/2, 0]);              // rake top flange
     });
     if(!flat){
       var lo=-slUp, hi=slUp;
+      // knee: one thin folded closure along the lapping sheet's lower edge
+      // (hides the open rib ends) instead of a drip + screws band.
+      if(kneeLo) trims.push([Lr, hTop+tT*2, tT, 0, hTop/2, lo*(Ls/2+tT/2)]);
       if(!kneeLo) trims.push([Lr+tT*2, -base+hTop+lip*0.4, tT, 0, (base+hTop)/2-lip*0.2, lo*(Ls/2+tT/2)]);  // eave drip (thin)
       if(!kneeHi){
         trims.push([Lr+tT*2, tT, P.CAP_W*IN, 0, hTop+tT/2, hi*(Ls/2-P.CAP_W*IN/2+tT)]);              // ridge cap
@@ -8609,7 +8619,7 @@ function buildBarnRoof(){
   var barnH=_bp.barnH, kneeX=_bp.kneeX, kneeY=_bp.kneeY, ridgeY=_bp.ridgeY;
 
   var roofDepth = l + gableOv*2;   // front-to-back extent incl. gable overhang
-  var halfThk=0.014;               // ~1.7" shingle edge, matching the photo
+  var halfThk=(ROOFTYPE==='metal')?0.0065:0.014;  // ~1.7" shingle edge; metal sheet edge is thin (Pass 6)
   var jointExt=0.020;              // extend panels past knees/ridge so joints overlap
 
   // ---- helper: build one sloped roof panel between two profile points ----
@@ -8682,7 +8692,7 @@ function buildBarnRoof(){
      it and sits a hair proud, and the knee caps are skipped. Shingles keep the
      capped knee they always had. */
   var _metalLap=(ROOFTYPE==='metal');
-  var LAP=3*INCH;
+  var LAP=1.5*INCH;   // Pass 6: tighter knee lap (was 3in) so the break reads clean
   if(_metalLap){
     barnPanel(eaveTipX, eaveTipY, kneeX, kneeY, +1, false, 0);         // right lower, tucked
     barnPanel(kneeX, kneeY, 0, ridgeY, +1, LAP, jointExt, 0.004);      // right upper, laps over
