@@ -5201,46 +5201,45 @@ function makeMetal(color){
     return 'rgb('+Math.max(0,Math.min(255,r+amt))+','+Math.max(0,Math.min(255,g+amt))+','+Math.max(0,Math.min(255,b+amt))+')';
   }
   ctx.fillStyle=shade(0); ctx.fillRect(0,0,512,512);
-  /* panels: ONE metal sheet look for every roof style (barn, gable, lean-to,
-     hip, peaks, porch, awning all take roofTex -> makeMetal at the same
-     SHINGLE_TILE scale). Ribs every 512/5 px = 9in on centre, the ag/R-panel
-     spacing in the reference photos; was 5.6in, which read as fine ribbing. */
-  var panelW=512/5;
+  /* PASS 4 (Nov 2 2026) — CORRUGATED AG PANEL, matched to the sage barn
+     photos: evenly spaced raised ribs every 9in (5 per 45in tile) with two
+     low stiffening ribs in each flat pan. Each major rib is shaded like a
+     trapezoid (lit face, crown highlight, shadowed face) so it reads as real
+     corrugation. Pass 3's per-sheet tone banding and wide lap stripes are
+     gone; the side lap is now only a slightly deeper shadow on one rib per
+     tile (a lapped rib looks like a normal rib from the ground). */
+  var panelW=512/5, ribW=14;
+  // flat pans: barely-there gradient so the steel isn't flat-shaded
   for(var x=0;x<512;x+=panelW){
-    // subtle center highlight gradient across the panel
     var grad=ctx.createLinearGradient(x,0,x+panelW,0);
-    grad.addColorStop(0, shade(-18));
-    grad.addColorStop(0.5, shade(16));
-    grad.addColorStop(1, shade(-18));
+    grad.addColorStop(0, shade(-6)); grad.addColorStop(0.5, shade(4)); grad.addColorStop(1, shade(-6));
     ctx.fillStyle=grad; ctx.fillRect(x,0,panelW,512);
-    // raised seam at the panel edge (bright line + shadow)
-    ctx.fillStyle=shade(22); ctx.fillRect(x-1,0,2,512);
-    ctx.fillStyle=shade(-26); ctx.fillRect(x+1,0,2,512);
+    // minor stiffening ribs in the pan
+    [1/3,2/3].forEach(function(f){ var mx=Math.round(x+f*panelW); ctx.fillStyle=shade(5); ctx.fillRect(mx,0,2,512); ctx.fillStyle=shade(-6); ctx.fillRect(mx+2,0,2,512); });
   }
-  // faint horizontal striations for a brushed-metal feel
-  /* (No horizontal brushed striations: at viewing distance they aliased into
-     horizontal course lines, so metal roofs read as shingles on some styles.)
-     A minor stiffening rib between the major ribs instead. */
-  for(var mx2=panelW/3;mx2<512;mx2+=panelW/3){ if(Math.abs((mx2%panelW))<1) continue; ctx.fillStyle=shade(8); ctx.fillRect(Math.round(mx2),0,1,512); }
-  /* MULTI-SHEET (Nov 2 2026): one tile = one 45in sheet (5 ribs). At the tile
-     edge (x=0) the next sheet laps over: a doubled lap rib, a cast shadow line
-     off the overlapping edge, and a slight per-sheet tone step so adjacent
-     sheets read as separate panels side by side, on every metal style. */
-  var lg=ctx.createLinearGradient(0,0,512,0);
-  lg.addColorStop(0,'rgba(255,255,255,0.07)'); lg.addColorStop(1,'rgba(0,0,0,0.09)');
-  ctx.fillStyle=lg; ctx.fillRect(0,0,512,512);
-  ctx.fillStyle=shade(-60); ctx.fillRect(0,0,4,512);      // shadow under lap edge
-  ctx.fillStyle=shade(34); ctx.fillRect(4,0,3,512);       // lap rib highlight
-  ctx.fillStyle=shade(-34); ctx.fillRect(7,0,2,512);
-  ctx.fillStyle=shade(28); ctx.fillRect(507,0,3,512);     // underlap rib on the far side
-  ctx.fillStyle=shade(-45); ctx.fillRect(510,0,2,512);
+  function rib(x0, lap){
+    var rg=ctx.createLinearGradient(x0-ribW/2,0,x0+ribW/2,0);
+    rg.addColorStop(0.00, shade(lap?-30:-18));   // shadowed foot / lap edge
+    rg.addColorStop(0.22, shade(8));
+    rg.addColorStop(0.45, shade(24));            // crown highlight
+    rg.addColorStop(0.62, shade(10));
+    rg.addColorStop(0.85, shade(-16));
+    rg.addColorStop(1.00, shade(-8));
+    ctx.fillStyle=rg; ctx.fillRect(x0-ribW/2,0,ribW,512);
+  }
+  for(var rx=0;rx<=512;rx+=panelW){ rib(rx%512===0?0:rx, rx===0); }
+  rib(512,true);
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; t.encoding=THREE.sRGBEncoding;
-  // bump map: emphasize the vertical seams
+  // bump map: smooth raised rib profile
   var bc=document.createElement('canvas');bc.width=512;bc.height=512;
-  var bx2=bc.getContext('2d'); bx2.fillStyle='#808080'; bx2.fillRect(0,0,512,512);
-  for(var x2=0;x2<512;x2+=panelW){ bx2.fillStyle='#fff'; bx2.fillRect(x2-1,0,2,512); bx2.fillStyle='#000'; bx2.fillRect(x2+1,0,2,512); }
-  bx2.fillStyle='#000'; bx2.fillRect(0,0,4,512); bx2.fillStyle='#fff'; bx2.fillRect(4,0,5,512); bx2.fillRect(507,0,5,512); // sheet lap
+  var bx2=bc.getContext('2d'); bx2.fillStyle='#707070'; bx2.fillRect(0,0,512,512);
+  for(var x2=0;x2<=512;x2+=panelW){
+    var bg=bx2.createLinearGradient(x2-ribW/2,0,x2+ribW/2,0);
+    bg.addColorStop(0,'#707070'); bg.addColorStop(0.3,'#e0e0e0'); bg.addColorStop(0.7,'#e0e0e0'); bg.addColorStop(1,'#707070');
+    bx2.fillStyle=bg; bx2.fillRect(x2-ribW/2,0,ribW,512);
+    [1/3,2/3].forEach(function(f){ bx2.fillStyle='#9a9a9a'; bx2.fillRect(Math.round(x2+f*panelW),0,3,512); });
+  }
   var bt=new THREE.CanvasTexture(bc); bt.wrapS=bt.wrapT=THREE.RepeatWrapping; bt.anisotropy=8;
   t.bumpMap=bt;
   _canvasCache[ckey]={color:c, bump:bc};
@@ -5256,9 +5255,10 @@ function roofMat(color, tex, dbl){
       // with the colour first, so tinting it again squares it.
       color: tex ? 0xffffff : color, map:tex||null,
       bumpMap:(tex&&tex.bumpMap)||null, bumpScale:0.4,
-      roughness:0.5, metalness:0.6,          // painted steel, softer at angles
+      roughness:0.48, metalness:0.72,        // satin painted steel (Nov 2 brief)
       side: dbl?THREE.DoubleSide:THREE.FrontSide
     });
+    m.userData.metalRoof=true; m.userData.metalColor=color;
   } else {
     m = shingleMat(color, tex, dbl);
   }
@@ -7446,8 +7446,112 @@ function buildShed(){
       });
     });
   }
+  if(ROOFTYPE==='metal' && typeof addMetalPanels==='function') addMetalPanels(shedGroup);
   if(typeof applyLighting==='function') applyLighting();  // re-attach pkg lights & day/night
   if(typeof buildSnapGuides==='function') buildSnapGuides();
+}
+/* ===== EXPOSED-FASTENER R-PANEL METAL ROOF (Nov 2 2026 brief) =====
+   Real geometry, not a stretched texture. Every thin box roof slab that uses a
+   metal roofMat (gable, barn upper/lower, lean-to, porch, awning, ...) gets:
+   - trapezoidal ribs (extruded cross-section) every RIB_SPACING running
+     ridge->eave, one InstancedMesh per slab;
+   - 36in panels: at each panel lap the rib is a lap rib (slightly wider);
+   - instanced black screw heads in rows across the slope, in the flats;
+   - thin folded trim: eave drip, rake edges and a ridge/top cap.
+   The slab itself becomes plain satin metal (the flats between ribs). */
+var METAL_PANEL={COVER:36, RIB_SPACING:12, RIB_H:0.85, RIB_TOP:1.0, RIB_BASE:2.4,
+  SCREW_ROW:24, SCREW_D:0.45, TRIM_T:0.35, TRIM_LIP:1.5, CAP_W:4};
+function addMetalPanels(root){
+  var IN=0.2/12, P=METAL_PANEL, targets=[];
+  root.updateMatrixWorld(true);
+  root.traverse(function(o){
+    if(!o.isMesh||o.isInstancedMesh||!o.material||Array.isArray(o.material)) return;
+    if(!o.material.userData||!o.material.userData.metalRoof) return;
+    if(!o.geometry||o.geometry.type!=='BoxGeometry'||o.userData.__mp) return;
+    targets.push(o);
+  });
+  // shared geometry
+  function ribGeo(base){
+    var sh=new THREE.Shape(), b=base*IN/2, t=P.RIB_TOP*IN/2, h=P.RIB_H*IN;
+    sh.moveTo(-b,0); sh.lineTo(-t,h); sh.lineTo(t,h); sh.lineTo(b,0); sh.lineTo(-b,0);
+    var g=new THREE.ExtrudeGeometry(sh,{depth:1,bevelEnabled:false});
+    return g; // cross-section in XY, length along +Z (0..1)
+  }
+  var RIB=ribGeo(P.RIB_BASE), LAPRIB=ribGeo(P.RIB_BASE+0.8);
+  var SCREW=new THREE.CylinderGeometry(P.SCREW_D*IN/2,P.SCREW_D*IN/2,0.25*IN,6);
+  var UNIT=new THREE.BoxGeometry(1,1,1);
+  var mats={};
+  function mFor(color){
+    if(!mats[color]) mats[color]={
+      flat:new THREE.MeshStandardMaterial({color:color,metalness:0.72,roughness:0.48}),
+      screw:new THREE.MeshStandardMaterial({color:0x151515,metalness:0.6,roughness:0.5})};
+    return mats[color];
+  }
+  var mtx=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(), ps=new THREE.Vector3();
+  targets.forEach(function(o){
+    o.userData.__mp=true;
+    var pr=o.geometry.parameters, dims=[pr.width,pr.height,pr.depth];
+    var thin=dims.indexOf(Math.min.apply(null,dims));
+    var others=[0,1,2].filter(function(i){return i!==thin;});
+    var e=o.matrixWorld.elements;
+    function axisW(i){ return new THREE.Vector3(e[i*4],e[i*4+1],e[i*4+2]).normalize(); }
+    var a0=axisW(others[0]), a1=axisW(others[1]);
+    var slope, ridge;
+    if(Math.abs(Math.abs(a0.y)-Math.abs(a1.y))>0.005){ slope=Math.abs(a0.y)>Math.abs(a1.y)?others[0]:others[1]; }
+    else slope=dims[others[0]]<dims[others[1]]?others[0]:others[1];
+    ridge=others[0]===slope?others[1]:others[0];
+    var nW=axisW(thin), up=nW.y>=0?1:-1;
+    var slW=axisW(slope), slUp=slW.y>=0?1:-1;            // +slope local dir that rises
+    var flat=Math.abs(slW.y)<0.005;
+    var Ls=dims[slope], Lr=dims[ridge], T=dims[thin];
+    var col=(o.material.userData.metalColor!=null)?o.material.userData.metalColor:0x191919;
+    var M=mFor(col);
+    var keepX=o.material.transparent;
+    o.material=M.flat; if(keepX){ o.material=o.material.clone(); o.material.transparent=true; o.material.opacity=0; o.material.depthWrite=false; }
+    // local basis: put rib X along ridge, Y along thin(up), Z along slope
+    function vecFor(axis,len){ var v=[0,0,0]; v[axis]=len; return new THREE.Vector3(v[0],v[1],v[2]); }
+    var bx=vecFor(ridge,1), by=vecFor(thin,up), bz=vecFor(slope,1);
+    var basis=new THREE.Matrix4().makeBasis(bx,by,bz);
+    if(basis.determinant()<0){ bx.negate(); basis.makeBasis(bx,by,bz); }
+    var holder=new THREE.Group(); holder.matrixAutoUpdate=false;
+    holder.matrix.copy(basis); holder.matrix.setPosition(vecFor(thin,up*T/2));
+    o.add(holder);
+    var sp=P.RIB_SPACING*IN, n=Math.floor(Lr/sp)+1, x0=-((n-1)*sp)/2;
+    var per=Math.round(P.COVER/P.RIB_SPACING), laps=[], ribs=[];
+    for(var i=0;i<n;i++){ (i%per===0?laps:ribs).push(x0+i*sp); }
+    function ribIM(geo,xs){
+      if(!xs.length) return;
+      var im=new THREE.InstancedMesh(geo,M.flat,xs.length);
+      xs.forEach(function(x,j){ mtx.makeScale(1,1,Ls); mtx.setPosition(x,0,-Ls/2); im.setMatrixAt(j,mtx); });
+      im.castShadow=true; im.receiveShadow=true; holder.add(im);
+    }
+    ribIM(RIB,ribs); ribIM(LAPRIB,laps);
+    // screws: rows every SCREW_ROW along slope, each side of every rib in the flat
+    var rows=Math.max(2,Math.round((Ls/IN)/P.SCREW_ROW)), pts=[];
+    for(var r=0;r<rows;r++){ var z=-Ls/2+ (r+0.5)*Ls/rows;
+      for(var i2=0;i2<n;i2++){ var xr=x0+i2*sp; [-1,1].forEach(function(sd){ var xx=xr+sd*(P.RIB_BASE/2+1.2)*IN; if(Math.abs(xx)<Lr/2-IN) pts.push([xx,z]); }); } }
+    if(pts.length){ var sim=new THREE.InstancedMesh(SCREW,M.screw,pts.length);
+      pts.forEach(function(p,j){ mtx.makeTranslation(p[0],0.12*IN,p[1]); sim.setMatrixAt(j,mtx); }); holder.add(sim); }
+    // trim (thin folded sheet pieces, same color as panel)
+    var tT=P.TRIM_T*IN, lip=P.TRIM_LIP*IN, hTop=P.RIB_H*IN;
+    var trims=[];
+    // rake edges (both ridge-axis ends): vertical fascia strip + top flange over the ribs
+    [-1,1].forEach(function(sd){
+      trims.push([tT, T+hTop+lip, Ls+tT*2, sd*(Lr/2+tT/2), (hTop+lip-T)/2 - 0*T, 0]);
+      trims.push([P.CAP_W*0.5*IN, tT, Ls+tT*2, sd*(Lr/2-P.CAP_W*0.25*IN), hTop+tT/2, 0]);
+    });
+    if(!flat){
+      var lo=-slUp, hi=slUp;            // local z sign of low (eave) and high ends
+      // eave drip: thin strip down the low end face
+      trims.push([Lr+tT*2, T+lip, tT, 0, -(T+lip)/2+hTop*0.3, lo*(Ls/2+tT/2)]);
+      // ridge/top cap: flat cap over the high end of the ribs + a short down-turn
+      trims.push([Lr+tT*2, tT, P.CAP_W*IN, 0, hTop+tT/2, hi*(Ls/2-P.CAP_W*IN/2+tT)]);
+      trims.push([Lr+tT*2, hTop+lip, tT, 0, (hTop-lip)/2, hi*(Ls/2+tT/2)]);
+    }
+    var tim=new THREE.InstancedMesh(UNIT,M.flat,trims.length);
+    trims.forEach(function(t,j){ sc.set(t[0],t[1],t[2]); ps.set(t[3],t[4],t[5]); q.identity(); mtx.compose(ps,q,sc); tim.setMatrixAt(j,mtx); });
+    tim.castShadow=true; holder.add(tim);
+  });
 }
 
 /* THE GUIDELINES. Thin bright bars laid on the wall face at whatever the drag
@@ -9635,19 +9739,38 @@ function buildDoor(){
     var d=HW_FACE-seat;
     return bx(w2, h2, d, hwMat2, x, y, seat+d/2);
   }
+  /* HINGE MATERIAL (Nov 2 2026 brief): #111111 satin powder coat. */
+  var hingeMat=new THREE.MeshStandardMaterial({color:0x111111, metalness:0.7, roughness:0.45});
+  function _roundRectGeo(w,h,r,d){
+    var sh=new THREE.Shape(), x=-w/2, y=-h/2;
+    sh.moveTo(x+r,y); sh.lineTo(x+w-r,y); sh.quadraticCurveTo(x+w,y,x+w,y+r);
+    sh.lineTo(x+w,y+h-r); sh.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    sh.lineTo(x+r,y+h); sh.quadraticCurveTo(x,y+h,x,y+h-r);
+    sh.lineTo(x,y+r); sh.quadraticCurveTo(x,y,x+r,y);
+    return new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:false,curveSegments:3});
+  }
   function strapHinge(cx, cy, dir, S){
-    /* RECTANGULAR HINGE (Nov 2026) — ShedPro now hangs doors on square-cut
-       rectangular hinges: a plain rectangular plate on the casing and a
-       straight, square-ended rectangular strap on the leaf. No finials, no
-       taper, no spade tip. Same reach as the old T-strap so it still lands
-       inside the leaf on every door width. */
-    /* Stubby (Nov 2 2026): was a 0.136 x 0.030 strap (8.2in x 1.8in) that
-       read long and skinny vs the customer hinge photos. Now a short, fat
-       plate-style leaf ~4.6in x 3.1in and a squarer casing plate. */
-    var plateW=0.034*S, plateH=0.060*S;
-    hwPiece(plateW, plateH, cx, cy, CASING_Z);         // rectangular plate, on the trim
-    var sw=0.077*S, sh=0.052*S;                        // straight rectangular strap, on the leaf
-    hwPiece(sw, sh, cx+dir*(plateW/2+sw/2), cy, LEAF_Z);
+    /* PASS 4 (Nov 2 2026) — ShedPro surface strap hinge per the sage barn
+       photos + Nando's hinge brief: a vertical rectangular mounting plate on
+       the white trim, a visible barrel/pivot on the jamb line, and a SHORT
+       rectangular strap (subtly rounded corners) onto the leaf. Bolt heads on
+       both. Sizes in inches x style scale S. */
+    var IN=0.2/12, k=S||1;
+    var plateW=1.8*IN*k, plateH=3.6*IN*k;              // vertical mounting section
+    var strapL=4.0*IN*k, strapH=2.2*IN*k;              // short horizontal strap
+    var rr=0.25*IN*k, d=HW_FACE-LEAF_Z;
+    var pg=_roundRectGeo(plateW, plateH, rr, HW_FACE-CASING_Z+0.002);
+    var pm=new THREE.Mesh(pg, hingeMat); pm.position.set(cx-dir*plateW*0.1, cy, CASING_Z); pm.castShadow=true; DG.add(pm);
+    var barrelX=cx+dir*plateW/2;
+    var br=new THREE.Mesh(new THREE.CylinderGeometry(0.35*IN*k,0.35*IN*k,plateH*0.92,10), hingeMat);
+    br.position.set(barrelX, cy, HW_FACE+0.001); br.castShadow=true; DG.add(br);
+    var sg=_roundRectGeo(strapL, strapH, rr, d+0.002);
+    var sm=new THREE.Mesh(sg, hingeMat); sm.position.set(barrelX+dir*strapL/2, cy, LEAF_Z); sm.castShadow=true; DG.add(sm);
+    var bolt=new THREE.SphereGeometry(0.22*IN*k,8,5);
+    [[cx-dir*plateW*0.1,cy+plateH*0.32],[cx-dir*plateW*0.1,cy-plateH*0.32],
+     [barrelX+dir*strapL*0.45,cy],[barrelX+dir*strapL*0.82,cy]].forEach(function(q){
+      var bh=new THREE.Mesh(bolt, hingeMat); bh.scale.z=0.45; bh.position.set(q[0],q[1],HW_FACE+0.0025); DG.add(bh);
+    });
   }
   /* SHED DOOR HANDLE — a T-HANDLE with the lock built into the plate, which is
      what actually goes on these doors. This was a domed round knob with a key
