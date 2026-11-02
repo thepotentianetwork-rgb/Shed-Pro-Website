@@ -7914,6 +7914,15 @@ function buildCrossGable(sx){
      this. */
   var rakeProud=0;                        // flush with the shed's eave fascia
   var pXo=c.xOut-0.004;
+  /* Pass 11 — SAME SHINGLE OVERHANG AS THE MAIN EAVE. The main slab runs
+     0.006 past the eave fascia (x = xOut+0.006), so its dark cut edge reads as
+     a drip line along the top of the fascia. The cross slab stopped 0.004
+     BEHIND the rake face, so at the corner that drip line ended square and
+     the white rake rose straight to the shingle face — the "step" in the
+     exterior view. Run the cross slab to the same xOut+0.006 so the edge
+     line wraps the corner and carries up the rake. Shingle only; metal keeps
+     its Pass 5/6 trim (it brings its own rake flashing). */
+  if(!(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal')) pXo=c.xOut+0.006;
   var pXi=c.xEnd-Math.min(0.05, c.xEnd*0.6);
   var pLen=Math.max(0.02, pXo-pXi);
   var _isMetal=(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal');   // Pass 10
@@ -7936,7 +7945,7 @@ function buildCrossGable(sx){
     pTex.repeat.set(_xgEave, slope/_st);
     if(pTex.bumpMap) pTex.bumpMap.repeat.set(_xgEave, slope/_st);
     var pMat=tintMat(roofMat(rc, pTex), sg>0 ? 0x00cc44 : 0x0088ff);  // +Z green, -Z blue
-    var pGeo=new THREE.BoxGeometry(pLen, ROOF_THK, slope);
+    var pGeo=new THREE.BoxGeometry(pLen, ROOF_THK, slope, 1, 1, _isMetal?1:16);
     /* Pass 10 — CLIP THE CROSS SLAB TO ITS VALLEY. The slab was a full
        rectangle in plan (pXi..pXo by the whole slope), but the cross roof only
        owns the valley TRIANGLE: at the ridge end it starts at xEnd, at the eave
@@ -7949,18 +7958,26 @@ function buildCrossGable(sx){
        Metal keeps the rectangle: addMetalPanels rebuilds from the box
        parameters (Pass 5/6) and is left alone. */
     if(!_isMetal){
-      var _pm=(pXi+pXo)/2, _pa=pGeo.attributes.position, _pu=pGeo.attributes.uv;
+      var _pm=(pXi+pXo)/2, _pa=pGeo.attributes.position, _pu=pGeo.attributes.uv, _pn=pGeo.attributes.normal;
+      var _yFace=[]; for(var _k=0;_k<_pn.count;_k++) _yFace.push(Math.abs(_pn.getY(_k))>0.5);
       for(var _i=0;_i<_pa.count;_i++){
         var _lx=_pa.getX(_i), _mag=_pm+sx*_lx;            // magnitude off the ridge
         if(Math.abs(_mag-pXi)>1e-6) continue;           // inboard end only
         var _t=(_pa.getZ(_i)+slope/2)/slope;            // 0 ridge .. 1 eave (local +z = eave)
         // ...but never past the rake board's inner face, so the shingle still
         // covers the rake top (v407) right down to the tail.
-        var _min=Math.min(pXi+(c.xOut-0.012-pXi)*_t, c.xOut-fth-0.006);
+        /* Pass 11 — follow the TRUE valley, x = xEnd + d (same pitch both
+           ways), 0.01 inboard so the main patch laps the join. Pass 10 used
+           one straight line from pXi to the eave cap, which ran up to ~2.8in
+           inboard of the valley near the wall; there the slab's underside
+           sat below the eave-soffit plane and poked through the folded rake
+           soffit as the small dark seam. 16 rows along the slope let each
+           row clip on its own (the eave rows still stop inside the rake). */
+        var _min=Math.min(c.xEnd + _t*c.cwOut - 0.01, c.xOut-fth-0.002);
         _pa.setX(_i, sx*(_min-_pm));
       }
       // top (8-11) and bottom (12-15) faces: u = (x + w/2)/w, as BoxGeometry does
-      for(var _j=8;_j<16;_j++) _pu.setX(_j, (_pa.getX(_j)+pLen/2)/pLen);
+      for(var _j=0;_j<_pa.count;_j++) if(_yFace[_j]) _pu.setX(_j, (_pa.getX(_j)+pLen/2)/pLen);
       _pa.needsUpdate=_pu.needsUpdate=true; pGeo.computeVertexNormals();
     }
     var p=new THREE.Mesh(pGeo, pMat);
@@ -8219,11 +8236,16 @@ function buildCrossGable(sx){
   var rDropApex=fbw/Math.cos(ang);                 // perpendicular band at the peak
   [1,-1].forEach(function(sg){
     var yTop0=c.rY+rTof, yTop1=c.eaveY+rTof;       // top edge ON the slope line
-    var sh=new THREE.Shape();
-    sh.moveTo(0,           yTop0);
+    /* Pass 11: with the shingle now running past the rake face (pXo above),
+       the rake top was coplanar with the slab top for its whole length and
+       z-fought (white flecks through the shingle). Tuck the TOP edge 0.003
+       under the slab; the bottom edge stays put, and at the tail the 0.003 is
+       inside the slab's proud cut edge, which also covers the fascia top. */
+    var _rkTuck=_isMetal ? 0 : 0.003;    var sh=new THREE.Shape();
+    sh.moveTo(0,           yTop0-_rkTuck);
     /* local +x maps to world -z at rotation +90, +z at -90, so the shape's own
        x term carries sx as well or the left rake lands on the wrong rafter. */
-    sh.lineTo(-sg*sx*c.cwOut, yTop1);
+    sh.lineTo(-sg*sx*c.cwOut, yTop1-_rkTuck);
     sh.lineTo(-sg*sx*c.cwOut, yTop1-rDropEave);
     sh.lineTo(0,           yTop0-rDropApex);
     sh.closePath();
@@ -8282,8 +8304,22 @@ function buildCrossGable(sx){
     }
     sq.setAttribute('position', new THREE.Float32BufferAttribute(_sp, 3));
     sq.setIndex(_six);
+    // planar UVs (world z along the run, x across) so a cedar map tiles instead of smearing
+    var _suv=[]; for(var _q=0;_q<_sp.length;_q+=3) _suv.push(_sp[_q+2]/0.5, _sp[_q]/0.5);
+    sq.setAttribute('uv', new THREE.Float32BufferAttribute(_suv, 2));
     sq.computeVertexNormals();
-    var so=new THREE.Mesh(sq, ftMat);
+    // Pass 11: face the normals DOWN (it is seen from below). With the soffit
+    // material's own lighting the up-facing winding rendered it dark grey.
+    var _sn=sq.attributes.normal; if(_sn.getY(0)>0){ for(var _r=0;_r<_sn.count;_r++) _sn.setXYZ(_r,-_sn.getX(_r),-_sn.getY(_r),-_sn.getZ(_r)); _sn.needsUpdate=true; }
+    /* Pass 11 — SOFFIT MATERIAL, not trim paint. This is the underside of the
+       cross gable's overhang and it now folds straight into the shed's eave
+       soffit, so it has to be the same board: soffitFinishMat(), the shed's
+       own soffit recipe (SOFFIT = match/trim/white/black/cedar). It was trim
+       paint, so on the default "match" soffit the cross gable's underside was
+       a white board — the pale-green surface seen from below (white + ground
+       bounce) — beside a siding-coloured eave soffit. */
+    var soMat=(typeof soffitFinishMat==='function') ? soffitFinishMat(2, 2) : ftMat;
+    var so=new THREE.Mesh(sq, soMat);
     so.material.side=THREE.DoubleSide;              // winding flips with sg and sx
     shedGroup.add(so);
   });
