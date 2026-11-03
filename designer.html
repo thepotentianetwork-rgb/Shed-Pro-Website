@@ -13070,6 +13070,26 @@ function buildInterior(){
   // HOUSE WRAP: cream wrap fabric covering the stud bays (like the reference photo).
   var wrapOn = (typeof ADDONS!=='undefined' && ADDONS.houseWrap);
   function wrapMat(){ return applyXray(new THREE.MeshStandardMaterial({color:0xe7ddc9, roughness:0.9, metalness:0.0, side:THREE.DoubleSide})); }
+  // INSULATION (batt + 6-mil vapor barrier) / CLOSED-CELL SPRAY FOAM in the stud bays.
+  var foamOn = (typeof ADDONS!=='undefined' && ADDONS.sprayFoam);
+  var battOn = !foamOn && (typeof ADDONS!=='undefined' && ADDONS.insulation);
+  var _insTex=null;
+  function insTex(foam){
+    var c=document.createElement('canvas'); c.width=c.height=128; var x=c.getContext('2d');
+    x.fillStyle=foam?'#dcbc5e':'#e8828e'; x.fillRect(0,0,128,128);
+    for(var i=0;i<(foam?500:260);i++){
+      var r=foam?(1+Math.random()*4):(2+Math.random()*7), g=Math.random();
+      x.fillStyle=foam?('rgba('+(g<.5?'255,245,200':'190,160,80')+','+(0.25+Math.random()*0.35)+')')
+                      :('rgba('+(g<.5?'255,215,220':'205,125,135')+','+(0.25+Math.random()*0.3)+')');
+      x.beginPath(); x.ellipse(Math.random()*128,Math.random()*128,r,foam?r:r*0.5,Math.random()*3,0,7); x.fill();
+    }
+    var t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+  }
+  function insMat(foam,rx,ry){
+    var t=insTex(foam); t.repeat.set(rx,ry);
+    return applyXray(new THREE.MeshStandardMaterial({map:t, bumpMap:t, bumpScale:foam?0.012:0.02, roughness:foam?0.75:1.0, metalness:0.0, side:THREE.DoubleSide}));
+  }
+  function vaporMat(){ return applyXray(new THREE.MeshStandardMaterial({color:0xeef4f7, roughness:0.15, metalness:0.0, transparent:true, opacity:0.14, depthWrite:false, side:THREE.DoubleSide})); }
   // RADIANT ROOF BARRIER: silver foil-faced sheathing on the roof underside.
   var foilOn = (typeof ADDONS!=='undefined' && ADDONS.radiantBarrier);
   function foilMat(){ return applyXray(new THREE.MeshStandardMaterial({color:0xc9cdd2, roughness:0.35, metalness:0.75, side:THREE.DoubleSide})); }
@@ -13588,6 +13608,20 @@ function buildInterior(){
       }
       m.position.set(px, vy, pz);
       shedGroup.add(m);
+      // Stud-bay fill: sits between the sheathing and the stud faces.
+      if(!finished && (battOn||foamOn)){
+        var _dIn=foamOn?0.042:0.036, _cIn=sheathIn+0.006+_dIn/2;
+        var ix=px, iz=pz, isx=sx, isz=sz;
+        if(f.ax==='x'){ iz=f.fixed-f.nz*_cIn; isz=_dIn; } else { ix=f.fixed-f.nx*_cIn; isx=_dIn; }
+        var im=new THREE.Mesh(new THREE.BoxGeometry(isx,segH,isz), insMat(foamOn, Math.max(1,segLen/0.6), Math.max(1,segH/0.6)));
+        im.position.set(ix,vy,iz); im.userData.insulation=true; shedGroup.add(im);
+        if(battOn){
+          var vIn=studIn+FR_D/2+0.004, vx=px, vz=pz, vsx=sx, vsz=sz;
+          if(f.ax==='x'){ vz=f.fixed-f.nz*vIn; vsz=0.002; } else { vx=f.fixed-f.nx*vIn; vsx=0.002; }
+          var vm=new THREE.Mesh(new THREE.BoxGeometry(vsx,segH,vsz), vaporMat());
+          vm.position.set(vx,vy,vz); vm.renderOrder=2; vm.userData.vaporBarrier=true; shedGroup.add(vm);
+        }
+      }
     }
     /* BANDED, same as the exterior siding (see buildWallWithOpenings).
        This was the single left-to-right sweep, so the OSB was never opened for
