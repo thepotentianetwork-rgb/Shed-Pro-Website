@@ -2344,7 +2344,7 @@ var STAIN_COLORS=[
   {k:'pfc10', name:'Deep Terra Cotta', hex:'#8a4a37'}
 ];
 // Optional add-ons (priced from the Client Workbook; toggled on the Upgrades step)
-var ADDONS={ shutters:true, flowerboxes:true,   // showcase default: black shutters + flower boxes on both windows cupola:'none',
+var ADDONS={ shutters:true, flowerboxes:true, cupola:'none',   // showcase default: black shutters + flower boxes on both windows
   skylight:false, stairs:false, statLadder:false, atticLadder:false,
   weatherGuard:false, radiantBarrier:false, houseWrap:false, hurricaneTies:false, insulation:false, sprayFoam:false,
   doorAwning:false,
@@ -3115,7 +3115,7 @@ function init(){
       var gv=snapGuideFor(vd.wall, sv), gvKey=snapGuideKey(gv);
       var movedV=!(Math.abs(vd.pos-sv.pos)<1e-4 && vd.cy===sv.cy);
       if(!movedV && gvKey===snapGuideKey(SNAP_GUIDE)){ return; }
-      vd.pos=sv.pos; vd.cy=sv.cy; SNAP_GUIDE=gv;
+      vd.pos=sv.pos; vd.cy=sv.cy; delete vd._autoCy; SNAP_GUIDE=gv;
       buildShed(); syncEditorPanel();
     } else if(selectedKind==='shelf' && selectedShelf>=0 && shelvesData[selectedShelf]){
       var sd=shelvesData[selectedShelf];
@@ -12360,7 +12360,14 @@ function buildVents(){
     // Vents ride near the wall top. Measure "the top" from THIS wall's real
     // height — the lean-to's back wall is shorter than H, so (H*12)-12 sat
     // above its roof. ventCyIn() holds that arithmetic; see the note on it.
-    vd.cy=ventCyIn(vd);
+    /* AUTO-CENTRED VENTS (Nando, 2 Nov 2026: "center the vents on the gable").
+       A vent placed with cy:null is centred in the gable triangle. Writing the
+       result back into vd.cy froze it at the first size it was built at, so a
+       resize left it off the triangle's centre. _autoCy keeps re-centring it
+       on every build until the customer drags it or uses the height slider. */
+    if(vd.cy==null) vd._autoCy=true;
+    if(vd._autoCy && (vd.wall==='front'||vd.wall==='back')) vd.pos=0.5;
+    vd.cy=ventCyIn(vd._autoCy ? {wall:vd.wall, pos:vd.pos, cy:null} : vd);
     var cy=vd.cy*0.2/12;
     var grp=new THREE.Group();
     grp.userData={isVent:true, index:idx, wall:vd.wall};
@@ -18077,7 +18084,7 @@ function setVentHeight(sliderVal){
   if(selectedKind!=='vent' || selectedVent<0 || !ventsData[selectedVent]) return;
   var vd=ventsData[selectedVent];
   var r=ventCyRange(vd.wall);
-  vd.cy = r.min + (sliderVal/100)*(r.max-r.min);
+  vd.cy = r.min + (sliderVal/100)*(r.max-r.min); delete vd._autoCy;
   var lbl=document.getElementById('ventHeightVal');
   if(lbl) lbl.textContent = Math.round(vd.cy/12*10)/10 + " ft";
   buildShed();
