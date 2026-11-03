@@ -583,7 +583,7 @@ textarea.inp{resize:vertical}
         <div class="tgrid" id="styleGrid">
           <div class="tile on" data-style="gable" onclick="pickStyle('gable',this)">
             <div class="tile-img" data-icon="style-gable"></div>
-            <div class="tile-cap"><div class="tile-name">Gable / A-Frame</div><div class="tile-price">Most popular</div></div>
+            <div class="tile-cap"><div class="tile-name">Gable / A-Frame</div><div class="tile-price">Classic look</div></div>
             <div class="tile-check">&#10003;</div>
           </div>
           <div class="tile" data-style="barn" onclick="pickStyle('barn',this)">
@@ -692,7 +692,6 @@ textarea.inp{resize:vertical}
       <div class="wstep" data-step="2">
         <div class="grp">
           <span class="lbl">Foundation</span>
-          <div class="wstep-sub" style="margin:0 0 8px">What your shed sits on. We can pour a pad or set it level on blocks.</div>
           <div id="foundationList"></div>
         </div>
         <div class="grp">
@@ -3573,7 +3572,7 @@ function sidingTileWorld(key){
    (re-render it if you change a starter's look).
    ══════════════════════════════════════════════════════════════════════════ */
 var STARTER_BUILDS = [
- {k:'classic-gable', name:'Classic Gable', sub:'10×12 Gable / A-Frame · Power, porch lights & concrete pad', badge:'Most popular',
+ {k:'classic-gable', name:'Classic Gable', sub:'10×12 Gable / A-Frame · Power, porch lights & concrete pad',
   img:'designer-starters/classic-gable.webp',
   cfg:{style:'gable', w:10, l:12, h:8, pitch:6, siding:'vertical',
    sidingColor:0xF2F0EC, trimColor:0x1A1A1A, roofColor:0x28282A, roofType:'shingle', ovh:4, ovType:'all4', soffit:'black',
@@ -3582,7 +3581,7 @@ var STARTER_BUILDS = [
    windows:[{wall:'right',pos:0.5,w:24,h:36,cy:58,type:'Black Vinyl 24x36'},{wall:'left',pos:0.5,w:24,h:36,cy:58,type:'Black Vinyl 24x36'}],
    porchLights:[{wall:'front',pos:0.17,style:'modern'},{wall:'front',pos:0.83,style:'modern'}],
    addons:{flowerboxes:true, fbColor:'black'}}},
- {k:'signature-gable', name:'Signature Gable', sub:'12×16 Gable / A-Frame · Cupola, shutters & power', badge:'Popular',
+ {k:'signature-gable', name:'Signature Gable', sub:'12×16 Gable / A-Frame · Cupola, shutters & power',
   img:'designer-starters/signature-gable.webp',
   cfg:{style:'gable', w:12, l:16, h:8, pitch:6, siding:'vertical',
    sidingColor:0x3C3F43, trimColor:0xF2F0EC, roofColor:0x28282A, roofType:'shingle', ovh:4, ovType:'all4', soffit:'white',
@@ -3591,7 +3590,7 @@ var STARTER_BUILDS = [
    windows:[{wall:'right',pos:0.3,w:24,h:30,cy:61,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,cy:61,type:'White Vinyl 24x30'},{wall:'left',pos:0.5,w:24,h:30,cy:61,type:'White Vinyl 24x30'}],
    porchLights:[{wall:'front',pos:0.18,style:'modern'},{wall:'front',pos:0.82,style:'modern'}],
    addons:{shutters:true, shutterColor:'white', flowerboxes:true, fbColor:'white', cupola:'black', ridgeVent:true}}},
- {k:'estate-porch', name:'Estate Porch Gable', sub:'16×24 Gable / A-Frame · Covered front porch, 9 ft walls', badge:'Luxury', tier:'luxury',
+ {k:'estate-porch', name:'Estate Porch Gable', sub:'16×24 Gable / A-Frame · Covered front porch, 9 ft walls',
   img:'designer-starters/estate-porch.webp',
   cfg:{style:'gable', w:16, l:24, h:9, pitch:6, siding:'board-batten',
    sidingColor:0x2C3E52, trimColor:0xF2F0EC, roofColor:0x1A1A1A, roofType:'metal', ovh:6, ovType:'all4', soffit:'cedar',
@@ -3602,7 +3601,7 @@ var STARTER_BUILDS = [
             {wall:'right',pos:0.5,w:36,h:36,cy:64.5,type:'White Vinyl 36x36'},{wall:'left',pos:0.5,w:36,h:36,cy:64.5,type:'White Vinyl 36x36'}],
    porchLights:[{wall:'front',pos:0.38,style:'modern'},{wall:'front',pos:0.62,style:'modern'}],
    addons:{flowerboxes:true, fbColor:'white', ridgeVent:true}}},
- {k:'heritage-barn', name:'Heritage Barn', sub:'10×20 · Copper cupola & power', badge:'Most space',
+ {k:'heritage-barn', name:'Heritage Barn', sub:'10×20 · Copper cupola & power',
   img:'designer-starters/heritage-barn.webp',
   cfg:{style:'barn', w:10, l:20, h:8, siding:'vertical',
    sidingColor:0x7C8A6E, trimColor:0xF2F0EC, roofColor:0x28282A, roofType:'shingle',
@@ -3611,7 +3610,7 @@ var STARTER_BUILDS = [
    windows:[{wall:'right',pos:0.3,w:24,h:30,cy:61,type:'White Vinyl 24x30'},{wall:'right',pos:0.7,w:24,h:30,cy:61,type:'White Vinyl 24x30'}],
    porchLights:[{wall:'front',pos:0.12,style:'modern'},{wall:'front',pos:0.88,style:'modern'}],
    addons:{flowerboxes:true, fbColor:'white', cupola:'copper'}}},
- {k:'modern-studio', name:'Modern Studio', sub:'16×12 Lean-To · Deep eave, full power-ready electrical, 2 porch lights', badge:'Modern',
+ {k:'modern-studio', name:'Modern Studio', sub:'16×12 Lean-To · Deep eave, full power-ready electrical, 2 porch lights',
   img:'designer-starters/modern-studio.webp',
   cfg:{style:'leanto', w:16, l:12, h:9, siding:'horizontal',
    sidingColor:0x3C3F43, trimColor:0x1A1A1A, roofColor:0x1A1A1A, roofType:'metal', ovh:6, ovType:'all4', soffit:'cedar',
@@ -3783,10 +3782,8 @@ function shedUseIcon(kind){
    across the whole width. A barn's walls kick in at the knee and a lean-to's
    low side is under 7ft — both eat exactly the headroom a driver needs at the
    top of the arc, and ceiling is the one thing that cannot be fixed later. */
-var SHED_USE_RECS = {
-  golfsim: { style:'gable' },
-  garage:  { style:'gable' }
-};
+/* Suggestion badges removed (Nando, Nov 2026). */
+var SHED_USE_RECS = {};
 /* Badges a style carries on its own, whatever the customer said they wanted.
    These are positioning, not advice — 3 and 4 Peak are the premium builds and
    a lean-to is the contemporary one, and that is true of them regardless of
@@ -3795,53 +3792,15 @@ var SHED_USE_RECS = {
    'luxury' is black with a gold hairline, everything else is the house orange.
    Premium reads as premium when it stops shouting in the same colour as
    "Popular" - that is the whole reason the tier exists. */
-var STYLE_BADGES = {
-  // The one most people buy, said out loud rather than left as a subtitle.
-  'gable':  'Most popular',
-  /* v486 - 'Most space' on the barn, and it is a measured claim rather than a
-     sales one. Comparing the section above the wall top at the same footprint,
-     a gambrel beats a gable by 35% at a steep 8/12 and by 166% at a shallow
-     4/12, and it wins at every pitch and width we offer. The reason is the
-     knee: the walls kick out at 0.365 of the width and carry near-full height
-     out to there, where a gable is already closing in.
-     Headroom too - at 10ft wide and 4/12, a barn peaks 3.40ft above the wall
-     against a gable's 1.71ft. */
-  'barn':   'Most space',
-  'leanto': 'Modern',
-  // The hip roof is the dearest shell we build and the one people put beside a
-  // pool, so it carries the same mark as the peaks.
-  'hip':    {text:'Luxury', tier:'luxury'},
-  '3peak':  {text:'Luxury', tier:'luxury'},
-  '4peak':  {text:'Luxury', tier:'luxury'},
-  /* The porch tile is keyed by its own attribute because it has no data-style:
-     picking it sets the A-frame shell AND a porch. The badge says the thing a
-     customer cannot tell from the icon - the deck comes with it. */
-  'porch':  'Includes deck'
-};
+/* Suggestion badges removed (Nando, Nov 2026). */
+var STYLE_BADGES = {};
 /* Every standing badge on an individual option, in one table so the labels can
    be read and changed together instead of hunted through four renderers.
    Keyed <group>:<value> to match each control's own value, so a badge cannot
    drift onto an option that no longer exists — an unknown key simply renders
    nothing. */
-var ITEM_BADGES = {
-  'cupola:black':      {text:'Luxury'},
-  'cupola:copper':     {text:'Luxury'},
-  'addon:flowerboxes': {text:'Popular'},
-  'addon:shutters':    {text:'Popular'},
-  // The middle package, which is the one most people land on.
-  'elec:core':         {text:'Popular'},
-  // Good / Better / Best down the foundation list. 'existing' is deliberately
-  // unbadged: it is the customer's own slab, not a tier we sell.
-  'found:blocks':      {text:'Good',   tier:'good'},
-  'found:gravel':      {text:'Better', tier:'better'},
-  'found:pad':         {text:'Best',   tier:'best'},
-  /* Floor upgrades. Both exist for a floor that will carry real weight — a
-     mower, a workbench, a vehicle — so both say so rather than only the dearer
-     one. The stock floor is fine for storage and is left unbadged; badging it
-     too would make the label mean nothing. */
-  'joist:j16x6':       {text:'Heavy duty'},
-  'joist:j12x6':       {text:'Heavy duty'}
-};
+/* Suggestion badges removed (Nando, Nov 2026). */
+var ITEM_BADGES = {};
 
 function itemBadgeHTML(key){
   var b = ITEM_BADGES[key];
@@ -14179,7 +14138,7 @@ var WIZ_STEPS = [
      question a customer actually arrives with. */
   {title:"Start your design",  sub:"Pick a style to start."},
   {title:"Pick your size",     sub:"Width, length, and wall height."},
-  {title:"Foundation", skip:true,         sub:"What your shed sits on."},
+  {title:"Foundation", skip:true,         sub:"What your shed sits on. We can pour a pad or set it level on blocks."},
   {title:"Siding & color",     sub:"Pick your look early."},
   {title:"Roof",               sub:"Type, color, pitch, overhang & details."},
   {title:"Doors",              sub:"Pick a size, then a style."},
@@ -14493,7 +14452,7 @@ var WINDOW_CATS=[
   /* Premium carries the same gold Luxury mark the hip and peak shells do, for
      the same reason: a tier only reads as a tier when it stops shouting in the
      house orange that "Popular" uses. */
-  {cat:'premium', name:'Premium', badge:{text:'Luxury', tier:'luxury'}},
+  {cat:'premium', name:'Premium'},
   {cat:'vent',    name:'Vent',    sub:'16x8'}
 ];
 /* Which catalog group a window category shows. 'window' is everything that is
