@@ -865,8 +865,8 @@ textarea.inp{resize:vertical}
         <div class="grp" style="margin-top:14px">
           <span class="lbl">Soffit Finish</span>
           <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
-            <div class="pitch-btn soffit-btn on" onclick="setSoffit('match',this)">Match Walls</div>
-            <div class="pitch-btn soffit-btn" onclick="setSoffit('trim',this)">Match Trim</div>
+            <div class="pitch-btn soffit-btn" onclick="setSoffit('match',this)">Match Walls</div>
+            <div class="pitch-btn soffit-btn on" onclick="setSoffit('trim',this)">Match Trim</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('white',this)">White</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('black',this)">Black</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('cedar',this)">Cedar</div>
@@ -1288,7 +1288,9 @@ function barnProfile(){
   var bH=(w/2)*(0.66 + (PITCH/12)*0.06);
   return { barnH:bH, kneeX:w*0.365, kneeY:h+bH*0.60, ridgeY:h+bH };
 }
-var SOFFIT="match";  // soffit finish: "match" | "trim" | "white" | "black" | "cedar"
+var SOFFIT="trim";   // showcase default (Nov 2026): Match Trim = black soffit under black trim
+/* LEGACY_SOFFIT: what a saved design with no soffit field always meant. */
+var LEGACY_SOFFIT="match";  // soffit finish: "match" | "trim" | "white" | "black" | "cedar"
 /* Soffit had only two states: match the walls, or cedar. White and black are
    the two finishes people actually ask for, and neither was reachable — a black
    shed with white soffits was impossible. Every soffit material now reads its
@@ -2221,12 +2223,23 @@ function isPremiumWin(wd){
   }
   return false;
 }
-var windowsData=[];
+/* SHOWCASE DEFAULT (Nando, 2 Nov 2026): one window centred on each side wall.
+   Same records addWindow() writes, so they price, edit and remove like any
+   other window. Only the fresh-load default; saved designs replace this. */
+var windowsData=[
+  {wall:'left',  pos:0.5, w:24, h:30, cy:52, type:'White Vinyl 24x30'},
+  {wall:'right', pos:0.5, w:24, h:30, cy:52, type:'White Vinyl 24x30'}
+];
 var selectedWindow=-1;
 var doorsData=[];        // {wall, pos, style, w:inches, h:inches}
 var selectedDoor=-1;     // index into doorsData, or -1
 var selectedKind='';     // 'window' | 'door' | 'vent' | 'shelf' | 'plight' | '' — editor selection
-var ventsData=[];        // {wall, pos, cy}  8"x16" gable vents (movable)
+var ventsData=[          // {wall, pos, cy}  8"x16" gable vents (movable)
+  // Showcase default: one black gable vent centred high in each gable.
+  // cy:null = ventGableCyIn() keeps it centred in the triangle at any size/pitch.
+  {wall:'front', pos:0.5, cy:null},
+  {wall:'back',  pos:0.5, cy:null}
+];
 var selectedVent=-1;
 var shelvesData=[];      // {wall, pos, cy}  interior shelves (movable)
 var selectedShelf=-1;
@@ -2331,13 +2344,17 @@ var STAIN_COLORS=[
   {k:'pfc10', name:'Deep Terra Cotta', hex:'#8a4a37'}
 ];
 // Optional add-ons (priced from the Client Workbook; toggled on the Upgrades step)
-var ADDONS={ shutters:false, flowerboxes:false, cupola:'none',
+var ADDONS={ shutters:true, flowerboxes:true,   // showcase default: black shutters + flower boxes on both windows cupola:'none',
   skylight:false, stairs:false, statLadder:false, atticLadder:false,
   weatherGuard:false, radiantBarrier:false, houseWrap:false, hurricaneTies:false, insulation:false, sprayFoam:false,
   doorAwning:false,
   // Site clearance — work on what is already there, not part of the build.
   shedRemoval:false, concreteRemoval:false,
-  fbColor:'brown', shutterColor:'brown' };
+  fbColor:'black', shutterColor:'black' };
+/* What a design that predates the showcase default (or carries no add-ons
+   field) has always meant: nothing added, brown finish. Starters and old
+   permalinks layer on THIS, never on the showcase. */
+var LEGACY_ADDONS={ shutters:false, flowerboxes:false, fbColor:'brown', shutterColor:'brown' };
 // Finish colours shared by flower boxes + shutters (brown is the default).
 var ADDON_COLORS=[
   {k:'brown', name:'Brown', css:'#4a3423'},
@@ -2385,12 +2402,12 @@ var SIDING_TILE=1.05;   /* LEGACY. Superseded by SIDING_TILE_BY_STYLE in v452 �
 /* Global shingle darkness. See makeShingle() — this scales the canvas pixels
    directly, so it is the one reliable lever on how dark the roof reads. */
 var SHINGLE_LEVEL=0.62;
-var sc=0x1A1A1A, tc=0xF2F0EC, rc=0x1A1A1A;   // standard: black siding, white trim, black metal roof
+var sc=0xF2F0EC, tc=0x1A1A1A, rc=0x1A1A1A;   // showcase: white siding, black trim, black metal roof
 /* rn said 'Charcoal' while rc defaulted to 0x28282A, which is Black Asphalt —
    so the summary bar has been printing a roof colour the shed does not have on
    every fresh load. sn and tn both match their hexes; only this one drifted,
    left behind by an earlier palette. */
-var sn='Black', tn='White', rn='Black';
+var sn='White', tn='Black', rn='Black';
 
 var scr=document.createElement('script');
 /* PERF (2026-11-02): three.js served same-origin — no extra DNS/TLS handshake
@@ -3669,7 +3686,10 @@ function applyStarterConfig(u){
     var cfg=JSON.parse(JSON.stringify(u.cfg));
     var c=Object.assign(base, cfg);
     c.use=u.k;
-    c.addons=Object.assign({}, JSON.parse(JSON.stringify(STOCK_CONFIG.addons||{})), cfg.addons||{});
+    // Starters keep exactly the add-ons/vents/soffit they always had: the
+    // showcase's shutters, boxes and gable vents are not part of their recipe.
+    c.addons=Object.assign({}, JSON.parse(JSON.stringify(STOCK_CONFIG.addons||{})), LEGACY_ADDONS, cfg.addons||{});
+    if(!cfg.soffit) c.soffit=LEGACY_SOFFIT;
     c.doors=cfg.doors||[];
     c.windows=(cfg.windows||[]).map(function(wd){
       var o=Object.assign({}, wd);
@@ -3677,7 +3697,7 @@ function applyStarterConfig(u){
       return o;
     });
     c.porchLights=cfg.porchLights||[];
-    if(!cfg.vents) c.vents=base.vents||[];
+    if(!cfg.vents) c.vents=[];
     if(!cfg.shelves) c.shelves=base.shelves||[];
     applyDesignConfig(c);
     sn=starterColorName(c.sidingColor, typeof WALL_COLORS!=='undefined'?WALL_COLORS:[], sn);
@@ -19672,7 +19692,7 @@ function applyDesignConfig(c){
     if(c.trimColor!=null)tc=+c.trimColor;
     if(c.roofColor!=null)rc=+c.roofColor;
     if(c.roofType)ROOFTYPE=c.roofType;
-    if(c.ovh!=null)OVH=+c.ovh; if(c.ovType)OVTYPE=c.ovType; if(c.soffit)SOFFIT=c.soffit;
+    if(c.ovh!=null)OVH=+c.ovh; if(c.ovType)OVTYPE=c.ovType; SOFFIT=c.soffit||LEGACY_SOFFIT;
     if(c.leantoDrop!=null)LEANTO_DROP=+c.leantoDrop;
     if(c.leantoFrontOvh!=null)LEANTO_FRONT_OVH=(c.leantoFrontOvh==='match')?'match':+c.leantoFrontOvh;
     if(c.porchLoc)PORCH_LOC=c.porchLoc; if(c.porchDepth!=null)SIDE_PORCH=+c.porchDepth;
@@ -19718,12 +19738,13 @@ function applyDesignConfig(c){
     // "no add-ons selected" rather than throwing — same "missing = leave
     // default" treatment every other field here already gets.
     if(c.addons && typeof c.addons==='object')ADDONS=c.addons;
+    else ADDONS=Object.assign({}, ADDONS, LEGACY_ADDONS);
     /* Absent = none: a design saved before sprinkler relocation existed, or
        one without it, must not inherit the heads from the last build. */
     SPRINKLERS = Array.isArray(c.sprinklers)
       ? c.sprinklers.slice(0, 20).map(function(v){ var n=+v; return n>0 ? n : 5; }) : [];
     if(Array.isArray(c.doors))doorsData=c.doors;
-    if(Array.isArray(c.windows))windowsData=c.windows;
+    windowsData=Array.isArray(c.windows)?c.windows:[];
     /* DESIGNS SAVED BEFORE addShelf/addVent STAGGERED ANYTHING.
        They can hold several records at one identical coordinate — a real
        customer's saved design has three shelves at {back, 0.5, 48, 16, 10}
@@ -19737,7 +19758,7 @@ function applyDesignConfig(c){
        Exact matches only. Two shelves an inch apart are a choice, however odd;
        two at the identical coordinate are one shelf and a billing error, and
        there is no build in which the second one could ever be seen. */
-    if(Array.isArray(c.vents))ventsData=dropStacked(c.vents, ['wall','pos','cy']);
+    ventsData=Array.isArray(c.vents)?dropStacked(c.vents, ['wall','pos','cy']):[];
     VENT_COLOR=(c.ventColor==='white')?'white':'black';
     try{ document.querySelectorAll('.vent-color-opt').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-vc')===VENT_COLOR); }); }catch(e){}
     if(Array.isArray(c.shelves))shelvesData=dropStacked(c.shelves, ['wall','pos','cy','depth','len']);
