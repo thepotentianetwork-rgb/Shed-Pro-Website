@@ -12135,8 +12135,34 @@ function ventCyIn(vd){
 var DRIVE_IN_MIN_IN = 48;
 var RAMP_RUN_RATIO  = 4;        // 4 along for 1 up
 var rampMeshes=[];
+var DOOR_STYLE_NAMES={basic:'Standard',craftsman:'Craftsman',xtrim:'X-Trim',arch:'Arch',panel4:'4-Panel',
+  cedar:'Cedar',cedarSingle:'Cedar Single',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
+  resDouble:'Residential Double (6-Panel)',resDoubleFull:'Residential Double (Full Lite \u00b7 White)',resDoubleFullB:'Residential Double (Full Lite \u00b7 Black)',
+  rollup:'Roll-Up Garage Door',slideglass:'Sliding Glass Door (White)',slideglassB:'Sliding Glass Door (Black)'};
+/* WHICH DOOR GETS THE RAMP (Nando, 2 Nov 2026). With more than one door the
+   customer picks; the choice is stored on the door itself (dd.ramp=true) so it
+   rides along in doorsData with the saved design / share link. Nothing picked
+   (or the picked door was deleted) falls back to the widest drive-in door. */
+function rampDoorLabel(dd){
+  var szl=(dd.style==='rollup') ? (dd.w<=76?"6'":dd.w<=90?"7'":"8'") : (dd.w<=38?"3'":(dd.w<=64?"5'":"6'"));
+  var nm=(typeof supplierDoorLabel==='function' && supplierDoorLabel(dd)) || (szl+' '+(DOOR_STYLE_NAMES[dd.style]||dd.style));
+  return wallLabelFor(dd.wall)+' \u2014 '+nm;
+}
+function rampDoorIdx(){
+  if(typeof doorsData==='undefined' || !doorsData) return -1;
+  for(var i=0;i<doorsData.length;i++) if(doorsData[i] && doorsData[i].ramp) return i;
+  var d=rampDoors()[0]; return d ? doorsData.indexOf(d) : -1;
+}
+function setRampDoor(i){
+  if(!doorsData[i]) return;
+  doorsData.forEach(function(d,j){ if(d) d.ramp=(j===i); });
+  if(typeof renderAddons==='function') renderAddons();
+  buildShed();
+}
 function rampDoors(){
   if(typeof doorsData==='undefined' || !doorsData || !doorsData.length) return [];
+  var picked=doorsData.filter(function(dd){ return dd && dd.ramp; })[0];
+  if(picked) return [picked];
   /* ONE ramp, at the widest drive-in door. The add-on is a flat $200 for the
      shed, so building one at every wide door would hand a customer with two
      roll-ups two ramps for the price of one and put a picture on screen that
@@ -15841,14 +15867,7 @@ function removeSelectedDoor(){
 }
 function renderPlacedDoors(){
   var host=document.getElementById('placedDoors'); if(!host) return;
-  var names={basic:'Standard',craftsman:'Craftsman',xtrim:'X-Trim',arch:'Arch',panel4:'4-Panel',
-             cedar:'Cedar',cedarSingle:'Cedar Single',fairytale:'Fairytale',res6:'6-Panel Residential',reshalf:'Half-Lite Residential',resfull:'Full-Lite Residential',res6B:'6-Panel Residential (Black)',reshalfB:'Half-Lite Residential (Black)',resfullB:'Full-Lite Residential (Black)',
-             resDouble:'Residential Double (6-Panel)',resDoubleFull:'Residential Double (Full Lite · White)',resDoubleFullB:'Residential Double (Full Lite · Black)',
-             /* rollup was missing from this map entirely, so both places that
-                read it fell through to the raw key and showed the word
-                "rollup" to the customer. */
-             rollup:'Roll-Up Garage Door',
-             slideglass:'Sliding Glass Door (White)',slideglassB:'Sliding Glass Door (Black)'};
+  var names=DOOR_STYLE_NAMES;
   /* The colour on the row. Two door styles come in three finishes now, and a
      row that reads only "3' Fairytale · front" hides which one was picked —
      the one thing you'd want to spot before sending the quote. The style's own
@@ -16940,6 +16959,17 @@ function renderAddons(){
         '<span style="font-size:11px;color:var(--mu);margin-left:2px">'+
           (ADDON_COLORS.filter(function(c){return c.k===cur;})[0]||{name:''}).name+'</span>'+
       '</div>';
+    }
+    if(it.k==='ramp' && on && typeof doorsData!=='undefined' && doorsData.length>1){
+      var ri=rampDoorIdx();
+      html+='<div class="ramp-door-pick" style="padding:8px 10px;border:1px solid #2BB5E8;border-top:none;border-radius:0 0 8px 8px;background:rgba(43,181,232,.07);margin-top:-2px">'+
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mu);margin-bottom:6px">Which door gets the ramp?</div>'+
+        doorsData.map(function(dd,i){
+          var sel=(i===ri);
+          return '<div onclick="event.stopPropagation();setRampDoor('+i+')" style="display:flex;align-items:center;gap:8px;padding:7px 8px;margin-bottom:4px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--w);background:'+(sel?'rgba(43,181,232,.18)':'var(--d3)')+';border:1px solid '+(sel?'#2BB5E8':'var(--br)')+'">'+
+            '<span style="width:14px;height:14px;border-radius:50%;flex-shrink:0;border:2px solid '+(sel?'#2BB5E8':'var(--br)')+';background:'+(sel?'radial-gradient(#2BB5E8 45%,transparent 50%)':'transparent')+'"></span>'+
+            rampDoorLabel(dd)+'</div>';
+        }).join('')+'</div>';
     }
     html+='</div>';
   });
