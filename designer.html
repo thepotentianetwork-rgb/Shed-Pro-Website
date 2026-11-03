@@ -6443,6 +6443,11 @@ function buildShed(){
      genuinely stops where the cross roof takes over. */
   function crossGapZ(){
     if(!isCrossGable()) return null;
+    /* Metal hotfix — no gap on metal. The valley patch is BufferGeometry, so
+       addMetalPanels never formed it and it kept the old striped texture (the
+       dense diagonal stripes). Metal runs the main sheet through; the cross
+       sheet is clipped at the main plane + a valley flash covers the joint. */
+    if(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal') return null;
     var cg=crossGableGeom(), dJ=crossJunction().dJ;   // Pass 12: deck junction
     return [cg.zc-dJ, cg.zc+dJ];
   }
@@ -7627,6 +7632,26 @@ function addMetalPanels(root){
       if(!o.material.transparent) o.material=metalSheetMat(_c).sheet; return; }
     targets.push(o);
   });
+  /* Metal hotfix — cross-gable sheets are clipped where they pass under the
+     main roof plane (the main sheet now runs through the cross footprint). */
+  var _clipFor={};
+  targets.forEach(function(o){ if(o.userData.crossSx==null) return;
+    var best=null, bA=0;
+    targets.forEach(function(m){ if(m.userData.crossSx!=null) return;
+      var e=m.matrixWorld.elements, pr=m.geometry.parameters, d=[pr.width,pr.height,pr.depth], th=d.indexOf(Math.min.apply(null,d));
+      var n=new THREE.Vector3(e[th*4],e[th*4+1],e[th*4+2]).normalize(); if(n.y<0) n.negate();
+      var A=d[0]*d[1]*d[2]/d[th];
+      if(n.x*o.userData.crossSx>0.05 && A>bA){ bA=A; best={m:m, n:n, c:new THREE.Vector3().setFromMatrixPosition(m.matrixWorld), T:d[th]}; } });
+    if(best){ var P0=best.c.clone().addScaledVector(best.n, best.T/2+P.LIFT*IN*0.5);
+      _clipFor[o.uuid]=[new THREE.Plane().setFromNormalAndCoplanarPoint(best.n, P0)];
+      // main sheet: drop only the box outboard of the wall inside the cross
+      // footprint (where it would poke through the cross gable's face)
+      var _cg=crossGableGeom(), _sx=o.userData.crossSx, V3=THREE.Vector3;
+      var _mp=[new THREE.Plane(new V3(-_sx,0,0), _cg.g.run), new THREE.Plane(new V3(0,0,-1), _cg.zc-_cg.cwOut),
+               new THREE.Plane(new V3(0,0,1), -(_cg.zc+_cg.cwOut))]; _mp.inter=true;
+      _clipFor[best.m.uuid]=_mp;
+      if(typeof renderer!=='undefined' && renderer) renderer.localClippingEnabled=true; }
+  });
   var SCREW=new THREE.CylinderGeometry(P.SCREW_D*IN/2,P.SCREW_D*IN/2,0.2*IN,6);
   var UNIT=new THREE.BoxGeometry(1,1,1);
   var mtx=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(), ps=new THREE.Vector3();
@@ -7660,6 +7685,9 @@ function addMetalPanels(root){
     var Ls=dims[slope], Lr=dims[ridge], T=dims[thin];
     var col=(o.material.userData.metalColor!=null)?o.material.userData.metalColor:0x1A1A1A;
     var M=metalSheetMat(col), xray=o.material.transparent;
+    if(_clipFor[o.uuid]){ var _cp=_clipFor[o.uuid];
+      M={sheet:M.sheet.clone(), screw:M.screw.clone()}; M.sheet.clippingPlanes=_cp; M.screw.clippingPlanes=_cp;
+      if(_cp.inter){ M.sheet.clipIntersection=true; M.screw.clipIntersection=true; } }
     var sheetMat=M.sheet;
     if(xray){ sheetMat=M.sheet.clone(); sheetMat.transparent=true; sheetMat.opacity=0; sheetMat.depthWrite=false; }
     o.material=sheetMat;
@@ -8120,6 +8148,7 @@ function buildCrossGable(sx){
       _pa.needsUpdate=_pu.needsUpdate=true; pGeo.computeVertexNormals();
     }
     var p=new THREE.Mesh(pGeo, pMat);
+    if(_isMetal) p.userData.crossSx=sx;   // metal hotfix: clip this sheet at the main plane
     p.position.set(X((pXi+pXo)/2), (c.rY+c.eaveY)/2, c.zc+sg*c.cwOut/2);
     p.rotation.x = (sg>0) ? ang : (Math.PI-ang);
     p.castShadow=true; shedGroup.add(p);
@@ -8206,7 +8235,25 @@ function buildCrossGable(sx){
      up to pOver and closes to zero at C. Scale off cwOut, not xEnd, so the
      overlap does not vanish on a low pitch where xEnd is tiny. */
   var pOver=Math.min(0.05, c.cwOut*0.25);
-  [1,-1].forEach(function(sg){
+  if(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal'){
+    /* Metal hotfix — thin black valley flashing along each valley line, on the
+       main sheet just above rib height, covering where the main ribs meet the
+       clipped cross sheet. */
+    var _IN=0.2/12, _vn=new THREE.Vector3(sx*c.g.tan,1,0).normalize();
+    var _vl=pLift+(METAL_PANEL.LIFT+METAL_PANEL.RIB_H)*_IN+0.002;
+    [1,-1].forEach(function(sg){
+      var A=new THREE.Vector3(X(c.xEnd), c.g.ridgeY-c.xEnd*c.g.tan, c.zc);
+      var B=new THREE.Vector3(X(c.xOut), c.g.ridgeY-c.xOut*c.g.tan, c.zc+sg*c.cwOut);
+      A.addScaledVector(_vn,_vl); B.addScaledVector(_vn,_vl);
+      var dx=B.clone().sub(A), L=dx.length(); dx.normalize();
+      var dz=new THREE.Vector3().crossVectors(dx,_vn).normalize();
+      var fm=new THREE.Mesh(new THREE.BoxGeometry(L, 0.1*_IN, 4*_IN), metalSheetMat(rc).sheet);
+      fm.matrixAutoUpdate=false;
+      fm.matrix.makeBasis(dx,_vn,dz); fm.matrix.setPosition(A.add(B).multiplyScalar(0.5));
+      fm.userData.__mp=true; fm.castShadow=true; shedGroup.add(fm);
+    });
+  }
+  if(!(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal')) [1,-1].forEach(function(sg){
     var _PJ=crossJunction(sx);                       // Pass 12: corner C = J_e
     var z0=c.zc, z1=c.zc+sg*_PJ.dJ, xC=_PJ.xEdge, yC=c.g.ridgeY-xC*c.g.tan;
     var xv=Math.min(c.xEnd+pOver, c.xOut-0.02);
