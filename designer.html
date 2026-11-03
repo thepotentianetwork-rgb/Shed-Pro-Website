@@ -12188,7 +12188,10 @@ function ventGableCyIn(vd){
      the wall top and the underside of the rake at the peak instead. */
   var RAKE_COVER_IN=3;
   var visRiseIn=Math.max(gRiseIn-RAKE_COVER_IN, gRiseIn*0.5);
-  for(var t=visRiseIn/2; t>0; t-=0.25){
+  /* Centroid, not half height (Nando, 2 Nov 2026): a triangle's visual centre
+     is a third of the way up, so half height left the vent crowding the peak
+     with a big field of siding below it. */
+  for(var t=visRiseIn/3; t>0; t-=0.25){
     var halfHereIn=halfBaseIn*(1 - (t+topPadIn)/gRiseIn);
     if(halfHereIn>=needIn) return wallIn + t;
   }
