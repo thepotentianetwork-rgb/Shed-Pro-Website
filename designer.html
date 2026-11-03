@@ -665,8 +665,8 @@ textarea.inp{resize:vertical}
         <div class="grp">
           <span class="lbl">Dimensions</span>
           <div class="sw">
-            <div class="sh"><span class="sn">Width</span><span class="sv" id="wv">8 ft</span></div>
-            <input type="range" min="6" max="26" value="8" step="2" oninput="setW(this.value)">
+            <div class="sh"><span class="sn">Width</span><span class="sv" id="wv">10 ft</span></div>
+            <input type="range" min="6" max="26" value="10" step="2" oninput="setW(this.value)">
           </div>
           <div class="sw">
             <div class="sh"><span class="sn">Length</span><span class="sv" id="lv">12 ft</span></div>
@@ -781,12 +781,12 @@ textarea.inp{resize:vertical}
         <div class="grp">
           <span class="lbl">Roof Type</span>
           <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
-            <div class="pitch-btn roof-btn on" onclick="setRoofType('shingle',this)">Shingle</div>
-            <div class="pitch-btn roof-btn" onclick="setRoofType('metal',this)">Metal Roof</div>
+            <div class="pitch-btn roof-btn" onclick="setRoofType('shingle',this)">Shingle</div>
+            <div class="pitch-btn roof-btn on" onclick="setRoofType('metal',this)">Metal Roof</div>
           </div>
         </div>
         <div class="grp" style="margin-top:14px">
-          <span class="lbl" id="roofColorLbl">Roof Shingles</span>
+          <span class="lbl" id="roofColorLbl">Metal Roof Color</span>
           <div style="display:flex;flex-direction:column;gap:8px" id="roofColorList">
             <div class="shingle-btn on" onclick="setColor('r',0x28282A,'Black Asphalt',this)" style="border-color:rgba(43,181,232,.5)">
               <div style="width:28px;height:28px;border-radius:4px;background:#2a2a2a;flex-shrink:0"></div>
@@ -1184,7 +1184,7 @@ window.onerror=function(msg,src,line,col,err){
   }catch(e){}
   return false;
 };
-var W=8, L=12, H=8, PITCH=6;
+var W=10, L=12, H=8, PITCH=6;   // 10x12 default (Nando, Nov 2026: most common size)
     var OVH=4, OVTYPE="gable";  // overhang inches + type: "gable" (flush gable) or "all4"
     // Lean-to only: no roof pitch — the back wall drops a flat 1 or 2 ft off
     // the front (see the leanRise replacement in buildShed). The front (tall/
@@ -2243,7 +2243,7 @@ var selectedPorchLight=-1;
 var PORCH_LIGHT_CATALOG=[
   {key:'modern',     name:'Modern Cylinder',      desc:'Matte black, clean lines — modern builds'}
 ];
-var ROOFTYPE='shingle';  // 'shingle' | 'metal'
+var ROOFTYPE='metal';  // 'shingle' | 'metal'
 var LOFT='none';         // 'none' | "<depthFt>-<front|back|dual>"
 /* LOFT PLACEMENT (Nando, 12 Oct 2026: long side or short side).
    'ends'  = against the front/back walls, spanning the width (every loft
@@ -2385,12 +2385,12 @@ var SIDING_TILE=1.05;   /* LEGACY. Superseded by SIDING_TILE_BY_STYLE in v452 �
 /* Global shingle darkness. See makeShingle() — this scales the canvas pixels
    directly, so it is the one reliable lever on how dark the roof reads. */
 var SHINGLE_LEVEL=0.62;
-var sc=0x6E7377, tc=0xF2F0EC, rc=0x28282A;
+var sc=0x1A1A1A, tc=0xF2F0EC, rc=0x1A1A1A;   // standard: black siding, white trim, black metal roof
 /* rn said 'Charcoal' while rc defaulted to 0x28282A, which is Black Asphalt —
    so the summary bar has been printing a roof colour the shed does not have on
    every fresh load. sn and tn both match their hexes; only this one drifted,
    left behind by an earlier palette. */
-var sn='Gray', tn='White', rn='Black Asphalt';
+var sn='Black', tn='White', rn='Black';
 
 var scr=document.createElement('script');
 /* PERF (2026-11-02): three.js served same-origin — no extra DNS/TLS handshake
@@ -16371,8 +16371,8 @@ function currentSchemeKey(){
 var PERMIT_SQFT = 200;
 var POPULAR_SIZES = [
   {w:8,  l:10},   // the small one: mower, bikes, bins
-  {w:8,  l:12},   // the default shell
-  {w:10, l:12},
+  {w:8,  l:12},
+  {w:10, l:12},   // the default shell
   {w:10, l:16},
   {w:12, l:16},   // 192 sqft - the biggest that stays under the permit line
   {w:12, l:20},
