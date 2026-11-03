@@ -4957,14 +4957,14 @@ function makeShingle(color){
      the swatch moves the rendered result only slightly, because the curve is
      nearly flat up there. Fixed here, the hexes mean what they say again.
      The BUMP map stays false — that one really is linear data, not colour. */
-  var ckey='shingle:'+color+':'+SHINGLE_LEVEL;
+  var ckey='shingleArch1:'+color+':'+SHINGLE_LEVEL;
   if(_canvasCache[ckey]){
     var cc=_canvasCache[ckey];
-    var ct=texFromCanvas(cc.color, true);
-    ct.bumpMap=texFromCanvas(cc.bump, false);
+    var ct=_archScale(texFromCanvas(cc.color, true)); ct.anisotropy=8;
+    ct.bumpMap=_archScale(texFromCanvas(cc.bump, false)); ct.bumpMap.anisotropy=8;
     return ct;
   }
-  var c=document.createElement('canvas');c.width=512;c.height=512;
+  var c=document.createElement('canvas');c.width=1024;c.height=1024;
   var ctx=c.getContext('2d');
   var r=(color>>16)&255,g=(color>>8)&255,b=color&255;
   /* v366 — ONE DIAL FOR SHINGLE DARKNESS. Applied to the canvas pixels
@@ -4987,17 +4987,28 @@ function makeShingle(color){
   b=Math.max(0,Math.round(b*SHINGLE_LEVEL));
   // Base fill
   ctx.fillStyle='rgb('+r+','+g+','+b+')';
-  ctx.fillRect(0,0,512,512);
+  ctx.fillRect(0,0,1024,1024);
+  // Seeded RNG (mulberry32 on the colour) — deterministic layout per colour.
+  var _seed=(color^0x9E3779B9)>>>0;
+  function rnd(){ _seed=(_seed+0x6D2B79F5)>>>0; var q=_seed; q=Math.imul(q^(q>>>15),q|1); q^=q+Math.imul(q^(q>>>7),q|61); return ((q^(q>>>14))>>>0)/4294967296; }
 
   // Architectural asphalt shingles — staggered tabs with depth shading and a
   // scattered light/dark blend across the field (like real dimensional shingles).
   // 512px tile maps to 45" of roof: 8 courses of 64px = 5.6" exposure, tabs of
   // 128px = 11.25" wide (2:1, matching real dimensional shingles). Integer
   // courses per tile so the texture wraps without a seam.
-  var courseH=64;
-  var tabW=128;
-  var courses=Math.ceil(512/courseH)+1;
-  var tabsPerRow=Math.ceil(512/tabW)+2;
+  /* ARCH-1 (2026-11-02) — LAMINATED ARCHITECTURAL TILE, ONE LAYOUT FOR COLOUR AND BUMP.
+     Visual reference: GAF Timberline-style (temporary, product not confirmed).
+     - The tile is now 1024px = 90in (16 courses of 5-5/8in). _archScale() halves the
+       UV so every caller's existing "size/SHINGLE_TILE" repeat keeps exactly the same
+       real-world scale; the pattern simply repeats every 90in instead of 45in, and
+       no two courses inside it share a tab layout.
+     - Each course is a dark base (bottom) layer with irregular laminate tabs on top.
+       Tabs stop short of the butt by 0 to ~1.8in, exposing the base layer as the
+       shadow band (the "dragon-tooth" look). Tab widths ~6 to 15in.
+     - The bump map is drawn in the SAME loop from the SAME numbers, so relief and
+       colour can no longer disagree (they did: bump was still the old brick grid).
+     - Seeded RNG per colour: same roof on every load, no shimmer between rebuilds. */
 
   /* v367 — TONE VARIATION IS A FRACTION OF THE BASE, NOT A FIXED STEP.
      shade() added amt*90 regardless of how dark the colour was. On a charcoal
@@ -5015,21 +5026,21 @@ function makeShingle(color){
   // Amplitudes set from that 6.8% measurement: most tabs sit within a few
   // percent, a minority step out. Previously 10-20%, which is the banding.
   function tabTone(){
-    var roll=Math.random();
-    if(roll<0.13) return 0.15 + Math.random()*0.09;    // occasional light tab
-    if(roll<0.27) return -0.12 - Math.random()*0.08;   // occasional dark tab
-    return (Math.random()-0.5)*0.085;                  // most tabs
+    var roll=rnd();
+    if(roll<0.13) return 0.15 + rnd()*0.09;    // occasional light tab
+    if(roll<0.27) return -0.12 - rnd()*0.08;   // occasional dark tab
+    return (rnd()-0.5)*0.085;                  // most tabs
   }
 
   // Mottle a tab with soft light/dark patches (the irregular tonal variation
   // within each real shingle). Many small soft gradients = organic, no rings.
   function blotch(x,y,wd,ht){
-    var n=7+Math.floor(Math.random()*6);
+    var n=7+Math.floor(rnd()*6);
     for(var i=0;i<n;i++){
-      var bxp=x+Math.random()*wd, byp=y+Math.random()*ht;
-      var rad=4+Math.random()*10;
-      var light=Math.random()>0.5;
-      var a=0.018+Math.random()*0.028;   // was 0.05-0.12; reference is far flatter
+      var bxp=x+rnd()*wd, byp=y+rnd()*ht;
+      var rad=4+rnd()*10;
+      var light=rnd()>0.5;
+      var a=0.018+rnd()*0.028;   // was 0.05-0.12; reference is far flatter
       var grad=ctx.createRadialGradient(bxp,byp,0,bxp,byp,rad);
       grad.addColorStop(0, (light?'rgba(235,238,242,':'rgba(10,14,18,')+a+')');
       grad.addColorStop(1, (light?'rgba(235,238,242,0)':'rgba(10,14,18,0)'));
@@ -5081,106 +5092,179 @@ function makeShingle(color){
   function granulate(x,y,wd,ht,density){
     ctx.globalAlpha=0.34;
     for(var s=0;s<density;s++){
-      var rv=Math.random();
+      var rv=rnd();
       ctx.fillStyle = rv<0.30?GRAN[0] : rv<0.66?GRAN[1] : rv<0.85?GRAN[2] : GRAN[3];
-      ctx.fillRect(x+Math.random()*wd, y+Math.random()*ht, 1.1,1.1);
+      ctx.fillRect(x+rnd()*wd, y+rnd()*ht, 1.1,1.1);
     }
     ctx.globalAlpha=1;
   }
-
-  /* v367 — IRREGULAR TABS, NOT A BRICK GRID.
-     Every course was tabW=128 wide offset by exactly half on alternate rows:
-     a perfect running-bond checkerboard, which is what reads as "the pattern".
-     Autocorrelating the reference slope finds TWO competing tab periods, 31px
-     and 38px against a 19px course — the widths genuinely vary, roughly +/-20%,
-     and the course offsets are not a clean half-tab.
-     The four widths are scaled to sum to exactly 512 and then shuffled per
-     course, so the row still wraps seamlessly while no two courses line up.
-     Start x is random per course for the same reason. */
-  function rowWidths(){
-    var w=[0.84,1.12,0.94,1.10];
-    for(var i=w.length-1;i>0;i--){ var j=(Math.random()*(i+1))|0, t=w[i]; w[i]=w[j]; w[j]=t; }
-    var sum=0; for(i=0;i<w.length;i++) sum+=w[i];
-    var k=512/sum;
-    return w.map(function(v){ return v*k; });
-  }
-  for(var row=0;row<courses;row++){
+  var S=1024, courseH=64, courses=S/courseH;
+  var bc=document.createElement('canvas'); bc.width=S; bc.height=S;
+  var bx=bc.getContext('2d');
+  bx.fillStyle='#707070'; bx.fillRect(0,0,S,S);
+  function wrapDo(x, w, fn){ fn(x); if(x+w>S) fn(x-S); if(x<0) fn(x+S); }
+  function grey(v){ v=Math.max(0,Math.min(255,v|0)); return 'rgb('+v+','+v+','+v+')'; }
+  for(var row=0; row<courses; row++){
     var yy=row*courseH;
-    var ws=rowWidths();
-    var x0=-Math.random()*ws[0];
-    var edges=[];
-    for(var xx=x0, wi=0; xx<512; wi++){
-      var tw2=ws[wi%ws.length];
-      edges.push(xx);
-      ctx.fillStyle=shade(tabTone());
-      ctx.fillRect(xx, yy, tw2-2, courseH-1);
-      blotch(xx, yy, tw2-2, courseH-1);
-      granulate(xx, yy, tw2-2, courseH-1, Math.round(tw2*courseH*0.064));
-      xx+=tw2;
+    var ws=[], sum=0;
+    while(sum<S-70){ var w0=68+rnd()*103; ws.push(w0); sum+=w0; }
+    var k=S/sum, x=rnd()*S;
+    // whole course starts as the exposed base layer (darker, slightly lower)
+    ctx.fillStyle=shade(-0.30); ctx.fillRect(0, yy, S, courseH);
+    bx.fillStyle='#5a5a5a'; bx.fillRect(0, yy, S, courseH);
+    for(var i=0;i<ws.length;i++){
+      var tw=ws[i]*k;
+      var drop=(rnd()<0.30) ? 0 : Math.round(6+rnd()*14);   // shadow band height, px
+      var faceH=courseH-drop;
+      var tone=tabTone();
+      var bv=168+(rnd()-0.5)*16;                             // laminate thickness jitter
+      wrapDo(x, tw, function(xx){
+        ctx.fillStyle=shade(tone); ctx.fillRect(xx+1, yy, tw-2, faceH);
+        blotch(xx+1, yy, tw-2, faceH);
+        // soft shadow the tab's butt throws onto the base layer
+        if(drop>0){
+          var g=ctx.createLinearGradient(0,yy+faceH,0,yy+faceH+5);
+          g.addColorStop(0,'rgba(0,0,0,0.22)'); g.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle=g; ctx.fillRect(xx+1, yy+faceH, tw-2, 5);
+          ctx.fillStyle=shade(tone+0.035); ctx.fillRect(xx+1, yy+faceH-1.5, tw-2, 1.5);  // lit laminate edge
+        }
+        bx.fillStyle=grey(bv); bx.fillRect(xx+1, yy, tw-2, faceH);
+        if(drop>0){ bx.fillStyle=grey(bv-40); bx.fillRect(xx+1, yy+faceH-2, tw-2, 2); }
+        // keyway between tabs: thin slot down to the base layer
+        ctx.fillStyle=shade(-0.26); ctx.fillRect(xx-0.7, yy, 1.4, courseH-2);
+        bx.fillStyle='#3c3c3c'; bx.fillRect(xx-1, yy, 2, courseH-2);
+      });
+      x+=tw; if(x>=S) x-=S;
     }
-    /* Butt shadow was 0.55 alpha over 8px. On the reference the average course
-       profile varies by ONE level across its whole height — 0.9% of the mean.
-       Real laminated shingles do cast a line, but at roof-viewing distance it
-       is a hint, not a stripe. 0.10 over 4px, and the white top highlight down
-       from 0.10 to 0.03, because together they were drawing a ladder. */
-    /* EDGE MARKS GO THROUGH shade(), AND THEY GO WHERE THE LIGHT PUTS THEM.
-       Two corrections here. First, painting them as flat black and white at a
-       fixed alpha is the same mistake as amt*90 — 3% white on a charcoal at
-       luminance 25 lifts that row 17%, a stripe across every course. Through
-       shade() the definition stays proportional at any colour.
-       Second, the geometry was upside down. A course's butt casts its shadow
-       DOWNWARD onto the course below, and the butt edge itself catches light.
-       So: shadow at the TOP of each course, highlight at its bottom edge.
-       Measured off the de-rotated reference, that boundary is worth 7.6% of
-       the mean — the earlier 0.9% reading was taken without straightening the
-       roof first, and averaging across diagonal course lines had smeared them
-       away entirely. Straightened, the profile dips ~3 then spikes ~5.
-       Amplitudes solved against that number rather than guessed: 0.04 and 0.02
-       land the tile at 6-9% across the three colours. Eyeballing put them at
-       0.20/0.16, which measured 38% — five times the real roof. */
-    var gradTop=ctx.createLinearGradient(0,yy,0,yy+5);
-    gradTop.addColorStop(0,'rgba(0,0,0,0.04)');
-    gradTop.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=gradTop;
-    ctx.fillRect(0, yy, 512, 5);
-    ctx.fillStyle=shade(0.02);                       // lit butt edge
-    ctx.fillRect(0, yy+courseH-2, 512, 2);
-    // Keyways: a slot, not a bar. Relative to the colour, and fine.
-    ctx.fillStyle=shade(-0.22);
-    for(var e=0;e<edges.length;e++) ctx.fillRect(edges[e]-0.7, yy, 1.4, courseH-3);
+    // overlap shadow from the course above (its butt sits at yy)
+    var gt=ctx.createLinearGradient(0,yy,0,yy+6);
+    gt.addColorStop(0,'rgba(0,0,0,0.10)'); gt.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gt; ctx.fillRect(0, yy, S, 6);
+    var gb=bx.createLinearGradient(0,yy,0,yy+6);
+    gb.addColorStop(0,'rgba(20,20,20,0.85)'); gb.addColorStop(1,'rgba(20,20,20,0)');
+    bx.fillStyle=gb; bx.fillRect(0, yy, S, 6);
   }
+  // Controlled large-scale variation (granule-blend patches), wrapped so the tile
+  // stays seamless. Low alpha: breaks the repeat without visible blotches.
+  for(var p=0;p<14;p++){
+    var px=rnd()*S, py=rnd()*S, pr=90+rnd()*160, lt=rnd()>0.5, pa=0.018+rnd()*0.022;
+    [-S,0,S].forEach(function(ox){ [-S,0,S].forEach(function(oy){
+      var cx=px+ox, cy=py+oy;
+      if(cx+pr<0||cx-pr>S||cy+pr<0||cy-pr>S) return;
+      var g=ctx.createRadialGradient(cx,cy,0,cx,cy,pr);
+      g.addColorStop(0,(lt?'rgba(230,232,236,':'rgba(8,10,12,')+pa+')');
+      g.addColorStop(1,(lt?'rgba(230,232,236,0)':'rgba(8,10,12,0)'));
+      ctx.fillStyle=g; ctx.fillRect(cx-pr,cy-pr,pr*2,pr*2);
+    }); });
+  }
+  /* Granules in ONE pixel pass per canvas (was ~120k fillRects: 7x slower on a
+     1024 tile). Same four normalised granule tones and weights, same 0.34 mix;
+     the bump gets matching fine grit at low amplitude (matte, no sparkle). */
+  (function(){
+    var G=GRAN.map(function(sx){ return sx.match(/\d+/g).map(Number); });
+    var id=ctx.getImageData(0,0,S,S), d=id.data;
+    var bd=bx.getImageData(0,0,S,S), e=bd.data;
+    for(var q=0;q<d.length;q+=4){
+      var rv=rnd();
+      if(rv<0.085){
+        var u=rv/0.085, gc=u<0.30?G[0]:u<0.66?G[1]:u<0.85?G[2]:G[3];
+        d[q]+=(gc[0]-d[q])*0.34; d[q+1]+=(gc[1]-d[q+1])*0.34; d[q+2]+=(gc[2]-d[q+2])*0.34;
+        var bv2=e[q]+(u<0.5?-14:14); e[q]=e[q+1]=e[q+2]=bv2<0?0:bv2>255?255:bv2;
+      }
+    }
+    ctx.putImageData(id,0,0); bx.putImageData(bd,0,0);
+  })();
 
-  var t=new THREE.CanvasTexture(c);
-  t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.encoding=THREE.sRGBEncoding;
-  t.repeat.set(3,3); // overridden per-panel below
+  var t=_archScale(texFromCanvas(c, true));
   t.anisotropy=8;
-
-  // BUMP MAP for shingles — tab faces raised, keyways and course drop-edges low.
-  var sbc=document.createElement('canvas');sbc.width=512;sbc.height=512;
-  var sbx=sbc.getContext('2d');
-  sbx.fillStyle='#888888';sbx.fillRect(0,0,512,512);
-  for(var sr=0;sr<courses;sr++){
-    var syy=sr*courseH;
-    var soff=(sr%2)*(tabW/2);
-    for(var sc2=-1;sc2<Math.ceil(512/tabW)+1;sc2++){
-      var sxx=sc2*tabW+soff;
-      sbx.fillStyle='#b8b8b8';                       // tab face (raised)
-      sbx.fillRect(sxx, syy, tabW-2, courseH-1);
+  t.bumpMap=_archScale(texFromCanvas(bc, false));
+  t.bumpMap.anisotropy=8;
+  _canvasCache[ckey]={color:c, bump:bc};
+  return t;
+}
+/* ARCH-1: the shingle canvas covers TWO tiles' worth of roof (90in). Halving the
+   final UV keeps the callers' size/SHINGLE_TILE repeats at true scale. Applied on
+   the matrix so offsets/rotations set by every roof builder still line up. */
+/* ARCH-1 — HIP/RIDGE CAP SHINGLES. Separate pieces lapping along the run
+   (5-5/8in exposure, Timberline-style reference), same granule stock and colour
+   pipeline as the field. 512px = 45in along the run, so world-UV callers use
+   1/SHINGLE_TILE. Shingle only; metal caps never call this. */
+function makeShingleCap(color){
+  var ckey='shingleCap1:'+color+':'+SHINGLE_LEVEL;
+  var cc=_canvasCache[ckey];
+  if(!cc){
+    var S=512, ex=64;
+    var c=document.createElement('canvas'); c.width=S; c.height=S;
+    var b=document.createElement('canvas'); b.width=S; b.height=S;
+    var x=c.getContext('2d'), y=b.getContext('2d');
+    var r=Math.round(((color>>16)&255)*SHINGLE_LEVEL), g=Math.round(((color>>8)&255)*SHINGLE_LEVEL), bl=Math.round((color&255)*SHINGLE_LEVEL);
+    var amp=Math.max(14, r*0.299+g*0.587+bl*0.114);
+    var sd=(color^0x51ED270B)>>>0;
+    function rnd(){ sd=(sd+0x6D2B79F5)>>>0; var q=sd; q=Math.imul(q^(q>>>15),q|1); q^=q+Math.imul(q^(q>>>7),q|61); return ((q^(q>>>14))>>>0)/4294967296; }
+    function sh(a){ function f(v){ return Math.max(0,Math.min(255,(v+a*amp)|0)); } return 'rgb('+f(r)+','+f(g)+','+f(bl)+')'; }
+    for(var k=0;k<S/ex;k++){
+      var yy=k*ex, t=(rnd()-0.5)*0.08;
+      x.fillStyle=sh(t); x.fillRect(0,yy,S,ex);
+      x.globalAlpha=0.30;
+      for(var n=0;n<S*ex*0.06;n++){ var v=rnd(); x.fillStyle=sh(v<0.35?-0.7:v<0.7?0.6:(v-0.85)*2); x.fillRect(rnd()*S, yy+rnd()*ex, 1.1,1.1); }
+      x.globalAlpha=1;
+      var gr=x.createLinearGradient(0,yy,0,yy+7); gr.addColorStop(0,'rgba(0,0,0,0.18)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+      x.fillStyle=gr; x.fillRect(0,yy,S,7);                       // shadow under the piece above
+      x.fillStyle=sh(t+0.05); x.fillRect(0,yy+ex-2,S,2);          // lit butt edge
+      y.fillStyle='#a0a0a0'; y.fillRect(0,yy,S,ex);
+      var gb=y.createLinearGradient(0,yy,0,yy+7); gb.addColorStop(0,'#404040'); gb.addColorStop(1,'#a0a0a0');
+      y.fillStyle=gb; y.fillRect(0,yy,S,7);
     }
-    sbx.fillStyle='#101010';                          // course drop shadow (deep)
-    sbx.fillRect(0, syy+courseH-5, 512, 5);
-    sbx.fillStyle='#202020';                          // keyway slots (low)
-    for(var sc3=-1;sc3<Math.ceil(512/tabW)+1;sc3++){
-      var skx=sc3*tabW+soff;
-      sbx.fillRect(skx-1, syy, 2, courseH-4);
-    }
+    y.globalAlpha=0.07; for(var m=0;m<S*S*0.05;m++){ y.fillStyle=rnd()<0.5?'#000':'#fff'; y.fillRect(rnd()*S,rnd()*S,1,1); } y.globalAlpha=1;
+    cc=_canvasCache[ckey]={color:c,bump:b};
   }
-  var sbt=new THREE.CanvasTexture(sbc);
-  sbt.wrapS=sbt.wrapT=THREE.RepeatWrapping;
-  sbt.anisotropy=8;
-  t.bumpMap=sbt;
-  _canvasCache[ckey]={color:c, bump:sbc};
+  var tx=texFromCanvas(cc.color,true); tx.anisotropy=8;
+  tx.bumpMap=texFromCanvas(cc.bump,false); tx.bumpMap.anisotropy=8;
+  return tx;
+}
+/* ARCH-1 — BUTT EDGES DOWN-SLOPE ON EVERY PANEL.
+   The builders map texture V up-slope on some panels and down-slope on others
+   (e.g. gable left vs right, every barn panel). The old tile was nearly
+   symmetric so it never showed; laminated shingles are not — the shadow band
+   must sit at the butt, toward the eave. This measures each field panel's
+   uphill V direction on its up-facing triangles and mirrors V where it runs
+   the wrong way. UV scale, U phase and geometry are untouched. Shingle only. */
+function orientArchShingles(root){
+  var V3=THREE.Vector3, A=new V3(),B=new V3(),C=new V3(),e1=new V3(),e2=new V3(),nv=new V3(),up=new V3();
+  root.updateMatrixWorld(true);
+  root.traverse(function(m){
+    if(!m.isMesh||!m.material||Array.isArray(m.material)) return;
+    var mp=m.material.map; if(!mp||!mp._arch) return;
+    var g=m.geometry, pos=g.attributes.position, uv=g.attributes.uv; if(!pos||!uv) return;
+    mp._archFlip=false; mp.updateMatrix();
+    var idx=g.index?g.index.array:null, N=idx?idx.length:pos.count, score=0, scoreDn=0, nUp=0;
+    var u0=new THREE.Vector2(),u1=new THREE.Vector2(),u2=new THREE.Vector2();
+    for(var t=0;t<N;t+=3){
+      var i0=idx?idx[t]:t, i1=idx?idx[t+1]:t+1, i2=idx?idx[t+2]:t+2;
+      A.fromBufferAttribute(pos,i0).applyMatrix4(m.matrixWorld);
+      B.fromBufferAttribute(pos,i1).applyMatrix4(m.matrixWorld);
+      C.fromBufferAttribute(pos,i2).applyMatrix4(m.matrixWorld);
+      e1.subVectors(B,A); e2.subVectors(C,A); nv.crossVectors(e1,e2);
+      var area=nv.length(); if(area<1e-9) continue; nv.multiplyScalar(1/area);
+      if(Math.abs(nv.y)<0.3||Math.abs(nv.y)>0.99999) continue;   // sloped faces only
+      var dn=nv.y<0; if(dn) nv.negate();   // top faces vote; down faces only count if there are none
+      up.set(0,1,0).addScaledVector(nv,-nv.y).normalize();
+      u0.fromBufferAttribute(uv,i0).applyMatrix3(mp.matrix);
+      u1.fromBufferAttribute(uv,i1).applyMatrix3(mp.matrix);
+      u2.fromBufferAttribute(uv,i2).applyMatrix3(mp.matrix);
+      var a11=e1.dot(e1),a12=e1.dot(e2),a22=e2.dot(e2),b1=up.dot(e1),b2=up.dot(e2),det=a11*a22-a12*a12;
+      if(Math.abs(det)<1e-14) continue;
+      var sA=(b1*a22-b2*a12)/det, sB=(b2*a11-b1*a12)/det;
+      var dv=area*(sA*(u1.y-u0.y)+sB*(u2.y-u0.y));
+      if(dn) scoreDn+=dv; else { score+=dv; nUp++; }
+    }
+    if(!nUp) score=scoreDn;
+    if(score<0){ mp._archFlip=true; mp.updateMatrix(); }
+  });
+}
+function _archScale(t){
+  t._arch=true;
+  t.updateMatrix=function(){ THREE.Texture.prototype.updateMatrix.call(this); this.matrix.scale(0.5, this._archFlip?-0.5:0.5); };
   return t;
 }
 
@@ -5355,8 +5439,8 @@ function applyXray(m){
 function shingleMat(color, tex, dbl){
   return new THREE.MeshStandardMaterial({
     color: tex ? 0xffffff : color, map:tex||null,
-    bumpMap:(tex&&tex.bumpMap)||null, bumpScale:0.05,
-    roughness:0.98, metalness:0.0,
+    bumpMap:(tex&&tex.bumpMap)||null, bumpScale:0.06,   // ARCH-1: 0.05 -> 0.06, laminate reads, no deep grooves
+    roughness:0.97, metalness:0.0, envMapIntensity:0.8,  // matte granules, slightly calmer sky reflection
     side: dbl?THREE.DoubleSide:THREE.FrontSide
   });
 }
@@ -7480,6 +7564,7 @@ function buildShed(){
     });
   }
   if(ROOFTYPE==='metal' && typeof addMetalPanels==='function') addMetalPanels(shedGroup);
+  if(ROOFTYPE!=='metal' && typeof orientArchShingles==='function') orientArchShingles(shedGroup);   // ARCH-1
   if(typeof applyLighting==='function') applyLighting();  // re-attach pkg lights & day/night
   if(typeof buildSnapGuides==='function') buildSnapGuides();
 }
@@ -7703,7 +7788,7 @@ function roofCapBuilder(rc, group){
   var capLap=isMetal?0.010:0.014;    // overlap at the joint
 
   function capMat(){
-    var t=roofTex(rc);
+    var t=isMetal?roofTex(rc):makeShingleCap(rc);   // ARCH-1: lapped cap pieces on shingle
     t.wrapS=t.wrapT=THREE.RepeatWrapping;
     // ExtrudeGeometry's UV generator returns the SHAPE's own x/y, i.e. UVs
     // already in world units like the roof faces — so the repeat is the roof's
@@ -9007,7 +9092,10 @@ function buildBarnRoof(){
   // ---- TRIM: ridge cap + knuckle caps + rake boards ----
   var trimMat=paintMat(tc,0.1);
   if(WALLS_XRAY){ trimMat.transparent=true; trimMat.opacity=0; trimMat.depthWrite=false; }
-  var capMat=roofMat(rc, roofTex(rc));
+  var capMat;
+  if(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal') capMat=roofMat(rc, roofTex(rc));
+  else { var _ct=makeShingleCap(rc); _ct.repeat.set(0.070/SHINGLE_TILE, (roofDepth+0.004)/SHINGLE_TILE);
+         if(_ct.bumpMap) _ct.bumpMap.repeat.copy(_ct.repeat); capMat=roofMat(rc,_ct); }   // ARCH-1
 
   // RIDGE + KNUCKLE CAPS — folded strips LYING ON the panel surfaces at each
   // joint (same technique as the A-frame ridge). A box can't hug a two-angle
@@ -9038,8 +9126,15 @@ function buildBarnRoof(){
     // knee: strip up the shallow panel + strip down the steep panel
     var uUp=unit(ks*kneeX,kneeY, 0,ridgeY);
     var uDn=unit(ks*kneeX,kneeY, ks*eaveTipX,eaveTipY);
-    capStrip(ks*kneeX, kneeY, uUp[0], uUp[1]);
-    capStrip(ks*kneeX, kneeY, uDn[0], uDn[1]);
+    /* ARCH-1 (Nando, Nov 2): no decorative cap at the gambrel break on SHINGLE
+       barns — field shingles run continuously over the knuckle (the usual
+       construction: upper-slope courses lap the lower slope's top course; a
+       metal transition flashing, if used, sits underneath and isn't visible).
+       Pending confirmation of ShedPro's actual detail. Metal path unchanged. */
+    if(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal'){
+      capStrip(ks*kneeX, kneeY, uUp[0], uUp[1]);
+      capStrip(ks*kneeX, kneeY, uDn[0], uDn[1]);
+    }
   }
 
   // Rake trim tracing the gambrel silhouette on each end — ONE mitred extruded
