@@ -8545,6 +8545,22 @@ function buildCrossGable(sx){
   belt.position.set(X(c.g.run+beltT/2), c.h - beltH/2, c.zc);
   belt.castShadow=true; shedGroup.add(belt);
 }
+/* ONE HIP-ROOF SURFACE (style-switch fix, Nando t1476u). buildHipRoof drew
+   the end faces from the eave to a ridge end clamped at rz>=0.04, so on a
+   square or wider-than-long footprint (the Poolhouse opens at 10x10) the end
+   faces are STEEPER than PITCH. The interior OSB deck and rafters re-derived
+   the surface with PITCH on all four sides, so the deck stood above the metal
+   on both end faces - the "exposed tan roof section". Both now read this. */
+function hipRoofGeom(){
+  var w=encWft()*0.2, l=encLft()*0.2, h=H*0.2, tw=0.06, INCH=0.2/12;
+  var eaveOv=(OVTYPE==="gable") ? tw/2+0.026 : OVH*INCH;
+  var wOut=w/2+0.025, lOut=l/2+0.025, tan=PITCH/12;
+  var ridgeY=h+tan*wOut, ex=wOut+eaveOv, ez=lOut+eaveOv, eaveY=h-eaveOv*tan;
+  var rz=Math.max(0.04, lOut-wOut);
+  var sEnd=(ridgeY-eaveY)/Math.max(1e-6, ez-rz);   // == tan unless rz was clamped
+  return {wOut:wOut, lOut:lOut, tan:tan, ridgeY:ridgeY, ex:ex, ez:ez, eaveY:eaveY, rz:rz, sEnd:sEnd,
+    yAt:function(x,z){ return Math.min(ridgeY-tan*Math.abs(x), ridgeY-sEnd*Math.max(0,Math.abs(z)-rz)); }};
+}
 function buildHipRoof(){
   var w=encWft()*0.2, l=encLft()*0.2, h=H*0.2;
   var tw=0.06, INCH=0.2/12;
@@ -12161,7 +12177,7 @@ function ventHalfH(){ return VENT_H/2 + VENT_CASE; }
 function ventGableCyIn(vd){
   if(!vd) return null;
   if(vd.wall!=='front' && vd.wall!=='back') return null;
-  if(typeof STYLE==='undefined' || STYLE==='leanto') return null;
+  if(typeof STYLE==='undefined' || !styleHasGableEnds()) return null;
   var f=wallFrame(vd.wall);
   var wallIn=f.height/(0.2/12);
   /* The REAL rise, read off the roof that gets built. (PITCH*W)/2 measures the
@@ -12197,6 +12213,58 @@ function ventGableCyIn(vd){
   }
   return null;                                 // no room on this gable
 }
+/* STYLE-SWITCH VENT POLICY (Nando t1476u/t1477u). Gable vents need a gable
+   end. Lean-To (shed roof) and Poolhouse (hip) have none, so they carry NO
+   vents: the customer's vents are PARKED (kept, not built, not priced) with a
+   toast, and come back - re-centred on the new gable - when they switch to a
+   style that has gable ends. Before this, ventsData rode through every style
+   untouched and ventGableCyIn treated a hip as a gable, so the vent was
+   placed in a triangle that does not exist: floating over / through the roof. */
+function styleHasGableEnds(){ return STYLE!=='leanto' && STYLE!=='hip'; }
+var VENTS_PARKED=[];
+var STYLE_LABELS={gable:'Gable / A-Frame',barn:'Barn',leanto:'Lean-To',hip:'Poolhouse','3peak':'3 Peak','4peak':'4 Peak'};
+/* Roof-dependent ADD-ONS follow the same park/restore rule as vents: a cupola
+   (Gable/Barn only) or ridge vent (ridged styles only) the new roof cannot
+   carry is switched off - so it is neither drawn nor PRICED - and remembered,
+   then switched back on when the customer returns to a roof that takes it.
+   Previously the style tiles (pickStyle) dropped neither: both stayed on the
+   quote while the 3D showed nothing. */
+var ADDONS_PARKED={};
+function reconcileRoofAddons(quiet){
+  if(typeof ADDONS==='undefined') return;
+  var msgs=[];
+  [['cupola', cupolaAllowed(), function(v){ return v && v!=='none'; }, 'none', 'Cupola', 'needs a Gable / A-Frame or Barn roof'],
+   ['ridgeVent', hasRidgeStyle(), function(v){ return !!v; }, false, 'Ridge vent', 'needs a roof with a ridge']].forEach(function(r){
+    var k=r[0], ok=r[1], isOn=r[2], off=r[3];
+    if(!ok && isOn(ADDONS[k])){ ADDONS_PARKED[k]=ADDONS[k]; ADDONS[k]=off; msgs.push(r[4]+' removed \u2014 it '+r[5]+'. Restored if you switch back.'); }
+    else if(ok && ADDONS_PARKED[k]!=null){ if(!isOn(ADDONS[k])){ ADDONS[k]=ADDONS_PARKED[k]; msgs.push(r[4]+' restored.'); } delete ADDONS_PARKED[k]; }
+  });
+  document.querySelectorAll('.cupola-btn').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-cup')===(ADDONS.cupola||'none')); });
+  try{ if(typeof syncRidgeVentUI==='function') syncRidgeVentUI(); if(typeof renderAddons==='function') renderAddons(); }catch(e){}
+  return msgs;
+}
+function reconcileStyleOpenings(quiet){
+  var am=reconcileRoofAddons(quiet)||[];
+  var vm=reconcileVents();
+  if(vm) am.unshift(vm);
+  if(am.length && !quiet && typeof showToast==='function') showToast(am.join(' '));
+}
+function reconcileVents(){
+  var all=ventsData.concat(VENTS_PARKED);
+  if(!all.length) return '';
+  if(!styleHasGableEnds()){
+    var n=ventsData.length;
+    VENTS_PARKED=all; ventsData=[];
+    if(typeof selectedKind!=='undefined' && selectedKind==='vent'){ selectedKind=null; selectedVent=-1; }
+    return !n ? '' : ((n===1?'Gable vent':n+' gable vents')+' removed \u2014 a '+(STYLE_LABELS[STYLE]||STYLE)+' roof has no gable ends. Not on your quote; switch to a gable style to bring '+(n===1?'it':'them')+' back.');
+  }
+  /* Gable style: every vent on a gable-end wall is re-centred on THIS roof's
+     triangle. A height chosen on another roof is meaningless here. */
+  var restored=VENTS_PARKED.length;
+  all.forEach(function(v){ if(v.wall==='front'||v.wall==='back'){ v.cy=null; v._autoCy=true; } });
+  ventsData=all; VENTS_PARKED=[];
+  return restored ? ((restored===1?'Gable vent':restored+' gable vents')+' restored on the '+(STYLE_LABELS[STYLE]||STYLE)+' gable ends.') : '';
+}
 function ventCyIn(vd){
   var f=wallFrame(vd.wall);
   var wallIn=f.height/(0.2/12);
@@ -12204,7 +12272,7 @@ function ventCyIn(vd){
   var cy=(vd.cy==null) ? ((_g!=null) ? _g : wallIn-12) : vd.cy;
   var half=4;                                   // the vent is 8in tall
   var minCy=half+2, maxCy=wallIn-half-1;
-  if((vd.wall==='front'||vd.wall==='back') && STYLE!=='leanto'){
+  if((vd.wall==='front'||vd.wall==='back') && styleHasGableEnds()){
     var gRiseIn=(STYLE==='barn') ? barnProfile().barnH/(0.2/12) : (PITCH*W)/2;
     maxCy=wallIn+gRiseIn-half-2;                // it may ride up into the gable
   }
@@ -12360,6 +12428,7 @@ function setVentColor(c){
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
+  if(!styleHasGableEnds()) return;      // never build a vent with no gable under it
   var vW=VENT_W, vH=VENT_H;           // 16" wide x 8" tall
   var frameMat=new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
   // VENT COLOR — the louvre itself is black or white (user choice); the casing
@@ -14097,8 +14166,9 @@ function buildInterior(){
        y = ridgeY - tan * max(|x|, |z| - rz). */
     var hW2=w/2, hL2=l/2, hTan=PITCH/12, hCos=Math.cos(Math.atan(hTan));
     var hwOut=hW2+0.025, hlOut=hL2+0.025;
-    var hRidgeY=h+hTan*hwOut, hrz=Math.max(0.04, hlOut-hwOut);
-    var hY=function(x,z){ return hRidgeY-hTan*Math.max(Math.abs(x), Math.abs(z)-hrz)-0.007; };
+    var _hg=hipRoofGeom();
+    var hRidgeY=_hg.ridgeY, hrz=_hg.rz;
+    var hY=function(x,z){ return _hg.yAt(x,z)-0.007; };
     var hDeck=foilOn?foilMat():osbMat(1,1);
     var hRect=[[-hW2,-hL2],[hW2,-hL2],[hW2,hL2],[-hW2,hL2]];
     deckPanel(clipPoly(clipPoly(clipPoly(hRect, 1,-1,hrz), 1, 1,hrz), 1,0,0), hY, hDeck);
@@ -14650,6 +14720,7 @@ function pickStyle(style, el){
   /* Before buildShed, so the size change and the style change land in one
      rebuild rather than drawing the new roof over the old footprint first. */
   applyStyleStart(style);
+  reconcileStyleOpenings();
   buildShed();
   if(typeof syncPorchBtn==='function') syncPorchBtn();
   if(typeof syncOverhangUI==='function') syncOverhangUI();
@@ -14660,6 +14731,7 @@ function pickPorchStyle(loc, el){
   document.querySelectorAll('#styleGrid .tile').forEach(function(t){t.classList.remove('on');});
   if(el) el.classList.add('on');
   STYLE='gable';
+  reconcileStyleOpenings();
   if(loc!==PORCH_LOC){ PORCH_LEN=0; PORCH_OFF=0; }   // a length belongs to one wall
   PORCH_LOC=loc;
   if(!(SIDE_PORCH>0)) SIDE_PORCH=4;
@@ -16326,17 +16398,9 @@ function setStyle(style,el){
   STYLE=style;
   document.querySelectorAll('.style-btn').forEach(function(b){b.classList.remove('on');});
   el.classList.add('on');
-  /* Drop a cupola the new roof cannot carry. Hiding the control alone would
-     leave one standing on a lean-to AND on the quote, priced, with no way left
-     to remove it. */
-  if(typeof cupolaAllowed==='function' && !cupolaAllowed() &&
-     typeof ADDONS!=='undefined' && ADDONS.cupola && ADDONS.cupola!=='none'){
-    ADDONS.cupola='none';
-    document.querySelectorAll('.cupola-btn').forEach(function(b){
-      b.classList.toggle('on', b.getAttribute('data-cup')==='none'); });
-    if(typeof showToast==='function') showToast('Cupola removed \u2014 it needs a Gable / A-Frame or Barn roof.');
-  }
+  /* Cupola / ridge vent / vents: reconcileStyleOpenings() (below). */
   if(typeof syncOverhangUI==='function') syncOverhangUI();
+  reconcileStyleOpenings();
   buildShed();
 }
 
@@ -18044,6 +18108,7 @@ function refreshInterior(){
 
 // ---- VENTS (8"x16", movable; placed centered on the gable) ----
 function addVent(){
+  if(!styleHasGableEnds()){ showToast('Gable vents need a gable end \u2014 '+(STYLE_LABELS[STYLE]||STYLE)+' roofs do not have one.'); return; }
   var wall=(typeof ADD_WALL!=='undefined'?ADD_WALL:'front');
   var r=ventCyRange(wall);
   /* CENTRED IN THE GABLE on a gable-end wall — dead centre of the triangle,
@@ -19557,6 +19622,8 @@ function getDesignConfig(){
   /* Only when there are any, so every design saved without sprinklers keeps
      exactly the config (and the share code) it always had. */
   if(SPRINKLERS.length) cfg.sprinklers=SPRINKLERS.slice();
+  if(VENTS_PARKED.length) cfg.ventsParked=VENTS_PARKED;   // kept, not priced
+  if(Object.keys(ADDONS_PARKED).length) cfg.addonsParked=ADDONS_PARKED;
   /* Only on a design with a full porch, so every other config (and its share
      code) is byte-for-byte what it was. w/l stay the FOOTPRINT (what is built
      and priced); shedW/shedL are the enclosed size the customer picked. */
@@ -19777,6 +19844,12 @@ function applyDesignConfig(c){
        two at the identical coordinate are one shelf and a billing error, and
        there is no build in which the second one could ever be seen. */
     ventsData=Array.isArray(c.vents)?dropStacked(c.vents, ['wall','pos','cy']):[];
+    VENTS_PARKED=Array.isArray(c.ventsParked)?c.ventsParked.slice():[];
+    ADDONS_PARKED=(c.addonsParked&&typeof c.addonsParked==='object')?Object.assign({},c.addonsParked):{};
+    /* A design saved before this fix may hold vents on a Lean-To/Poolhouse
+       (they were priced but floating). Park them quietly so the load matches
+       what the switch would do. */
+    if(typeof STYLE!=='undefined' && !styleHasGableEnds() && ventsData.length){ VENTS_PARKED=VENTS_PARKED.concat(ventsData); ventsData=[]; }
     VENT_COLOR=(c.ventColor==='white')?'white':'black';
     try{ document.querySelectorAll('.vent-color-opt').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-vc')===VENT_COLOR); }); }catch(e){}
     if(Array.isArray(c.shelves))shelvesData=dropStacked(c.shelves, ['wall','pos','cy','depth','len']);
