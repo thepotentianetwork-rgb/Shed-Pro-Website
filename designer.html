@@ -2358,7 +2358,7 @@ var STAIN_COLORS=[
 // Optional add-ons (priced from the Client Workbook; toggled on the Upgrades step)
 var ADDONS={ shutters:false, flowerboxes:false, cupola:'none',   // stats pack: no shutters, no flower boxes
   skylight:false, stairs:false, statLadder:false, atticLadder:false,
-  weatherGuard:false, radiantBarrier:false, houseWrap:false, hurricaneTies:false, insulation:false, sprayFoam:false,
+  weatherGuard:false, radiantBarrier:false, houseWrap:false, hurricaneTies:false, insulation:false, sprayFoam:false, grids:false,
   doorAwning:false,
   // Site clearance — work on what is already there, not part of the build.
   shedRemoval:false, concreteRemoval:false,
@@ -9416,6 +9416,44 @@ function buildBarnRoof(){
 
 var doorMeshes=[];   // {group, index} for raycasting doors
 var doorsInit=false; // becomes true once defaults seeded; lets the list stay empty
+/* ── GRIDS ADD-ON (12in muntins) ──
+   Bars at 12 real inches on centre, pattern centred on the pane so a lite that
+   divides evenly gets exact 12in squares. Added as CHILDREN of the glass plane
+   (or a leaf rect) so they follow whatever transform that pane already has —
+   slider panel offset, bi-fold fold, lift-up tilt — without duplicating the
+   opening. ADDONS.grids off = nothing here runs, saved designs unchanged. */
+var GRID_IN=12, GRID_BAR_IN=0.75;
+function gridOffsets(dimIn){
+  var n=Math.floor((dimIn-0.5)/GRID_IN); if(n<1) return [];
+  var span=(n-1)*GRID_IN, out=[];
+  for(var i=0;i<n;i++) out.push(-span/2+i*GRID_IN);
+  return out;
+}
+function gridsOn(){ return typeof ADDONS!=='undefined' && !!ADDONS.grids; }
+/* Bars on a glass PlaneGeometry mesh, both faces. clip(xLocal) -> max |y|
+   half-height at that x (arched tops); omitted = full rectangle. */
+function addPaneGrid(mesh, mat){
+  var gp=mesh.geometry && mesh.geometry.parameters; if(!gp || !gp.width || !gp.height) return;
+  var IN=0.2/12, w=gp.width, h=gp.height, bw=GRID_BAR_IN*IN, bd=0.006;
+  gridOffsets(w/IN).forEach(function(xi){
+    [1,-1].forEach(function(sd){
+      var b=new THREE.Mesh(new THREE.BoxGeometry(bw, h, bd), mat);
+      b.position.set(xi*IN, 0, sd*0.0035); b.userData.grid=true; mesh.add(b);
+    });
+  });
+  gridOffsets(h/IN).forEach(function(yi){
+    [1,-1].forEach(function(sd){
+      var b=new THREE.Mesh(new THREE.BoxGeometry(w, bw, bd), mat);
+      b.position.set(0, yi*IN, sd*0.0035); b.userData.grid=true; mesh.add(b);
+    });
+  });
+}
+function addGridsToGlass(group, glassMat, barMat){
+  var panes=[];
+  group.traverse(function(o){ if(o.isMesh && o.material===glassMat && o.geometry && o.geometry.type==='PlaneGeometry') panes.push(o); });
+  panes.forEach(function(m){ addPaneGrid(m, barMat); });
+  return panes.length;
+}
 function buildDoor(){
   doorMeshes=[];
   var w=encWft()*0.2, h=H*0.2, l=encLft()*0.2;
@@ -10641,6 +10679,30 @@ function buildDoor(){
       }
     }
 
+    /* GRIDS: muntins on every lite this door has; a solid shed door (no
+       glass) gets the same 12in grid as applied trim battens on each leaf,
+       clipped to the arch on a fairytale. Roll-ups never take grids. */
+    if(gridsOn() && !isRollup){
+      var _gN=addGridsToGlass(DG, glassMat, muntinMat);
+      if(!_gN){
+        var _bw=GRID_BAR_IN*IN, _bz=0.031;
+        leaves.forEach(function(lf){
+          var lw=lf.w, aRad=lw/2-0.012, aSpr=Math.max(0.05, dh-aRad-0.012);
+          function topAt(gx){ return isFairytale ? aSpr+Math.sqrt(Math.max(0,aRad*aRad-gx*gx))-0.012 : dh-0.012; }
+          gridOffsets(lw/IN).forEach(function(xi){
+            var gx=xi*IN; if(Math.abs(gx)>lw/2-0.02) return;
+            var y0=0.012, y1=topAt(gx); if(y1-y0<0.03) return;
+            bx(_bw, y1-y0, 0.008, trimMat, lf.x+gx, (y0+y1)/2, _bz).userData.grid=true;
+          });
+          gridOffsets(dh/IN).forEach(function(yi){
+            var gy=dh/2+yi*IN, half=lw/2-0.012;
+            if(isFairytale){ if(gy>aSpr){ var dy=gy-aSpr; if(dy>=aRad-0.02) return; half=Math.sqrt(aRad*aRad-dy*dy)-0.012; } }
+            if(half<0.03) return;
+            bx(half*2, _bw, 0.008, trimMat, lf.x, gy, _bz).userData.grid=true;
+          });
+        });
+      }
+    }
     // ---- place the local door group onto its wall ----
     // The group was built facing +z (front). Rotate to face the wall normal, then
     // position at the door's center along the wall.
@@ -11812,6 +11874,8 @@ function buildWindows(){
       if(!winNoGrid(wd)) grp.add(vbar(winW, fT*0.7, 0, 0));        // center divider
       else if(/72x48$/.test(String(wd.type))) grp.add(vbar(fT*0.8, winH, 0, 0));   // XO meeting rail
     }
+    // GRIDS: 12in muntins in the frame colour on every pane (not the no-grid 72x48 / sidelight units).
+    if(gridsOn() && !winNoGrid(wd)) addGridsToGlass(grp, glassMatW, frameMat);
     if(EDIT_MODE && selectedKind==='window' && selectedWindow===idx){
       var ring=new THREE.Mesh(
         new THREE.BoxGeometry(winW+0.16, winH+0.16, 0.006),
@@ -17027,6 +17091,9 @@ var ADDON_ITEMS=[
   {k:'flowerboxes', name:'Flower Boxes', perWindow:true, sec:'openings'},
   {k:'doorAwning',  name:'Door Overhang', price:'price TBD \u00b7 pick which doors on the Doors step', sec:'openings'},
   {k:'shutters',    name:'Shutters',      sec:'openings'},
+  /* Grids (Nando, 2 Nov 2026): 12in muntins on EVERY door and window, +30%
+     of each opening's own price (worker gridsSellFor). Roll-ups excluded. */
+  {k:'grids',       name:'Grids (12" spacing) \u00b7 All Doors & Windows', pct:true, sec:'openings'},
   {k:'skylight',    name:'Skylight',      sec:'openings'},
   {k:'ramp',        name:'Metal Ramp',    sec:'access'},
   {k:'stairs',      name:'Stairs',        sec:'access'},
@@ -17136,6 +17203,7 @@ function addonPriceText(it){
   var ap = quoteCache.optionPrices && quoteCache.optionPrices.addons;
   var v = ap && ap[it.k];
   if(v==null) return 'TBD';
+  if(it.pct) return priceTag(v) + ' \u00b7 +30% of each door & window';
   return priceTag(v) + (it.perWindow ? ' ea (per window)' : '');
 }
 function renderAddons(){
