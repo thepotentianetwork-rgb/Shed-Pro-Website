@@ -652,7 +652,7 @@ textarea.inp{resize:vertical}
       <!-- STEP 1 · SIZE — back in front of style. Picking a porch tile on the
            style step opens the porch page, whose depth ladder is capped by
            the footprint; with size first, that cap is always answering a
-           real width/length instead of the 8x12 default. -->
+           real width/length instead of the 10x12 default. -->
       <div class="wstep" data-step="1">
         <div class="grp">
           <!-- Popular sizes first, sliders under them. Most customers want a
@@ -14432,9 +14432,9 @@ var WIZ_STEPS = [
      designer opens on style instead.
      Style leads, which reverses the order these sat in. Size led so that a
      porch tile picked on the style step opened a depth ladder capped by a real
-     footprint rather than the 8x12 default. That cap still corrects itself -
+     footprint rather than the 10x12 default. That cap still corrects itself -
      setW and setL both call clampPorch - so the cost is a porch picker seeing
-     the 8x12 ladder first and coming back to it, against style being the
+     the 10x12 ladder first and coming back to it, against style being the
      question a customer actually arrives with. */
   {title:"Start your design",  sub:"Pick a style to start."},
   {title:"Pick your size",     sub:"Width, length, and wall height."},
@@ -14672,17 +14672,12 @@ function ensureEditMode(on){
 
 // ---- STYLE tiles ----
 /* STARTING SIZE PER STYLE.
-   A poolhouse reads wrong as a corridor - hip roofs want a square footprint,
-   so it opens at 10x10. A lean-to is a wide shallow structure leaning on
-   something, so it opens 12 wide by 6 deep. Everything else keeps the 8x12
-   the page loads with. Fernando, 22 Sep 2026.
-   Only w and l. Wall height is not a function of the roof shape, and a
-   poolhouse at 10ft walls is as reasonable as one at 8. */
-var STYLE_START = {
-  hip:    { w: 10, l: 10 },
-  leanto: { w: 12, l: 6  }
-};
-var STYLE_START_DEFAULT = { w: 8, l: 12 };
+   Every style opens at the standard 10x12 (Nando, Nov 2026: "all the standard
+   sizes are 10x12"). Poolhouse used to open 10x10 and lean-to 12x6; the
+   per-style table is kept so a style can be given its own start again later.
+   Only w and l. Wall height is not a function of the roof shape. */
+var STYLE_START = {};
+var STYLE_START_DEFAULT = { w: 10, l: 12 };
 
 /* Whether the customer has moved a size slider themselves. A starting point is
    supposed to start you somewhere, not argue with you: once someone has set a
