@@ -200,60 +200,186 @@ function isGlass(mat){
   var h=mat.color.getHex();
   return (h===0xffe9c4 && Math.abs(mat.opacity-0.10)<1e-3) || (h===0xdfeaf0 && Math.abs(mat.opacity-0.045)<1e-3);
 }
-var washTex=null;
-function getWashTex(){
-  if(washTex) return washTex;
-  washTex=canvasTex(128,256,function(x,w,h){
-    var g=x.createRadialGradient(w/2,18,2,w/2,18,h*0.95);
-    g.addColorStop(0,'rgba(255,214,150,0.95)'); g.addColorStop(0.18,'rgba(255,190,120,0.55)');
-    g.addColorStop(0.55,'rgba(255,170,100,0.16)'); g.addColorStop(1,'rgba(255,160,90,0)');
-    x.fillStyle=g; x.fillRect(0,0,w,h);
-    x.globalCompositeOperation='destination-in';           // a soft downward cone
-    var m=x.createLinearGradient(0,0,w,0);
-    m.addColorStop(0,'rgba(0,0,0,0)'); m.addColorStop(0.5,'rgba(0,0,0,1)'); m.addColorStop(1,'rgba(0,0,0,0)');
-    x.fillStyle=m; x.beginPath(); x.moveTo(w*0.36,0); x.lineTo(w*0.64,0); x.lineTo(w,h); x.lineTo(0,h); x.closePath(); x.fill();
-  },true);
-  return washTex;
+/* ── PORCH LIGHT REALISM (Nov 2026) ─────────────────────────────────────────
+   The old dressing was one recipe for every fixture: a trapezoid-masked radial
+   gradient (a hard triangular cone), a big additive halo sprite and a point
+   light pushed to 0.9. On pale siding that burned a white wedge into the wall.
+   Now each fixture gets light that matches what it physically is:
+     modern cylinder  - downlight: a ~35deg half-angle pool on the siding below
+     updown cylinder  - same body, light both up and down (narrower beams)
+     craftsman lantern- glass on all sides: a soft round glow, a little biased down
+     classic jar      - frosted dome: broad, even, round glow
+   The wash is a procedural texture with inverse-square-ish falloff and a
+   gaussian angular edge (no straight sides, no hard mouth), clipped at the
+   wall top / porch ceiling so it can never climb onto the roof, and dimmed by
+   the siding's own brightness so white paint warms instead of washing out.
+   Cost: zero extra lights for the wash/diffuser; real PointLights only on the
+   first PL_REAL_MAX fixtures (none on 'low' tier beyond 2), no shadow maps. */
+var PL_PROFILE={
+  modern:   {beams:[{dir:-1, half:0.62, reach:0.95}], diffY:-0.080, diffR:0.026, real:{y:-0.20, z:0.17, i:0.40, d:1.3}},
+  updown:   {beams:[{dir:-1, half:0.42, reach:0.75},{dir:1, half:0.42, reach:0.60}], diffY:-0.080, diffR:0.026, real:{y:-0.05, z:0.16, i:0.38, d:1.2}},
+  craftsman:{beams:[{dir:0, half:1.2, reach:0.55, bias:0.35}], diffY:0, diffR:0.04, real:{y:0, z:0.08, i:0.45, d:1.0}},
+  classic:  {beams:[{dir:0, half:1.4, reach:0.50, bias:0.1}], diffY:0, diffR:0.045, real:{y:0, z:0.07, i:0.42, d:0.95}}
+};
+DR.PL_PROFILE=PL_PROFILE;
+var PL_REAL_MAX=LOW?2:4;
+function plProfile(style){ return PL_PROFILE[style] || PL_PROFILE.modern; }
+var _plTex={};
+function plWarmRGB(){
+  // Bulb colour from the electrical step, nudged toward incandescent warmth so
+  // even "Bright White" reads as a lamp, never as a white hotspot.
+  var h=(typeof bulbHex==='function')?bulbHex():0xFFD9AE;
+  var r=(h>>16)&255, g=(h>>8)&255, b=h&255;
+  return [Math.round(r*0.85+255*0.15), Math.round(g*0.85+205*0.15), Math.round(b*0.85+150*0.15)];
 }
-var haloTex=null;
-function getHaloTex(){
-  if(haloTex) return haloTex;
-  haloTex=canvasTex(64,64,function(x,w,h){
-    var g=x.createRadialGradient(32,32,0,32,32,32);
-    g.addColorStop(0,'rgba(255,230,180,1)'); g.addColorStop(0.25,'rgba(255,200,130,0.5)'); g.addColorStop(1,'rgba(255,180,110,0)');
+/* One canvas per (beam shape, bulb). Source sits at (cx, sy) in the canvas;
+   dir -1 = light travels down the canvas, 1 = up, 0 = all round. */
+function plWashTex(beam){
+  var rgb=plWarmRGB(), key=[beam.dir,beam.half,beam.bias||0,rgb.join('.')].join('|');
+  if(_plTex[key]) return _plTex[key];
+  var W=96, H=beam.dir===0?160:192, c=document.createElement('canvas'); c.width=W; c.height=H;
+  var g=c.getContext('2d'), img=g.createImageData(W,H);
+  var sx=(W-1)/2, sy=beam.dir===-1?4:(beam.dir===1?H-5:H*0.42), R=beam.dir===0?H*0.58:H*0.97;
+  for(var y=0;y<H;y++) for(var x=0;x<W;x++){
+    var dx=(x-sx)/R, dy=(y-sy)/R, along=beam.dir===-1?dy:(beam.dir===1?-dy:0);
+    var r=Math.sqrt(dx*dx+dy*dy), a;
+    if(beam.dir===0){
+      // round glow, a touch stronger below the lamp (the cap shades the top)
+      var bias=1+(beam.bias||0)*Math.max(-1,Math.min(1,dy/Math.max(r,1e-3)));
+      a=bias/(1+Math.pow(r/0.16,2));
+    } else {
+      if(along<=0){ a=0; }
+      else {
+        var th=Math.atan2(Math.abs(dx), along);
+        a=Math.exp(-Math.pow(th/beam.half,2)*1.6)/(1+Math.pow(r/0.20,2));
+        a*=Math.min(1, Math.pow(along/0.05,0.8));            // soft mouth: no blob at the lens
+      }
+    }
+    a*=r>=1?0:Math.pow(Math.cos(r*Math.PI/2),1.2);           // fades to a true zero
+    a*=Math.pow(Math.sin(Math.PI*(x+0.5)/W),0.9);            // never a hard side edge
+    var i=(y*W+x)*4; img.data[i]=rgb[0]; img.data[i+1]=rgb[1]; img.data[i+2]=rgb[2];
+    img.data[i+3]=Math.max(0,Math.min(255,a*255));
+  }
+  g.putImageData(img,0,0);
+  var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
+  _plTex[key]=t; return t;
+}
+var _plDot=null;
+function plDiffuserTex(){
+  if(_plDot) return _plDot;
+  _plDot=canvasTex(32,32,function(x,w,h){
+    var g=x.createRadialGradient(16,16,0,16,16,16);
+    g.addColorStop(0,'rgba(255,214,160,0.9)'); g.addColorStop(0.35,'rgba(255,190,130,0.25)'); g.addColorStop(1,'rgba(255,180,110,0)');
     x.fillStyle=g; x.fillRect(0,0,w,h);
   },true);
-  return haloTex;
+  return _plDot;
 }
-function dressLights(night){
+var _plShadow=null;
+function plShadowMat(){
+  if(_plShadow) return _plShadow;
+  var t=canvasTex(64,96,function(x,w,h){
+    x.setTransform(1,0,0,1.5,0,-16);
+    var g=x.createRadialGradient(32,40,3,32,40,30);
+    g.addColorStop(0,'rgba(0,0,0,0.32)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=g; x.fillRect(0,0,w,h*2);
+  },false);
+  _plShadow=new THREE.MeshBasicMaterial({map:t, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2});
+  return _plShadow;
+}
+function sidingLum(){
+  var c=(typeof sc!=='undefined')?sc:0x808080;
+  return (0.2126*((c>>16)&255)+0.7152*((c>>8)&255)+0.0722*(c&255))/255;
+}
+function plStyleOf(g){
+  var d=(typeof porchLightsData!=='undefined' && porchLightsData[g.userData.index])||{};
+  return d.beam==='updown' ? 'updown' : (d.style||'modern');
+}
+function dressLights(mode){
   if(typeof porchLightMeshes==='undefined' || !porchLightMeshes) return;
+  var lit=(mode!=='day'), nReal=0, lum=sidingLum();
+  /* Additive light on pale paint saturates to white; on black it vanishes.
+     Scale by the paint's luminance so all three read as the same lamp. */
+  var washK=(mode==='night'?1.0:0.78)*(0.62-0.40*lum);
   porchLightMeshes.forEach(function(pm){
     var g=pm.group; if(!g || g.userData.drLit) return; g.userData.drLit=true;
-    if(!night) return;
     var fx=null; g.children.forEach(function(ch){ if(!fx && ch.isGroup) fx=ch; });
     if(!fx) return;
-    var y=fx.position.y;
-    var bb=(typeof SIDING!=='undefined' && SIDING==='board-batten');
-    var faceZ=0.025+(bb?0.0125:0)+0.002;            // just proud of the wall (battens on B&B)
-    // Additive light on pale paint blows out to white; scale it by the siding's brightness.
-    var c=(typeof sc!=='undefined')?sc:0x808080;
-    var lum=(0.2126*((c>>16)&255)+0.7152*((c>>8)&255)+0.0722*(c&255))/255;
-    var washOp=0.55*(1-0.72*lum);
-    var wash=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.95),
-      new THREE.MeshBasicMaterial({map:getWashTex(), transparent:true, opacity:washOp, blending:THREE.AdditiveBlending,
-        depthWrite:false, toneMapped:false, fog:false}));
-    wash.position.set(0, y-0.40, faceZ); wash.renderOrder=2; wash.raycast=function(){};
-    g.add(wash);
-    var halo=new THREE.Sprite(new THREE.SpriteMaterial({map:getHaloTex(), transparent:true, opacity:0.9,
+    var style=plStyleOf(g), P=plProfile(style);
+    var y=fx.position.y, fz=fx.position.z;
+    var bb=(typeof SIDING!=='undefined' && SIDING==='board-batten') && !g.userData.faceN;
+    var faceZ=(g.userData.faceN?0:0.025)+(bb?0.0125:0)+0.002;
+    var dims=(typeof plFixtureDims==='function')?plFixtureDims(style==='updown'?'modern':style):{hw:0.04,hh:0.06,back:0.03};
+    // ceiling the wash may reach: wall top, or the porch ceiling it hangs under
+    var top=(g.userData.wall && typeof plWallTop==='function')?plWallTop(g.userData.wall):y+0.6;
+    var roomUp=Math.max(0.02, top-0.03-y), roomDown=Math.max(0.05, y-0.02);
+    // contact shadow for the styles that did not bring their own
+    if(style==='craftsman' || style==='classic'){
+      var sh=new THREE.Mesh(new THREE.PlaneGeometry(dims.hw*3.2, dims.hh*3.4), plShadowMat());
+      sh.position.set(0, y-0.015, faceZ-0.001); sh.raycast=function(){}; g.add(sh);
+    }
+    // diffuser + glow ring: lamp on at dusk/night, plain glass by day
+    fx.traverse(function(o){
+      if(o.isMesh && o.material && o.material.emissive && o.material.emissive.getHex()!==0 && o.material.emissiveIntensity>0.3){
+        o.material=o.material.clone();
+        o.material.emissive.setRGB(plWarmRGB()[0]/255, plWarmRGB()[1]/255, plWarmRGB()[2]/255);
+        o.material.emissiveIntensity=lit?(style==='modern'||style==='updown'?1.1:0.75):0.02;
+        if(!lit) o.material.color.setHex(style==='classic'?0xf3efe6:0xd8d2c4);
+      }
+    });
+    if(style==='updown'){
+      // top lens on the same cylinder
+      var lens=fx.children.find(function(o){ return o.isMesh && o.position.y<-0.07; });
+      if(lens){ var top2=lens.clone(); top2.position.y=-lens.position.y; fx.add(top2); }
+    }
+    var reals=[]; fx.traverse(function(o){ if(o.isPointLight) reals.push(o); });
+    reals.forEach(function(o){
+      if(!lit || nReal>=PL_REAL_MAX){ o.intensity=0; o.visible=false; return; }
+      nReal++; o.color.setRGB(plWarmRGB()[0]/255, plWarmRGB()[1]/255, plWarmRGB()[2]/255);
+      o.intensity=P.real.i*(mode==='night'?1.1:0.9); o.distance=P.real.d; o.decay=2; o.castShadow=false;
+      o.position.set(0, P.real.y, P.real.z);
+    });
+    if(!lit) return;
+    P.beams.forEach(function(beam){
+      var wdt, hgt, cy;
+      if(beam.dir===0){
+        var rad=beam.reach;
+        hgt=Math.min(rad*1.6, rad*0.67+roomUp+rad*0.9); wdt=rad*1.2;
+        var up=Math.min(roomUp, hgt*0.42);           // clip at the ceiling, never onto the roof
+        hgt=up+hgt*0.58; cy=y+up-hgt/2;
+      } else if(beam.dir<0){
+        hgt=Math.min(beam.reach*1.9, roomDown+0.08); wdt=Math.min(1.1, beam.reach*1.15);
+        cy=y+P.diffY+0.01-hgt/2;
+      } else {
+        hgt=Math.min(beam.reach*1.6, roomUp); wdt=Math.min(0.9, beam.reach*0.95);
+        cy=y-P.diffY-0.01+hgt/2;
+      }
+      if(hgt<0.04) return;
+      var m=new THREE.Mesh(new THREE.PlaneGeometry(wdt,hgt),
+        new THREE.MeshBasicMaterial({map:plWashTex(beam), transparent:true, opacity:washK*(beam.dir===1?0.8:1),
+          blending:THREE.AdditiveBlending, depthWrite:false, toneMapped:false, fog:false}));
+      m.position.set(0, cy, faceZ); m.renderOrder=2; m.raycast=function(){};
+      g.add(m);
+    });
+    // tiny lens bloom - the size of the diffuser, not a halo around the fixture
+    var dot=new THREE.Sprite(new THREE.SpriteMaterial({map:plDiffuserTex(), transparent:true, opacity:mode==='night'?0.55:0.4,
       blending:THREE.AdditiveBlending, depthWrite:false, toneMapped:false, fog:false}));
-    halo.scale.set(0.16,0.16,0.16); halo.position.set(0, y-0.07, fx.position.z+0.045); halo.raycast=function(){};
-    g.add(halo);
-    fx.traverse(function(o){ if(o.isPointLight){ o.intensity=0.9; o.distance=1.7; o.decay=2; } });
+    var s=P.diffR*2.6; dot.scale.set(s,s,s); dot.position.set(0, y+P.diffY-0.004, fz+0.01); dot.raycast=function(){};
+    g.add(dot);
+    if(style==='updown'){ var d2=dot.clone(); d2.position.y=y-P.diffY+0.004; g.add(d2); }
   });
+}
+/* Time of day: electrical on = dusk (unchanged default). ?tod=day|dusk|night
+   or DR.setMode() forces one for previews and tests. */
+var _todQ=/[?&]tod=(day|dusk|night)\b/.exec(location.search);
+DR.forceMode=_todQ?_todQ[1]:null;
+DR.setMode=function(m){ DR.forceMode=m||null; if(typeof applyLighting==='function') applyLighting(); if(typeof buildShed==='function') buildShed(); };
+function curMode(){
+  if(DR.forceMode) return DR.forceMode;
+  return (typeof ELEC!=='undefined' && ELEC!=='none')?'dusk':'day';
 }
 function afterBuild(){
   if(!st.ready) return;
-  var night=(typeof ELEC!=='undefined' && ELEC!=='none');
+  var night=curMode()!=='day';
   if(typeof floatLogos!=='undefined' && floatLogos) floatLogos.forEach(function(m){ m.visible=false; });
   if(typeof shedGroup!=='undefined' && shedGroup){
     shedGroup.traverse(function(o){
@@ -267,14 +393,14 @@ function afterBuild(){
       }
     });
   }
-  dressLights(night);
+  dressLights(curMode());
   markActive();
 }
 
 /* ── lighting ── */
 function applyMode(){
   if(!st.ready) return;
-  var night=(typeof ELEC!=='undefined' && ELEC!=='none');
+  var tod=curMode(), night=tod!=='day';
   var mode=night?'dusk':'day';
   if(typeof mountainGroup!=='undefined' && mountainGroup) mountainGroup.visible=false;
   if(!st.skyTex[mode]) st.skyTex[mode]=gradientTex(SKY[mode]);
@@ -294,13 +420,20 @@ function applyMode(){
     sunLight.position.set(-9,4.2,8);
     fillLight.intensity=0.22; fillLight.color.setHex(0x7088c4);
     rimLight.intensity=0.35; rimLight.color.setHex(0xffb37a);
+    if(tod==='night'){
+      // full dark: the fixtures carry the wall
+      renderer.toneMappingExposure=0.82;
+      hemiLight.intensity=0.32; hemiLight.color.setHex(0x55658f);
+      sunLight.intensity=0.12; sunLight.color.setHex(0x8090c0);
+      fillLight.intensity=0.10; rimLight.intensity=0.08;
+    }
   } else {
     renderer.toneMappingExposure=(typeof DAY_RIG!=='undefined'?DAY_RIG.exposure:0.9)+0.05;
     hemiLight.color.setHex(0xc9dcf2); hemiLight.groundColor.setHex(0x4c5a38);
   }
   if(st.ring){
     ringTexture(mode, function(t){
-      if(((typeof ELEC!=='undefined' && ELEC!=='none')?'dusk':'day')!==mode) return;   // mode changed while loading
+      if((curMode()!=='day'?'dusk':'day')!==mode) return;   // mode changed while loading
       st.ring.material.map=t; st.ring.material.color.setHex(night?0xe6e6ee:0xf2f2f2);
       st.ring.material.needsUpdate=true; st.ring.visible=true; markActive();
       // warm the other one up once the first is on screen

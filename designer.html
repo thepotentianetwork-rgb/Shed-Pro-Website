@@ -18681,7 +18681,8 @@ function applyLighting(){
   // included), so any package other than None switches the scene to dusk to
   // show it off — not just Core/Essential.
   var hasNightWorthyLighting = (ELEC!=='none');
-  var night = hasNightWorthyLighting;
+  // ?tod=day (designer-realism.js DR.setMode) previews daylight with the package on
+  var night = hasNightWorthyLighting && !(window.DR && DR.forceMode==='day');
 
   if(night){
     // NIGHT/DUSK — deep evening sky so the exterior lights clearly stand out.
