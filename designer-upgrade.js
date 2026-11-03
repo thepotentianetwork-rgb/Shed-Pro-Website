@@ -10,7 +10,7 @@
    Vercel Web Analytics is always on (see <head>). Fill these in to send the
    same events to GA4 and Meta. The rest of the site already uses GA4
    G-GR8BG7DXZE; paste it here once confirmed. Leave '' to disable. */
-var GA4_ID = '';          // e.g. 'G-XXXXXXXXXX'
+var GA4_ID = 'G-GR8BG7DXZE'; // same GA4 property as the rest of shedpro-utah.com
 var META_PIXEL_ID = '';   // e.g. '1234567890'
 
 var AUTOSAVE_KEY = 'sp_designer_autosave_v1';
