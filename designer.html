@@ -7770,14 +7770,17 @@ function buildSnapGuides(){
    composed Euler angles: makeBasis(w,d,n) is right-handed because
    w = cross(d,n), so cross(w,d) === n.
    ═══════════════════════════════════════════════════════════════════════ */
-function roofCapBuilder(rc, group){
+function roofCapBuilder(rc, group, opts){
   var V3=THREE.Vector3;
+  opts=opts||{};
   var isMetal=(typeof ROOFTYPE!=='undefined' && ROOFTYPE==='metal');
   var capT=isMetal?0.005:0.007;      // stock thickness
-  var capW=isMetal?0.055:0.085;      // face width of each leg
+  var capW=(opts.capW!=null)?opts.capW:(isMetal?0.055:0.085);      // face width of each leg
   var capLap=isMetal?0.010:0.014;    // overlap at the joint
+  var capLift=(opts.lift!=null)?opts.lift:0.002;   // seat height off the face plane
 
   function capMat(){
+    if(opts.mat) return opts.mat;
     var t=isMetal?roofTex(rc):makeShingleCap(rc);   // ARCH-1: lapped cap pieces on shingle
     t.wrapS=t.wrapT=THREE.RepeatWrapping;
     // ExtrudeGeometry's UV generator returns the SHAPE's own x/y, i.e. UVs
@@ -7842,9 +7845,9 @@ function roofCapBuilder(rc, group){
       shp.lineTo(sgn*uA, len);
       shp.closePath();
       var m=new THREE.Mesh(new THREE.ExtrudeGeometry(shp,{depth:capT,bevelEnabled:false}), capMat());
-      m.material.side=THREE.DoubleSide;
+      if(!opts.mat) m.material.side=THREE.DoubleSide;
       m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(wdir, d, f.n));
-      m.position.copy(s0).addScaledVector(f.n, 0.002);
+      m.position.copy(s0).addScaledVector(f.n, capLift);
       m.castShadow=true;
       (group||shedGroup).add(m);
     });
@@ -8542,6 +8545,17 @@ function buildHipRoof(){
   var A=[ ex,eaveY,-ez], B=[ ex,eaveY, ez], C=[-ex,eaveY, ez], D=[-ex,eaveY,-ez];
   var R1=[0,ridgeY,-rz], R2=[0,ridgeY, rz];
 
+  var METAL=(ROOFTYPE==='metal');
+  /* Poolhouse metal (Nov 2 2026 audit). The hip faces used to carry the old
+     painted-rib TEXTURE projected flat from above, so the ribs were stretched
+     by 1/cos(pitch), lit with a +24 crown highlight on a 0.72-metalness
+     material (the bright, greenish streaks on black), and ran on under ribbed
+     caps. Every other style builds formed-sheet geometry (addMetalPanels),
+     which skips these non-box faces. Now each hip plane gets the SAME R-panel
+     profile (METAL_PANEL, 9in ribs) as real geometry, ribs running straight
+     downslope, cut exactly along the diagonal hips, and the face underneath is
+     the plain satin sheet. Shingle keeps the original path untouched. */
+  var sheetM=METAL ? metalSheetMat(rc) : null;
   function hipFace(pts, uvMode){
     var v=[], uv=[];
     function push(p){
@@ -8554,25 +8568,113 @@ function buildHipRoof(){
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(v),3));
     g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv),2));
     g.computeVertexNormals();
-    var tex=roofTex(rc);
-    tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
-    var per=1/SHINGLE_TILE;
-    tex.repeat.set(per,per);
-    if(tex.bumpMap){ tex.bumpMap.wrapS=tex.bumpMap.wrapT=THREE.RepeatWrapping; tex.bumpMap.repeat.set(per,per); }
-    var m=new THREE.Mesh(g, roofMat(rc, tex));
-    m.material.side=THREE.DoubleSide;
+    var m;
+    if(METAL){
+      var sm=sheetM.sheet.clone(); sm.side=THREE.DoubleSide;
+      if(WALLS_XRAY){ sm.transparent=true; sm.opacity=0; sm.depthWrite=false; }
+      m=new THREE.Mesh(g, sm);
+    } else {
+      var tex=roofTex(rc);
+      tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+      var per=1/SHINGLE_TILE;
+      tex.repeat.set(per,per);
+      if(tex.bumpMap){ tex.bumpMap.wrapS=tex.bumpMap.wrapT=THREE.RepeatWrapping; tex.bumpMap.repeat.set(per,per); }
+      m=new THREE.Mesh(g, roofMat(rc, tex));
+      m.material.side=THREE.DoubleSide;
+    }
     m.castShadow=true; m.receiveShadow=true;
     shedGroup.add(m);
+    if(METAL) hipFormedSheet(pts);
+  }
+  /* Formed sheet for one hip plane. pts[0..1] is the eave edge; the rest is
+     the top boundary (ridge + hips, or the apex of an end triangle). Work in
+     the plane's own frame: r along the eave, s straight up the slope, n out
+     of the roof. Ribs are lines of constant r, so they are parallel and run
+     eave->hip by construction; each strip of the profile is cut at s_top(r),
+     which is piecewise linear in r with kinks only at the ridge ends, so the
+     ridge-end r values are inserted as profile breakpoints and the cut along
+     each hip is exact. */
+  function hipFormedSheet(pts){
+    var V3=THREE.Vector3, IN=0.2/12, P=METAL_PANEL;
+    var P0=new V3().fromArray(pts[0]), P1=new V3().fromArray(pts[1]);
+    var M=new V3().addVectors(P0,P1).multiplyScalar(0.5);
+    var rH=new V3().subVectors(P1,P0); var Lr=rH.length(); rH.normalize();
+    var top=new V3(); for(var i=2;i<pts.length;i++) top.add(new V3().fromArray(pts[i])); top.multiplyScalar(1/(pts.length-2));
+    var sH=new V3().subVectors(top,M); sH.addScaledVector(rH, -sH.dot(rH)).normalize();
+    var nH=new V3().crossVectors(rH, sH); if(nH.y<0){ nH.negate(); }
+    // boundary in (r,s): eave ends at s=0, then the top vertices
+    var bnd=[[-Lr/2,0],[Lr/2,0]];
+    for(var k=2;k<pts.length;k++){ var q=new V3().fromArray(pts[k]).sub(M); bnd.push([q.dot(rH), q.dot(sH)]); }
+    var topPts=bnd.slice(); topPts.sort(function(a,b){ return a[0]-b[0] || b[1]-a[1]; });
+    function sTop(r){
+      for(var j=0;j<topPts.length-1;j++){ var a=topPts[j], b=topPts[j+1];
+        if(r>=a[0]-1e-7 && r<=b[0]+1e-7){ var d=b[0]-a[0]; if(d<1e-7) return Math.max(a[1],b[1]); return a[1]+(b[1]-a[1])*(r-a[0])/d; } }
+      return 0;
+    }
+    // R-panel profile (same numbers as formedSheetGeo), symmetric about the
+    // eave midpoint so opposite planes mirror each other.
+    var sp=P.RIB_SPACING*IN, rh=P.RIB_H*IN, bh=P.RIB_BASE*IN/2, th=P.RIB_TOP*IN/2;
+    var n=Math.floor(Lr/sp)+1, x0=-((n-1)*sp)/2, xs=[[-Lr/2,0]];
+    for(var i2=0;i2<n;i2++){ var c=x0+i2*sp;
+      if(c-bh<=-Lr/2+0.001||c+bh>=Lr/2-0.001) continue;
+      xs.push([c-bh,0],[c-th,rh],[c+th,rh],[c+bh,0]); }
+    xs.push([Lr/2,0]);
+    function hAt(r){ for(var j=0;j<xs.length-1;j++){ var a=xs[j], b=xs[j+1];
+      if(r>=a[0]&&r<=b[0]){ var d=b[0]-a[0]; return d<1e-9?a[1]:a[1]+(b[1]-a[1])*(r-a[0])/d; } } return 0; }
+    topPts.forEach(function(tp){ if(tp[0]>-Lr/2+1e-5 && tp[0]<Lr/2-1e-5) xs.push([tp[0], hAt(tp[0])]); });
+    xs.sort(function(a,b){ return a[0]-b[0]; });
+    var lift=P.LIFT*IN, pos=[];
+    function W(r,s,hh){ var o=M.clone().addScaledVector(rH,r).addScaledVector(sH,s).addScaledVector(nH,hh+lift); return [o.x,o.y,o.z]; }
+    for(var j2=0;j2<xs.length-1;j2++){
+      var A=xs[j2], B=xs[j2+1]; if(B[0]-A[0]<1e-7) continue;
+      var a0=W(A[0],0,A[1]), b0=W(B[0],0,B[1]), a1=W(A[0],sTop(A[0]),A[1]), b1=W(B[0],sTop(B[0]),B[1]);
+      pos.push.apply(pos, a0.concat(b0, b1, a0, b1, a1));
+    }
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+    g.computeVertexNormals();
+    var sm=sheetM.sheet; if(WALLS_XRAY){ sm=sm.clone(); sm.transparent=true; sm.opacity=0; sm.depthWrite=false; }
+    sm=sm.clone(); sm.side=THREE.DoubleSide;
+    var mesh=new THREE.Mesh(g, sm); mesh.receiveShadow=true; mesh.castShadow=false;
+    shedGroup.add(mesh);
+    // screw rows in the flats, same spacing as the other styles, kept clear
+    // of the hip cut and the eave
+    var rows=Math.max(2,Math.round(((top.clone().sub(M)).dot(sH)/IN)/P.SCREW_ROW)), sMax=(top.clone().sub(M)).dot(sH), spts=[];
+    for(var rI=0;rI<rows;rI++){ var sv=(rI+0.5)*sMax/rows;
+      for(var i3=0;i3<n;i3++){ var xx=x0+i3*sp+(P.RIB_BASE/2+1.0)*IN;
+        if(Math.abs(xx)<Lr/2-1.5*IN && sv<sTop(xx)-4*IN) spts.push([xx,sv]); } }
+    if(spts.length){
+      var SCREW=new THREE.CylinderGeometry(P.SCREW_D*IN/2,P.SCREW_D*IN/2,0.2*IN,6);
+      var sim=new THREE.InstancedMesh(SCREW, sheetM.screw, spts.length);
+      var qn=new THREE.Quaternion().setFromUnitVectors(new V3(0,1,0), nH), mtx=new THREE.Matrix4();
+      spts.forEach(function(p,j){ var w=W(p[0],p[1],0.1*IN); mtx.compose(new V3(w[0],w[1],w[2]), qn, new V3(1,1,1)); sim.setMatrixAt(j,mtx); });
+      if(!WALLS_XRAY) shedGroup.add(sim);
+    }
+    // eave closure: thin drip along the eave hiding the open rib ends
+    var tT=P.TRIM_T*IN, dripH=rh+lift+0.012;
+    var drip=new THREE.Mesh(new THREE.BoxGeometry(Lr, dripH, tT), sm);
+    var dc=M.clone().addScaledVector(sH,-tT/2).addScaledVector(nH, rh+lift-dripH/2+tT);
+    drip.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(rH, nH, new V3().crossVectors(rH,nH)));
+    drip.position.copy(dc); shedGroup.add(drip);
   }
   hipFace([A,B,R2,R1],'zx');    // +X slope
   hipFace([C,D,R1,R2],'zx');    // -X slope
   hipFace([B,C,R2],'xz');       // +Z hip end
   hipFace([D,A,R1],'xz');       // -Z hip end
 
-  var CAP=roofCapBuilder(rc);
+  /* Metal caps sit on the rib TOPS (rib height + lift), not on the face
+     plane — at 0.002 the 3/4in ribs punched straight through them — and use
+     the plain satin sheet the other styles' trim uses, not the ribbed roof
+     texture. The ridge laps OVER the hips, so it sits one sheet higher and
+     the two never share a plane (no z-fighting at the ridge ends). Shingle
+     caps keep their original seat. */
+  var capSeat=METAL ? (METAL_PANEL.RIB_H+METAL_PANEL.LIFT)*0.2/12 : null;
+  var capOpts=METAL ? {lift:capSeat+0.0015, mat:metalSheetMat(rc).sheet, capW:0.06} : null;
+  var CAP=roofCapBuilder(rc, null, capOpts);
+  var CAPR=METAL ? roofCapBuilder(rc, null, {lift:capSeat+0.0015+0.0055, mat:metalSheetMat(rc).sheet, capW:0.06}) : CAP;
   var fXP=CAP.faceFromPts([A,B,R2,R1]), fXN=CAP.faceFromPts([C,D,R1,R2]);
   var fZP=CAP.faceFromPts([B,C,R2]),    fZN=CAP.faceFromPts([D,A,R1]);
-  CAP.run(R1, R2, fXP, fXN, 0.02, null, null);
+  CAPR.run(R1, R2, fXP, fXN, 0.02, null, null);
   // Four hips: start at the eave corner, mitred along that corner's two eave edges.
   CAP.run(A, R1, fXP, fZN, 0, B, D);
   CAP.run(B, R2, fXP, fZP, 0, A, C);
