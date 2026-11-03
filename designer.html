@@ -865,8 +865,8 @@ textarea.inp{resize:vertical}
         <div class="grp" style="margin-top:14px">
           <span class="lbl">Soffit Finish</span>
           <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
-            <div class="pitch-btn soffit-btn" onclick="setSoffit('match',this)">Match Walls</div>
-            <div class="pitch-btn soffit-btn on" onclick="setSoffit('trim',this)">Match Trim</div>
+            <div class="pitch-btn soffit-btn on" onclick="setSoffit('match',this)">Match Walls</div>
+            <div class="pitch-btn soffit-btn" onclick="setSoffit('trim',this)">Match Trim</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('white',this)">White</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('black',this)">Black</div>
             <div class="pitch-btn soffit-btn" onclick="setSoffit('cedar',this)">Cedar</div>
@@ -1288,7 +1288,7 @@ function barnProfile(){
   var bH=(w/2)*(0.66 + (PITCH/12)*0.06);
   return { barnH:bH, kneeX:w*0.365, kneeY:h+bH*0.60, ridgeY:h+bH };
 }
-var SOFFIT="trim";   // showcase default (Nov 2026): Match Trim = black soffit under black trim
+var SOFFIT="match";  // stats pack: soffit matches the gray walls
 /* LEGACY_SOFFIT: what a saved design with no soffit field always meant. */
 var LEGACY_SOFFIT="match";  // soffit finish: "match" | "trim" | "white" | "black" | "cedar"
 /* Soffit had only two states: match the walls, or cedar. White and black are
@@ -2223,15 +2223,15 @@ function isPremiumWin(wd){
   }
   return false;
 }
-/* SHOWCASE DEFAULT (Nando, 2 Nov 2026): one window centred on each side wall.
+/* SHOWCASE DEFAULT — "stats pack" (Nando, 2 Nov 2026): one black-frame window centred on each side wall.
    Same records addWindow() writes, so they price, edit and remove like any
    other window. Only the fresh-load default; saved designs replace this. */
 var windowsData=[
-  {wall:'left',  pos:0.5, w:24, h:30, cy:52, type:'White Vinyl 24x30'},
-  {wall:'right', pos:0.5, w:24, h:30, cy:52, type:'White Vinyl 24x30'}
+  {wall:'left',  pos:0.5, w:24, h:36, cy:58, type:'Black Vinyl 24x36'},
+  {wall:'right', pos:0.5, w:24, h:36, cy:58, type:'Black Vinyl 24x36'}
 ];
 var selectedWindow=-1;
-var doorsData=[];        // {wall, pos, style, w:inches, h:inches}
+var doorsData=[{wall:'front', pos:0.5, style:'basic', w:72, h:76}];  // stats pack: 6ft front double door. {wall, pos, style, w:inches, h:inches}
 var selectedDoor=-1;     // index into doorsData, or -1
 var selectedKind='';     // 'window' | 'door' | 'vent' | 'shelf' | 'plight' | '' — editor selection
 var ventsData=[          // {wall, pos, cy}  8"x16" gable vents (movable)
@@ -2344,13 +2344,13 @@ var STAIN_COLORS=[
   {k:'pfc10', name:'Deep Terra Cotta', hex:'#8a4a37'}
 ];
 // Optional add-ons (priced from the Client Workbook; toggled on the Upgrades step)
-var ADDONS={ shutters:true, flowerboxes:true, cupola:'none',   // showcase default: black shutters + flower boxes on both windows
+var ADDONS={ shutters:false, flowerboxes:false, cupola:'none',   // stats pack: no shutters, no flower boxes
   skylight:false, stairs:false, statLadder:false, atticLadder:false,
   weatherGuard:false, radiantBarrier:false, houseWrap:false, hurricaneTies:false, insulation:false, sprayFoam:false,
   doorAwning:false,
   // Site clearance — work on what is already there, not part of the build.
   shedRemoval:false, concreteRemoval:false,
-  fbColor:'black', shutterColor:'black' };
+  fbColor:'brown', shutterColor:'brown' };
 /* What a design that predates the showcase default (or carries no add-ons
    field) has always meant: nothing added, brown finish. Starters and old
    permalinks layer on THIS, never on the showcase. */
@@ -2402,12 +2402,12 @@ var SIDING_TILE=1.05;   /* LEGACY. Superseded by SIDING_TILE_BY_STYLE in v452 �
 /* Global shingle darkness. See makeShingle() — this scales the canvas pixels
    directly, so it is the one reliable lever on how dark the roof reads. */
 var SHINGLE_LEVEL=0.62;
-var sc=0xF2F0EC, tc=0x1A1A1A, rc=0x1A1A1A;   // showcase: white siding, black trim, black metal roof
+var sc=0x6E7377, tc=0xF2F0EC, rc=0x1A1A1A;   // stats pack: gray siding, white trim, black metal roof
 /* rn said 'Charcoal' while rc defaulted to 0x28282A, which is Black Asphalt —
    so the summary bar has been printing a roof colour the shed does not have on
    every fresh load. sn and tn both match their hexes; only this one drifted,
    left behind by an earlier palette. */
-var sn='White', tn='Black', rn='Black';
+var sn='Gray', tn='White', rn='Black';
 
 var scr=document.createElement('script');
 /* PERF (2026-11-02): three.js served same-origin — no extra DNS/TLS handshake
@@ -12180,7 +12180,15 @@ function ventGableCyIn(vd){
      with room to spare, but the padded test said it did not and dropped it an
      inch and a half. The constraint is the casing corner clearing the rake. */
   var topPadIn=ventHalfH()/(0.2/12) + 0.5;    // keep the casing off the rake
-  for(var t=gRiseIn/2; t>0; t-=0.25){
+  /* TRUE VISUAL CENTRE (Nando, 2 Nov 2026). gRiseIn runs to the roof's ridge
+     line, but the rake trim covers the top ~3in of the gable at the peak
+     (measured off head-on renders: siding stops 0.048-0.053 units under
+     ridgeY at 8/10/16ft wide, 4/12 and 6/12). Halving the full rise sat the
+     vent that much high of the visible triangle's middle. Centre it between
+     the wall top and the underside of the rake at the peak instead. */
+  var RAKE_COVER_IN=3;
+  var visRiseIn=Math.max(gRiseIn-RAKE_COVER_IN, gRiseIn*0.5);
+  for(var t=visRiseIn/2; t>0; t-=0.25){
     var halfHereIn=halfBaseIn*(1 - (t+topPadIn)/gRiseIn);
     if(halfHereIn>=needIn) return wallIn + t;
   }
