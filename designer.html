@@ -231,6 +231,10 @@ canvas{display:block;width:100%;height:100%}
   .tile-name{ font-size:11.5px; line-height:1.15 }
   .tile-price{ font-size:10px; margin-top:1px }
   .tile-check{ width:18px; height:18px; line-height:18px; font-size:11px }
+  #styleGrid .tile-img{ height:50px }
+  #styleGrid .tile-img svg{ width:44px; height:44px }
+  #styleGrid .tile-cap{ padding:4px 7px 5px }
+  #styleGrid > .tile{ width:112px }
   .optrow > .pitch-btn{ min-width:118px; white-space:nowrap; padding:12px 14px }
   /* Foundation cards are wider — they carry a description and a price. */
   #foundationList .optrow > div{ width:80% ; white-space:normal }
@@ -242,6 +246,9 @@ canvas{display:block;width:100%;height:100%}
      the scroll strip above. Narrow the cards instead. */
   .tgrid > .tile{ width:98px }
   .tile-img{ height:50px }
+  #styleGrid .tile-img{ height:46px }
+  #styleGrid .tile-img svg{ width:40px; height:40px }
+  #styleGrid > .tile{ width:104px }
   .optrow > .pitch-btn{ min-width:104px }
   /* Even with the lock moved out and the subtitle/build word dropped, "SHEDPRO
      LLC" plus the lock + Back + Get Quote still doesn't fit an SE-width phone
@@ -405,6 +412,11 @@ textarea.inp{resize:vertical}
 .tile-cap{padding:7px 9px}
 .tile-name{font-size:12px;font-weight:700;color:var(--w);line-height:1.2}
 .tile-price{font-size:11px;font-weight:700;color:var(--blue);margin-top:2px}
+/* Style picker (Nando, Nov 2026): the 4:3 art box left a 44px icon floating in
+   a sea of blank space. Shorter box, bigger icon, so icon + name fill the tile. */
+#styleGrid .tile-img{aspect-ratio:auto;height:78px}
+#styleGrid .tile-img svg{width:66px;height:66px}
+#styleGrid .tile-cap{padding:6px 9px 7px}
 /* v480 — small orange tile badge. Top-LEFT, because tile-check owns top-right
    and a badged tile is often the selected one too. Deliberately small: it is a
    note on the tile, not a second headline competing with the tile's name. */
