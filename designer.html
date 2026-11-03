@@ -2334,7 +2334,7 @@ var STAIN_COLORS=[
 // Optional add-ons (priced from the Client Workbook; toggled on the Upgrades step)
 var ADDONS={ shutters:false, flowerboxes:false, cupola:'none',
   skylight:false, stairs:false, statLadder:false, atticLadder:false,
-  weatherGuard:false, radiantBarrier:false, houseWrap:false, hurricaneTies:false,
+  weatherGuard:false, radiantBarrier:false, houseWrap:false, hurricaneTies:false, insulation:false, sprayFoam:false,
   doorAwning:false,
   // Site clearance — work on what is already there, not part of the build.
   shedRemoval:false, concreteRemoval:false,
@@ -5693,13 +5693,15 @@ function intFinishPrice(kind){
   // (worker/pricing.js) against the shed's own current W x D, so the button
   // reads the same figure the quote will use — no rate table lives here.
   var ip = quoteCache.optionPrices && quoteCache.optionPrices.interior;
+  // Spray foam replaces the batt insulation the finish price normally includes.
+  if(ip && ADDONS.sprayFoam && ip[kind+'NoIns']!=null) return ip[kind+'NoIns'];
   return (ip && ip[kind]!=null) ? ip[kind] : 0;
 }
 function syncIntFinishUI(){
   document.querySelectorAll('.int-btn').forEach(function(b){
     var kind=b.getAttribute('data-int');
     if(!kind || kind==='none') return;
-    var base=(kind==='drywall')?'Drywall &amp; Mud':'Drywall, Mud &amp; Paint';
+    var base=((kind==='drywall')?'Drywall &amp; Mud':'Drywall, Mud &amp; Paint')+(ADDONS.sprayFoam?'':' + Insulation');
     var p=intFinishPrice(kind);
     var _pt=priceTag(p,'');
     b.innerHTML=base+(_pt?' <span style="opacity:.65;font-size:.85em">'+_pt+'</span>':'');
@@ -5718,6 +5720,7 @@ function setIntFinish(v,el){
      the render — the shed stays whole and the button opens it when you want to
      look. The hint below points at the button instead. */
   syncIntFinishUI();
+  if(typeof renderAddons==='function') renderAddons();   // insulation row follows the finish
   syncFlooringUI();
   // Drops a loft or shelves that are no longer buildable BEFORE the rebuild, so
   // the model and the quote never show one on a finished shed.
@@ -16783,6 +16786,11 @@ var ADDON_ITEMS=[
   {k:'ridgeVent',   name:'Roof Ridge Vent', needsRidge:true, sec:'envelope'},
   {k:'houseWrap',   name:'House Wrap',             sec:'envelope'},
   {k:'radiantBarrier',name:'Radiant Roof Barrier', sec:'envelope'},
+  /* Insulation w/ 6-mil vapor barrier. Folded into the finish price whenever
+     a finished interior is picked (worker interiorPrice), so the row reads
+     "Included" then rather than charging twice. Spray foam replaces it. */
+  {k:'insulation',  name:'Insulation + Vapor Barrier', sec:'envelope'},
+  {k:'sprayFoam',   name:'Spray Foam Insulation (closed-cell)', sec:'envelope'},
   {k:'weatherGuard',name:'Floor Weather Guard',    sec:'envelope'},
   {k:'hurricaneTies',name:'Hurricane Ties',        sec:'envelope'},
   {k:'shedRemoval',    name:'Remove Existing Shed',     sec:'site'},
@@ -16870,6 +16878,9 @@ function sprinklerRowHTML(it){
 }
 function addonPriceText(it){
   if(it.price) return it.price;   // doorAwning's fixed "TBD" note
+  var _fin=(typeof INT_FINISH!=='undefined' && INT_FINISH!=='none');
+  if(it.k==='insulation' && ADDONS.sprayFoam) return 'Replaced by spray foam';
+  if(it.k==='insulation' && _fin) return 'Included with your interior finish';
   if(PRICE_LOCKED) return '';
   var ap = quoteCache.optionPrices && quoteCache.optionPrices.addons;
   var v = ap && ap[it.k];
@@ -16918,6 +16929,8 @@ function renderAddons(){
     var it=row.item;
     if(it.sprinkler){ html+=sprinklerRowHTML(it); return; }
     var on=ADDONS[it.k];
+    // Finished interior already carries insulation: show it ticked.
+    if(it.k==='insulation' && !ADDONS.sprayFoam && typeof INT_FINISH!=='undefined' && INT_FINISH!=='none') on=true;
     // Flower boxes + shutters get a finish picker once they're switched on.
     var colorKey=(it.k==='flowerboxes')?'fbColor':(it.k==='shutters')?'shutterColor':null;
     var showColors=(colorKey && on);
@@ -16965,7 +16978,13 @@ function syncRidgeVentUI(){
   }
 }
 function toggleAddon(k){
+  // Insulation is part of a finished interior; nothing to toggle there.
+  if(k==='insulation' && !ADDONS.sprayFoam && typeof INT_FINISH!=='undefined' && INT_FINISH!=='none') return;
   ADDONS[k]=!ADDONS[k];
+  // Batt and spray foam are either/or.
+  if(k==='sprayFoam' && ADDONS.sprayFoam) ADDONS.insulation=false;
+  if(k==='insulation' && ADDONS.insulation) ADDONS.sprayFoam=false;
+  if(k==='sprayFoam' && typeof syncIntFinishUI==='function') syncIntFinishUI();
   // Switching the overhang ON with nothing chosen puts it over the first double
   // door — the main entrance — rather than over all of them or none of them.
   if(k==='doorAwning' && ADDONS.doorAwning && typeof doorsData!=='undefined'){
