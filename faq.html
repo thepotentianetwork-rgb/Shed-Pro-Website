@@ -182,7 +182,18 @@
     d.style.top=Math.max(0,n.getBoundingClientRect().bottom)+'px';
     var o=!d.classList.contains('open');b.classList.toggle('open',o);d.classList.toggle('open',o);b.setAttribute('aria-expanded',o);document.body.style.overflow=o?'hidden':'';
   });
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&d.classList.contains('open'))b.click()});}
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&d.classList.contains('open'))b.click()});
+  /* Any tap on a menu link closes the drawer and unlocks scroll. Same-page anchors (e.g. Studio -> /#shed-designer on the homepage)
+     never reload the page, so without this the drawer stayed open over the section. Those scroll below the sticky nav. */
+  function shClose(){b.classList.remove('open');d.classList.remove('open');b.setAttribute('aria-expanded','false');document.body.style.overflow='';}
+  function shGo(e){var a=e.target&&e.target.closest?e.target.closest('a[href]'):null;if(!a)return;if(d.classList.contains('open'))shClose();
+    if(e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||a.target==='_blank')return;
+    var u;try{u=new URL(a.href,location.href)}catch(x){return}
+    if(u.origin!==location.origin||u.pathname.replace(/\/index(\.html)?$/,'/')!==location.pathname.replace(/\/index(\.html)?$/,'/')||!u.hash||u.hash.length<2)return;
+    var t=document.getElementById(decodeURIComponent(u.hash.slice(1)));if(!t)return;e.preventDefault();
+    var y=t.getBoundingClientRect().top+(window.pageYOffset||0)-(n?n.getBoundingClientRect().height:0);
+    try{history.pushState(null,'',u.hash)}catch(x){}window.scrollTo({top:Math.max(0,y),behavior:reduce?'auto':'smooth'});}
+  d.addEventListener('click',shGo);var sl=document.querySelector('.sh-links');if(sl)sl.addEventListener('click',shGo);}
   var msgs=[
     "Free quote within 24 hours \u2014 a ShedPro rep calls you",
     "Design your shed in 3D with ShedPro Studio",
