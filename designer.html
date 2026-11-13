@@ -20014,18 +20014,16 @@ function legacyCopyToClipboard(text){
 // CURRENT build and copies a short link to it, independent of actually
 // sending a quote request (a staff member can hand this to someone who
 // isn't ready to submit contact info yet).
-// Renders a hero shot plus the four elevations (front/back/left/right),
-// matching this file's own wall convention: front=+z(theta 0), back=-z(theta PI),
-// right=+x(theta PI/2), left=-x(theta -PI/2). Restores the camera afterwards
-// so the person's own view is untouched.
+// Renders the hero/perspective shot used on the quote PDF and in the CRM.
+// Other angles are viewed in the live designer via the short ?d= link.
+// Restores the camera afterwards so the person's own view is untouched.
 function captureRenders(){
+  // One perspective JPEG is enough for the quote PDF, email, and CRM
+  // thumbnail. The short ?d= link opens the live 3D model for every other
+  // angle, so the four elevations are no longer captured or stored.
   var shots=[], sPhi=phi, sTheta=theta, sR=radius;
   var views=[
-    {view:'perspective', phi:1.2,  theta:0.62},   // front three-quarter, matches the opening view
-    {view:'front',       phi:1.4,  theta:0},
-    {view:'right',       phi:1.4,  theta:Math.PI/2},
-    {view:'back',        phi:1.4,  theta:Math.PI},
-    {view:'left',        phi:1.4,  theta:-Math.PI/2}
+    {view:'perspective', phi:1.2,  theta:0.62}   // front three-quarter, matches the opening view
   ];
   try{
     for(var i=0;i<views.length;i++){
