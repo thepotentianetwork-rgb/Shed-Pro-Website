@@ -62,8 +62,7 @@ const SIZES = [[10, 12, 8], [12, 16, 10], [8, 8, 8], [16, 10, 9]];
 for (const [W, L, H] of SIZES) for (const drop of [1, 2]) for (const d of [2, 4, 8, 12]) {
   test(`${W}x${L}, ${H}ft walls, ${drop}ft drop, ${d}ft loft: level, at the low wall, under the roof`, () => {
     const ms = build({ W, L, H, LEANTO_DROP: drop, LOFT: d + '-front' });
-    const max = Math.floor(L - c.LEANTO_LOFT_OPEN_FT);
-    const want = Math.min(d, c.LEANTO_LOFT_DEPTHS.filter(x => x <= max).pop());
+    const want = Math.min(d, L);   // full depth allowed (pt1756u)
     assert.equal(c.LOFT, want + '-back', 'mapped to the low (back) wall');
     assert.equal(c.LOFT_SIDE, 'ends');
     const decks = deckOf(ms); assert.ok(decks.length >= 1, 'a deck is built');
@@ -72,7 +71,7 @@ for (const [W, L, H] of SIZES) for (const drop of [1, 2]) for (const d of [2, 4,
       assert.ok(Math.abs(m.obj.rotation.x) < 1e-9 && Math.abs(m.obj.rotation.z) < 1e-9, 'deck is level');
       assert.ok(m.max.y - m.min.y < 0.051, 'deck has no slope in it');
       assert.ok(Math.abs(m.min.z - (-l / 2 + 0.03)) < 0.005, `starts at the low wall (z0 ${m.min.z})`);
-      assert.ok(Math.abs((m.max.z - m.min.z) - want * 0.2) < 0.005, 'as deep as picked, measured from the low wall');
+      assert.ok(Math.abs((m.max.z - m.min.z) - Math.min(want * 0.2, l - 0.1)) < 0.005, 'as deep as picked, measured from the low wall');
       assert.ok(m.max.y <= back - 0.075 + 1e-6, 'top below the low wall plate');
     }
     // no loft part above the roof plane or within the clearance of the rafters
@@ -131,7 +130,8 @@ test('older saved lean-to designs map onto the low wall', () => {
     [{ loft: '4-dual', loftSide: 'ends' }, '8-back'],     // same floor area
     [{ loft: '4-back', loftSide: 'sides' }, '4-back'],
     [{ loft: '2-dual', loftSide: 'sides' }, '4-back'],
-    [{ loft: '12-back', loftSide: 'ends' }, '10-back'],   // 12ft-deep shed keeps 2ft open
+    [{ loft: '12-back', loftSide: 'ends' }, '12-back'],   // all the way across a 12ft-deep shed
+    [{ loft: '10-dual', loftSide: 'ends' }, '12-back'],   // 20ft of dual: cut to the full depth
   ];
   for (const [cfg, want] of cases) {
     build({}); const base = c.getDesignConfig();
@@ -142,15 +142,36 @@ test('older saved lean-to designs map onto the low wall', () => {
   }
 });
 
-test('a loft deeper than fits is set to the deepest that does, with a message', () => {
+test('a loft deeper than the shed is set to the full depth, with a message; one that fits says nothing', () => {
   build({ L: 8, LOFT: '12-back' });
-  assert.equal(c.LOFT, '6-back');
-  assert.match(c.LEANTO_LOFT_MSG, /set to 6'/);
+  assert.equal(c.LOFT, '8-back');
+  assert.match(c.LEANTO_LOFT_MSG, /set to 8'/);
+  build({ L: 12, LOFT: '12-back' });
+  assert.equal(c.LOFT, '12-back');
+  assert.equal(c.LEANTO_LOFT_MSG, '');
+});
+
+test('depth options run in 2ft steps up to the full depth', () => {
+  for (const [L, want] of [[12, [2,4,6,8,10,12]], [16, [2,4,6,8,10,12,14,16]], [7, [2,4,6,7]], [6, [2,4,6]]]) {
+    build({ L }); assert.deepEqual([...c.leantoLoftDepthOptions()], want, `L=${L}`);
+  }
+});
+
+test('full-depth loft: reaches the high wall, stays level and under the roof everywhere', () => {
+  for (const [L, H, drop] of [[12, 8, 1], [12, 8, 2], [16, 10, 2], [10, 7, 2]]) {
+    const ms = build({ L, H, LEANTO_DROP: drop, LOFT: L + '-back' });
+    assert.equal(c.LOFT, L + '-back');
+    const l = L * 0.2, dk = deckOf(ms);
+    assert.equal(dk.length, 1);
+    assert.ok(dk[0].max.z > l / 2 - 0.1, 'runs to the high wall');
+    for (const m of loftParts(ms)) for (const z of [m.min.z, m.max.z])
+      assert.ok(m.max.y < c.leantoRoofYAt(z) - c.LEANTO_RAFTER_BELOW_ROOF + 1e-6, 'under the rafters');
+  }
 });
 
 test('label: depth only, placement named from the walls', () => {
   build({ LOFT: '6-back', LEANTO_DROP: 2, H: 10 });
-  assert.equal(c.loftLabel(), "6' deep, starts at the low (back) wall (8') and runs level toward the 10' high wall");
+  assert.match(c.loftLabel(), /^6' deep, starts at the low \(back\) wall \(8'\) and runs level toward the 10' high wall, \d+' ?\d*"? headroom underneath$/);
   assert.equal(c.loftLabel().indexOf('Gable'), -1);
 });
 
@@ -161,4 +182,49 @@ test('gable lofts are unchanged: 6in under the plate, front/back/dual and side w
     const decks = deckOf(ms); assert.equal(decks.length, n);
     for (const m of decks) assert.ok(Math.abs((m.min.y + m.max.y) / 2 - (8 * 0.2 - 0.10)) < 1e-6, 'h - 0.10');
   }
+});
+
+/* HEADROOM (Nando, 13 Nov 2026): the underside of the loft framing at 8ft off
+   the floor wherever the roof allows it; otherwise as high as it fits under the
+   rafters, with a notice. Measured with a ray from the joists down to the floor. */
+function measuredHeadroomIn(ms) {
+  const objs = []; c.shedGroup.traverse(o => { if (o.isMesh) objs.push(o); });
+  const loft = loftParts(ms), lift = c.shedGroup.position.y;
+  const under = Math.min(...loft.map(m => m.min.y));          // lowest loft framing, shed frame
+  const dk = deckOf(ms)[0], z = (dk.min.z + dk.max.z) / 2;
+  const hit = new T.Raycaster(new T.Vector3(0.013, under + lift - 0.001, z), new T.Vector3(0, -1, 0), 0, 5)
+    .intersectObjects(objs.filter(o => !loft.some(m => m.obj === o)), false)[0];
+  return { headroom: (hit.distance + 0.001) / IN, under };
+}
+for (const [H, drop, full] of [[8, 1, false], [9, 1, false], [10, 2, false], [10, 1, false], [11, 1, true], [12, 2, true], [12, 1, true]]) {
+  test(`${H}ft high wall, ${drop}ft drop (low wall ${H - drop}ft): headroom ${full ? 'is 8ft' : 'as much as fits, with a notice'}`, () => {
+    const ms = build({ W: 10, L: 12, H, LEANTO_DROP: drop, LOFT: '12-back' });
+    assert.equal(c.LOFT, '12-back');
+    const { headroom } = measuredHeadroomIn(ms), fit = c.leantoLoftFit();
+    assert.equal(fit.full, full);
+    if (full) assert.ok(Math.abs(headroom - 96) < 0.05, `8ft clear, got ${headroom.toFixed(2)}in`);
+    else assert.ok(headroom < 96 && Math.abs(headroom - fit.headroomIn) < 0.05, `under 8ft, got ${headroom.toFixed(2)}in`);
+    // never higher than 1.5in under the rafters at the low wall, and never above the roof anywhere
+    for (const m of loftParts(ms)) for (const z of [m.min.z, m.max.z])
+      assert.ok(m.max.y < c.leantoRoofYAt(z) - c.LEANTO_RAFTER_BELOW_ROOF + 1e-6);
+    const label = c.loftLabel();
+    assert.match(label, /headroom underneath$/);
+  });
+}
+
+test('the loft never goes up past 8ft headroom just because the roof is tall', () => {
+  const lo = measuredHeadroomIn(build({ H: 11, LEANTO_DROP: 1, LOFT: '4-back' })).under;
+  const hi = measuredHeadroomIn(build({ H: 12, LEANTO_DROP: 1, LOFT: '4-back' })).under;
+  assert.ok(Math.abs(lo - hi) < 1e-9, 'same 8ft underside on an 11ft and a 12ft wall');
+});
+
+test('a loft that cannot fit at all is refused with a message', () => {
+  const keep = c.LEANTO_LOFT_MIN_HEADROOM_IN;
+  c.LEANTO_LOFT_MIN_HEADROOM_IN = 200;                   // nothing fits
+  try {
+    build({ LOFT: '6-back' });
+    assert.equal(c.LOFT, 'none');
+    assert.match(c.LEANTO_LOFT_MSG, /will not fit/);
+    assert.equal(deckOf(meshes(c)).length, 0);
+  } finally { c.LEANTO_LOFT_MIN_HEADROOM_IN = keep; }
 });

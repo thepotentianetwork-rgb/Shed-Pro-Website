@@ -2413,9 +2413,11 @@ function leantoCapYAt(z, clearance){
    pricing worker (depth x width), the CRM and ?d= links read it unchanged;
    on a lean-to the kind is never chosen, it is whichever end wall is lower,
    read from the two wall tops the roof plane runs through. */
-var LEANTO_LOFT_DEPTHS=[2,4,6,8,10,12];
 var LEANTO_LOFT_CLEAR_IN=1.5;   // deck top to rafter underside, at the low wall
-var LEANTO_LOFT_OPEN_FT=2;      // kept open at the tall wall (door headers, a way up)
+/* Nando, 13 Nov 2026 (pt1756u): a lean-to loft may run all the way across,
+   so the deepest option is the full enclosed depth - nothing is held back at
+   the tall wall. It stays level at the low wall's height, so it can never
+   reach the roof. */
 var LEANTO_LOFT_MSG='';         // why a picked depth was changed, shown under the picker
 /* The two end-wall tops, world Y. The same numbers buildShed gives the walls
    (backH = h - drop) and buildLeanToRoof runs its one roof plane through. */
@@ -2425,10 +2427,12 @@ function leantoWallTopsY(){
 }
 function leantoLowWall(){ var t=leantoWallTopsY(); return (t.back<=t.front) ? 'back' : 'front'; }
 function leantoHighWall(){ return leantoLowWall()==='back' ? 'front' : 'back'; }
-function leantoLoftMaxFt(){ return Math.max(0, Math.floor(encLft() - LEANTO_LOFT_OPEN_FT)); }
+function leantoLoftMaxFt(){ return Math.max(0, Math.floor(encLft())); }
+/* 2ft steps up to the full depth, plus the full depth itself if it is odd. */
 function leantoLoftDepthOptions(){
-  var m=leantoLoftMaxFt(), o=LEANTO_LOFT_DEPTHS.filter(function(d){ return d<=m; });
-  if(!o.length && m>=1) o=[m];
+  var m=leantoLoftMaxFt(), o=[];
+  for(var d=2; d<=m; d+=2) o.push(d);
+  if(m>=1 && o[o.length-1]!==m) o.push(m);
   return o;
 }
 /* Centre Y of the loft's 0.05-thick ply deck. Level, and set off the LOW
@@ -2438,13 +2442,31 @@ function leantoLoftDepthOptions(){
    the roof, rafter centre 0.05 under that, 0.07 deep. The roof only rises
    from there toward the high wall, so the gap only grows along the loft. */
 var LEANTO_RAFTER_BELOW_ROOF=0.045+0.05+0.035;
-function leantoLoftDeckY(){
-  var t=leantoWallTopsY(), lowTop=Math.min(t.front, t.back);
+/* HEADROOM (Nando, 13 Nov 2026): the underside of the loft framing goes at
+   8ft off the floor - as low as it can sit without costing anyone headroom,
+   not pushed up against the rafters. Where the low wall and roof are not
+   tall enough for 8ft + the framing + the rafter gap, it sits as high as it
+   fits and the picker says the headroom is under 8ft. Below the minimum it is
+   refused. Framing = 0.05 deck over 0.09 joists hung 0.07 under the deck
+   centre: the underside is 0.115 under the deck centre (8.4in deck top to
+   joist bottom). The floor's top face is 0.03 (buildFloor). */
+var LEANTO_LOFT_HEADROOM_IN=96;
+var LEANTO_LOFT_MIN_HEADROOM_IN=0;   // refuse below this; Nando has not set a minimum yet
+var LEANTO_LOFT_FLOOR_Y=0.03;
+var LEANTO_LOFT_UNDER=0.115;          // deck centre to joist underside
+function leantoLoftFit(){
+  var IN_=0.2/12, t=leantoWallTopsY(), lowTop=Math.min(t.front, t.back);
   var l=encLft()*0.2, ang=Math.atan2(Math.abs(t.front-t.back), Math.max(0.01,l));
   var raftBottom=lowTop - LEANTO_RAFTER_BELOW_ROOF/Math.cos(ang);
-  var deckTop=Math.min(lowTop-0.075, raftBottom - LEANTO_LOFT_CLEAR_IN*0.2/12);
-  return deckTop - 0.025;
+  // highest the deck may go: top 1.5in under the lowest rafter, at the low wall
+  var maxY=Math.min(lowTop-0.075, raftBottom - LEANTO_LOFT_CLEAR_IN*IN_) - 0.025;
+  var wantY=LEANTO_LOFT_FLOOR_Y + LEANTO_LOFT_HEADROOM_IN*IN_ + LEANTO_LOFT_UNDER;
+  var y=Math.min(wantY, maxY);
+  var head=(y - LEANTO_LOFT_UNDER - LEANTO_LOFT_FLOOR_Y)/IN_;
+  return {deckY:y, headroomIn:head, full:(wantY<=maxY+1e-9), fits:(head>=LEANTO_LOFT_MIN_HEADROOM_IN)};
 }
+function leantoLoftDeckY(){ return leantoLoftFit().deckY; }
+function _ftIn(inches){ var r=Math.round(inches), f=Math.floor(r/12), i=r-f*12; return f+"'"+(i?' '+i+'"':''); }
 /* Puts any lean-to loft value into the one shape a lean-to can build:
    "<depth>-<low wall>", 'ends'. Older designs map like this:
      front/back (either wall)  -> same depth, moved to the low wall (same price)
@@ -2458,13 +2480,13 @@ function leantoNormalizeLoft(){
   var p=String(LOFT).split('-'), d=parseFloat(p[0])||0, k=p[1]||'front';
   if(k==='dual') d*=2;
   var opts=leantoLoftDepthOptions(), want=d;
-  if(!opts.length){ LOFT='none'; LOFT_SIDE='ends';
-    LEANTO_LOFT_MSG='A loft will not fit a lean-to this short.'; return; }
+  if(!opts.length || !leantoLoftFit().fits){ LOFT='none'; LOFT_SIDE='ends';
+    LEANTO_LOFT_MSG='A loft will not fit under this roof - the low wall is too short.'; return; }
   if(opts.indexOf(d)<0){
     var pick=opts[0]; opts.forEach(function(o){ if(o<=d) pick=o; }); d=pick;
   }
-  if(d<want) LEANTO_LOFT_MSG='A '+want+"' loft would reach the tall wall on this "+encLft()+
-      "'-deep lean-to, so it is set to "+d+"' (we keep "+LEANTO_LOFT_OPEN_FT+"' open at the high wall).";
+  if(d<want) LEANTO_LOFT_MSG='A '+want+"' loft is deeper than this "+encLft()+
+      "'-deep lean-to, so it is set to "+d+"' (all the way across).";
   LOFT=d+'-'+leantoLowWall(); LOFT_SIDE='ends';
 }
 function leantoLoftOptionsHTML(){
@@ -18175,7 +18197,8 @@ function _ftLabel(ft){ return (Math.round(ft*10)/10)+"'"; }
 function leantoLoftLabel(d){
   var t=leantoWallTopsY(), low=leantoLowWall(), high=leantoHighWall();
   return d+"' deep, starts at the low ("+low+") wall ("+_ftLabel(t[low]/0.2)+
-         ") and runs level toward the "+_ftLabel(t[high]/0.2)+" high wall";
+         ") and runs level toward the "+_ftLabel(t[high]/0.2)+" high wall, "+
+         _ftIn(leantoLoftFit().headroomIn)+" headroom underneath";
 }
 function syncLoftUI(){
   var ls=document.getElementById('loftSel');
@@ -18196,7 +18219,12 @@ function syncLoftUI(){
       var t=leantoWallTopsY(), low=leantoLowWall(), high=leantoHighWall();
       var txt='On a lean-to the loft starts at the low '+low+' wall ('+_ftLabel(t[low]/0.2)+
               ') and runs level toward the '+_ftLabel(t[high]/0.2)+' '+high+' wall. Pick a depth; placement is automatic.';
-      note.innerHTML = txt + (LEANTO_LOFT_MSG ? '<br><span style="color:#ffb86b">'+LEANTO_LOFT_MSG+'</span>' : '');
+      var fit=leantoLoftFit(), head='';
+      if(LOFT!=='none') head = fit.full
+        ? '<br>'+_ftIn(LEANTO_LOFT_HEADROOM_IN)+' of headroom under the loft.'
+        : '<br><span style="color:#ffb86b">Headroom under the loft is '+_ftIn(fit.headroomIn)+
+          ' - under 8\', because the low wall is only '+_ftLabel(t[low]/0.2)+'.</span>';
+      note.innerHTML = txt + head + (LEANTO_LOFT_MSG ? '<br><span style="color:#ffb86b">'+LEANTO_LOFT_MSG+'</span>' : '');
       note.style.display='block';
     }
     return;
