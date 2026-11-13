@@ -1010,6 +1010,7 @@ textarea.inp{resize:vertical}
               <option value="12-dual">12' Dual Loft</option>
             </optgroup>
           </select>
+          <div id="leantoLoftNote" class="wstep-sub" style="display:none;margin-top:8px"></div>
           <div id="loftSideWrap" style="display:none;margin-top:8px">
             <span class="lbl" style="font-size:11px">Loft placement</span>
             <div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px;margin-top:4px">
@@ -2399,6 +2400,80 @@ function leantoRoofYAt(z){
 function leantoCapYAt(z, clearance){
   if(typeof STYLE==='undefined' || STYLE!=='leanto') return Infinity;
   return leantoRoofYAt(z) - (clearance==null ? 0.012 : clearance);
+}
+/* ── LEAN-TO LOFT: ALWAYS AT THE LOW WALL (Nando, 13 Nov 2026, pt1747u) ─────
+   On every lean-to the loft starts at the LOW wall and runs LEVEL toward the
+   high wall; the customer picks a depth and nothing else.
+   The bug this replaces: every loft rode 6in under the FRONT wall's plate
+   (h - 0.10), which is right for a gable whose end walls are all one height.
+   A lean-to's back wall is a foot or two lower, so a "Back Gable" loft (or a
+   side-wall one, which runs the whole length) stood above the low wall and
+   out through the roof - the sloped-looking slab outside the walls.
+   LOFT keeps its "<depthFt>-<front|back>" shape with LOFT_SIDE 'ends', so the
+   pricing worker (depth x width), the CRM and ?d= links read it unchanged;
+   on a lean-to the kind is never chosen, it is whichever end wall is lower,
+   read from the two wall tops the roof plane runs through. */
+var LEANTO_LOFT_DEPTHS=[2,4,6,8,10,12];
+var LEANTO_LOFT_CLEAR_IN=1.5;   // deck top to rafter underside, at the low wall
+var LEANTO_LOFT_OPEN_FT=2;      // kept open at the tall wall (door headers, a way up)
+var LEANTO_LOFT_MSG='';         // why a picked depth was changed, shown under the picker
+/* The two end-wall tops, world Y. The same numbers buildShed gives the walls
+   (backH = h - drop) and buildLeanToRoof runs its one roof plane through. */
+function leantoWallTopsY(){
+  var h=H*0.2, d=(typeof LEANTO_DROP!=='undefined' && LEANTO_DROP) ? LEANTO_DROP : 1;
+  return {front:h, back:h-d*0.2};
+}
+function leantoLowWall(){ var t=leantoWallTopsY(); return (t.back<=t.front) ? 'back' : 'front'; }
+function leantoHighWall(){ return leantoLowWall()==='back' ? 'front' : 'back'; }
+function leantoLoftMaxFt(){ return Math.max(0, Math.floor(encLft() - LEANTO_LOFT_OPEN_FT)); }
+function leantoLoftDepthOptions(){
+  var m=leantoLoftMaxFt(), o=LEANTO_LOFT_DEPTHS.filter(function(d){ return d<=m; });
+  if(!o.length && m>=1) o=[m];
+  return o;
+}
+/* Centre Y of the loft's 0.05-thick ply deck. Level, and set off the LOW
+   wall: no higher than the gable rule (6in under that wall's plate), and its
+   top kept LEANTO_LOFT_CLEAR_IN under the rafters where they are lowest - at
+   the low wall. The rafters are the v456 lean-to framing: deck 0.045 under
+   the roof, rafter centre 0.05 under that, 0.07 deep. The roof only rises
+   from there toward the high wall, so the gap only grows along the loft. */
+var LEANTO_RAFTER_BELOW_ROOF=0.045+0.05+0.035;
+function leantoLoftDeckY(){
+  var t=leantoWallTopsY(), lowTop=Math.min(t.front, t.back);
+  var l=encLft()*0.2, ang=Math.atan2(Math.abs(t.front-t.back), Math.max(0.01,l));
+  var raftBottom=lowTop - LEANTO_RAFTER_BELOW_ROOF/Math.cos(ang);
+  var deckTop=Math.min(lowTop-0.075, raftBottom - LEANTO_LOFT_CLEAR_IN*0.2/12);
+  return deckTop - 0.025;
+}
+/* Puts any lean-to loft value into the one shape a lean-to can build:
+   "<depth>-<low wall>", 'ends'. Older designs map like this:
+     front/back (either wall)  -> same depth, moved to the low wall (same price)
+     dual (X on both ends)      -> one loft 2X deep: the same floor area
+     side-wall (any)            -> same depth (x2 for dual), at the low wall
+   then snapped down to a depth that fits. Runs at the top of every buildShed,
+   so a drop change, a size change or a reversed slope re-places it. */
+function leantoNormalizeLoft(){
+  if(typeof STYLE==='undefined' || STYLE!=='leanto') return;
+  if(typeof LOFT==='undefined' || LOFT==='none' || !LOFT) { LOFT_SIDE='ends'; return; }
+  var p=String(LOFT).split('-'), d=parseFloat(p[0])||0, k=p[1]||'front';
+  if(k==='dual') d*=2;
+  var opts=leantoLoftDepthOptions(), want=d;
+  if(!opts.length){ LOFT='none'; LOFT_SIDE='ends';
+    LEANTO_LOFT_MSG='A loft will not fit a lean-to this short.'; return; }
+  if(opts.indexOf(d)<0){
+    var pick=opts[0]; opts.forEach(function(o){ if(o<=d) pick=o; }); d=pick;
+  }
+  if(d<want) LEANTO_LOFT_MSG='A '+want+"' loft would reach the tall wall on this "+encLft()+
+      "'-deep lean-to, so it is set to "+d+"' (we keep "+LEANTO_LOFT_OPEN_FT+"' open at the high wall).";
+  LOFT=d+'-'+leantoLowWall(); LOFT_SIDE='ends';
+}
+function leantoLoftOptionsHTML(){
+  var low=leantoLowWall();
+  var h='<option value="none">None</option>';
+  leantoLoftDepthOptions().forEach(function(d){
+    h+='<option value="'+d+'-'+low+'">'+d+"' Loft</option>";
+  });
+  return h;
 }
 var BARN_END_FACE_Z=0; // world Z of the barn gambrel end-wall OUTER face; single source of truth
                        // (set by buildBarnRoof, read by addShedLights to seat gable lights)
@@ -5921,6 +5996,8 @@ function _scheduleDeferredDispose(){
 }
 function buildShed(){
   if(typeof syncPorchFootprint==='function') syncPorchFootprint();
+  // Lean-to loft: re-placed at the low wall on every rebuild (drop, size, slope).
+  if(typeof leantoNormalizeLoft==='function'){ leantoNormalizeLoft(); if(typeof syncLoftUI==='function') syncLoftUI(); }
   if(typeof clampOpeningsToWalls==='function') clampOpeningsToWalls();
   // Properly DISPOSE old geometry, materials and textures before clearing — without
   // this, every rebuild leaks GPU memory until the WebGL context is lost (crash).
@@ -14358,6 +14435,10 @@ function buildInterior(){
     var loftKind = lp[1]||'front';
     var loftDepth = Math.min(loftDepthFt*0.2, l-0.1);   // world units, capped to shed depth
     var loftY = h - 0.10;                                // just below the top plate (visible platform)
+    /* Lean-to: off the LOW wall and under its rafters, never the tall wall's
+       plate (that put it above the low wall and through the roof). */
+    var leanLoft = (STYLE==='leanto');
+    if(leanLoft) loftY = leantoLoftDeckY();
     var plyTex = new THREE.MeshStandardMaterial({color:0xc9a978, roughness:0.85, metalness:0.0, side:THREE.DoubleSide});
     var joistMat = new THREE.MeshStandardMaterial({color:0xb08d5a, roughness:0.9, metalness:0.0});
     /* A partial porch's notch is outside the room, so a loft over it would
@@ -14411,6 +14492,16 @@ function buildInterior(){
         var joist=new THREE.Mesh(new THREE.BoxGeometry(jLen,0.09,0.04), joistMat);
         joist.position.set(lcx, loftY-0.07, jz);
         joist.castShadow=true; shedGroup.add(joist);
+      }
+      /* Lean-to: a ledger on the low wall carries the joists' wall end -
+         the loft is anchored to that wall and hangs off nothing else. */
+      if(leanLoft){
+        var wallZ = atFront ? (l/2-0.03) : (-l/2+0.03);
+        if(wallZ>=pc.z0-0.001 && wallZ<=pc.z1+0.001){
+          var ledger=new THREE.Mesh(new THREE.BoxGeometry(lw, 0.09, 0.04), joistMat);
+          ledger.position.set(lcx, loftY-0.07, atFront ? wallZ-0.02 : wallZ+0.02);
+          ledger.userData.loftLedger=true; shedGroup.add(ledger);
+        }
       }
       // front edge rim board (the visible open edge of the loft)
       var railZ = railZ0;
@@ -18052,6 +18143,7 @@ function paintCupolaTag(){
 // ---- UPGRADES: loft ----
 function setLoft(v){
   LOFT=v;   // 'none' or "<depthFt>-<front|back|dual>"
+  LEANTO_LOFT_MSG='';
   clampShelvesUnderLoft();
   refreshInterior();
   syncLoftUI();
@@ -18073,12 +18165,43 @@ function loftWallsLabel(side){
 function loftLabel(){
   if(LOFT==='none') return 'None';
   var p=String(LOFT).split('-'), k=p[1]||'front';
+  if(typeof STYLE!=='undefined' && STYLE==='leanto') return leantoLoftLabel(p[0]);
   var kind=(LOFT_SIDE==='sides') ? ({front:'Left side',back:'Right side',dual:'Dual (both sides)'})[k]
                                  : ({front:'Front gable',back:'Back gable',dual:'Dual (front + back)'})[k];
   return p[0]+"' "+(kind||k)+', '+loftWallsLabel(LOFT_SIDE);
 }
+function _ftLabel(ft){ return (Math.round(ft*10)/10)+"'"; }
+/* "8' at the low (back) wall, 7', running level toward the 8' high wall" */
+function leantoLoftLabel(d){
+  var t=leantoWallTopsY(), low=leantoLowWall(), high=leantoHighWall();
+  return d+"' deep, starts at the low ("+low+") wall ("+_ftLabel(t[low]/0.2)+
+         ") and runs level toward the "+_ftLabel(t[high]/0.2)+" high wall";
+}
 function syncLoftUI(){
-  var ls=document.getElementById('loftSel'); if(ls) ls.value=LOFT;
+  var ls=document.getElementById('loftSel');
+  var lean=(typeof STYLE!=='undefined' && STYLE==='leanto');
+  /* Lean-to: depths only, placement is automatic at the low wall. The gable
+     list (Front/Back Gable, Dual, side walls) is kept and put back for every
+     other style. */
+  if(ls){
+    if(ls._gableHTML==null) ls._gableHTML=ls.innerHTML;
+    var sig = lean ? ('lean:'+leantoLowWall()+':'+leantoLoftDepthOptions().join(',')) : 'gable';
+    if(ls._loftSig!==sig){ ls.innerHTML = lean ? leantoLoftOptionsHTML() : ls._gableHTML; ls._loftSig=sig; }
+    ls.value=LOFT;
+  }
+  var note=document.getElementById('leantoLoftNote');
+  if(lean){
+    var wrapL=document.getElementById('loftSideWrap'); if(wrapL) wrapL.style.display='none';
+    if(note){
+      var t=leantoWallTopsY(), low=leantoLowWall(), high=leantoHighWall();
+      var txt='On a lean-to the loft starts at the low '+low+' wall ('+_ftLabel(t[low]/0.2)+
+              ') and runs level toward the '+_ftLabel(t[high]/0.2)+' '+high+' wall. Pick a depth; placement is automatic.';
+      note.innerHTML = txt + (LEANTO_LOFT_MSG ? '<br><span style="color:#ffb86b">'+LEANTO_LOFT_MSG+'</span>' : '');
+      note.style.display='block';
+    }
+    return;
+  }
+  if(note) note.style.display='none';
   var sides=(LOFT_SIDE==='sides');
   if(ls) ls.querySelectorAll('option').forEach(function(o){
     var p=o.value.split('-'); if(p.length<2) return;
@@ -18117,7 +18240,11 @@ function loftRects(){
    sits 6in below the top plate with 5.4in joists under it, so its underside
    is about H*12-12.9in; less SHELF_LOFT_CLEAR_IN (18in) of headroom and half
    the 3/4in board gives H*12-31 (65in on 8ft walls, 77in on 9ft, 89in on 10ft). */
-function loftUndersideIn(){ return H*12 - 12.9; }
+function loftUndersideIn(){
+  // Joist underside: 0.115 under the deck centre (0.07 + half the 0.09 joist).
+  if(typeof STYLE!=='undefined' && STYLE==='leanto') return (leantoLoftDeckY()-0.115)/0.2*12;
+  return H*12 - 12.9;
+}
 function shelfMaxCy(sd){
   var ceil=Math.max(26, H*12-12);
   var rs=loftRects(); if(!rs.length || !sd) return ceil;
