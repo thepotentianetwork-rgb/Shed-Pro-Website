@@ -29,6 +29,15 @@
     <priority>0.9</priority>
   </url>
 
+  <!-- Chicken Coops -->
+  <url>
+    <loc>https://www.shedpro-utah.com/chicken-coops</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+
   <!-- About Us -->
   <url>
     <loc>https://www.shedpro-utah.com/about</loc>
