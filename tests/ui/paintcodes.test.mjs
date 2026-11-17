@@ -76,11 +76,38 @@ test('search: codes and names the way people type them', async () => {
   assert.deepEqual(top(c, 'revere pew'), ['bm', 'HC-172', 'Revere Pewter', 'CBC6B8']);
   assert.deepEqual(top(c, 'Glidden PPG1025-1'), ['ppg', 'PPG1025-1', 'Commercial White', 'EDECE6']);
   assert.equal(top(c, 'painters white')[2], "Painter's White");
-  // A brand on its own, or nonsense, gives nothing rather than everything.
-  assert.equal(c.PC.search('behr', 40).hits.length, 0);
+  // A brand on its own, or nonsense, gives nothing rather than everything —
+  // except Behr, which lists its popular exterior colours (Nando, Nov 2026).
+  assert.equal(c.PC.search('sw', 40).hits.length, 0);
+  assert.equal(c.PC.search('Benjamin Moore', 40).hits.length, 0);
   assert.equal(c.PC.search('zzzqqq', 40).hits.length, 0);
   // Brand-scoped queries stay in the brand.
   assert.ok(c.PC.search('valspar white', 40).hits.every(h => h.b === 'valspar'));
+});
+
+test('"behr" on its own lists Behr\'s popular exterior colours, real codes and hexes', async () => {
+  const c = setup();
+  await c.PC.loadAll(['behr']);
+  for (const q of ['behr', 'BEHR', 'Behr paint', 'behr colors', ' behr ']) {
+    const r = c.PC.search(q, 40);
+    assert.ok(r.popular, q);
+    assert.ok(r.hits.length >= 12 && r.hits.length <= 20, q + ' -> ' + r.hits.length);
+    assert.ok(r.hits.every(h => h.b === 'behr'));
+  }
+  const hits = c.PC.search('behr', 40).hits.map(h => h.e.slice(0, 3));
+  assert.deepEqual(hits[0], ['12', 'Swiss Coffee', 'F1EDE0']);
+  assert.ok(hits.some(e => e[0] === 'PPU18-01' && e[1] === 'Cracked Pepper' && e[2] === '4F5152'));
+  // every listed code exists in the colour book (no invented entries)
+  for (const e of hits) assert.ok(DATA.behr.c.some(x => x[0] === e[0] && x[2] === e[2]), e[0]);
+  // a real name search under the brand still searches
+  assert.equal(c.PC.search('behr swiss coffee', 5).hits[0].e[0], '12');
+  assert.ok(!c.PC.search('behr swiss coffee', 5).popular);
+  // and picking one applies like any other brand pick
+  c.__stubLights();
+  const h = c.PC.search('behr', 40).hits[0];
+  c.PC.applyPick('s', h.b, h.e);
+  assert.equal(c.sc, 0xF1EDE0);
+  assert.equal(c.sn, 'Behr 12 Swiss Coffee');
 });
 
 test('a brand query loads only that brand', async () => {

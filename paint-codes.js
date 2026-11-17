@@ -110,10 +110,54 @@ function scoreEntry(e, P){
   }
   return best;
 }
+/* POPULAR. Typing just a brand ("behr", "Behr paint", "behr colors") used to
+   stop at "Now type a code or name". For Behr it now lists the brand's most
+   asked-for exterior colours instead (Nando, Nov 2026). Codes only: name and
+   hex come from behr.json like every other hit, so nothing here can drift
+   from the colour book. Each was checked on 2026-11-16 against Behr's live
+   colour feed, https://www.behr.com/mainService/services/colornx/all.js ,
+   which is the data behind each colour's page at
+   https://www.behr.com/consumer/ColorDetailView/<code> :
+     12        Swiss Coffee        #F1EDE0   .../ColorDetailView/12
+     PPU18-06  Ultra Pure White    #F8F8F2   .../ColorDetailView/PPU18-06
+     75        Polar Bear          #F5F4EC   .../ColorDetailView/75
+     DC-003    Blank Canvas        #F1EDE1   .../ColorDetailView/DC-003
+     790C-2    Silver Drop         #DDDACF   .../ColorDetailView/790C-2
+     790C-3    Dolphin Fin         #CCCAC1   .../ColorDetailView/790C-3
+     720E-2    Light French Gray   #C9CFCC   .../ColorDetailView/720E-2
+     PPU18-16  Elephant Skin       #97928B   .../ColorDetailView/PPU18-16
+     N520-5    Iron Mountain       #757574   .../ColorDetailView/N520-5
+     PPU18-01  Cracked Pepper      #4F5152   .../ColorDetailView/PPU18-01
+     PPU18-20  Broadway            #434442   .../ColorDetailView/PPU18-20
+     M500-7    Very Navy           #3A4859   .../ColorDetailView/M500-7
+     S470-5    Blueprint           #60818E   .../ColorDetailView/S470-5
+     S340-4    Back To Nature      #BDB98F   .../ColorDetailView/S340-4
+     MQ3-21    Breezeway           #CCD8CF   .../ColorDetailView/MQ3-21
+     PPU2-02   Red Pepper          #7A3F38   .../ColorDetailView/PPU2-02
+     PPU5-08   Sculptor Clay       #CCC3B4   .../ColorDetailView/PPU5-08
+     730C-3    Castle Path         #C5BAAA   .../ColorDetailView/730C-3
+     280E-3    Toasted Wheat       #C9AF96   .../ColorDetailView/280E-3 */
+var POPULAR={
+  behr:['12','PPU18-06','75','DC-003','790C-2','790C-3','720E-2','PPU18-16','N520-5',
+        'PPU18-01','PPU18-20','M500-7','S470-5','S340-4','MQ3-21','PPU2-02','PPU5-08','730C-3','280E-3']
+};
+var BRAND_ONLY_WORDS=/^(paints?|colou?rs?|popular|exterior|most popular|popular colou?rs?|exterior colou?rs?|paint colou?rs?)$/;
+function popularFor(P){
+  if(!P.brand || !POPULAR[P.brand]) return null;
+  if(P.restC && !BRAND_ONLY_WORDS.test(P.rest)) return null;
+  var d=DATA[P.brand]; if(!d) return [];
+  var out=[];
+  POPULAR[P.brand].forEach(function(code){
+    for(var i=0;i<d.c.length;i++) if(d.c[i][0]===code){ out.push({s:100, b:P.brand, e:d.c[i], pop:true}); break; }
+  });
+  return out;
+}
 /* Synchronous over whatever is loaded. Returns up to `limit` hits, best first;
    ties go to the more common brand, then the shorter name. */
 function search(q, limit){
   var P=parseQuery(q), out=[];
+  var pop=popularFor(P);
+  if(pop) return {P:P, hits:pop, popular:true};
   if(!P.full || (P.brand && !P.restC)) return {P:P, hits:out};
   var list=P.brand ? [P.brand] : BRANDS.map(function(x){return x.b;});
   list.forEach(function(b){
@@ -344,7 +388,7 @@ function render(ui, q, stillLoading){
     ui.list.innerHTML='<div class="pc-msg">'+esc(msg)+'</div>';
     return;
   }
-  ui.list.innerHTML=r.hits.map(function(h,i){
+  ui.list.innerHTML=(r.popular?'<div class="pc-msg">Popular '+esc(BY[r.P.brand].brand)+' exterior colors — or type a code or name.</div>':'')+r.hits.map(function(h,i){
     var e=h.e;
     return '<button type="button" class="pc-opt" role="option" aria-selected="false" data-i="'+i+'">'+
       '<span class="pc-sw" style="background:#'+e[2]+'"></span>'+
