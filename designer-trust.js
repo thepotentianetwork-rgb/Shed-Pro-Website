@@ -18,6 +18,8 @@ var DT = window.DT = window.DT || {};
 
 /* ── 1. REVIEWS (verbatim from index.html #reviews) ── */
 var REVIEWS = [
+  {"src": "google", "name": "Janky B.", "label": "Google review", "stars": 5, "text": "The best 💪 a great job ⭐️⭐️⭐️⭐️⭐️", "note": "Translated from Spanish"},
+  {"src": "google", "name": "Ramon S.", "label": "Google review", "stars": 5, "text": "Excellent work, 100% recommended, very professional and above all very honest.", "note": "Translated from Spanish"},
   {"src": "google", "name": "Steven E.", "label": "Google review", "stars": 5, "text": "The people at ShedproUT did a fantastic job. They communicated well, they did what they said they were going to do and at a fair price. The workmanship Is great. I look forward to enjoying the shed for years."},
   {"src": "facebook", "name": "Ashley M.", "label": "Facebook recommendation", "stars": null, "text": "Christian with Shed Pro is incredible! He came over to our home to give us a quote, gave us a few options and worked with what we had. Incredibly professional and easy going guy. Shed was put up in one day and is perfection! Communication was great, did exactly what we asked him to, I will only recommend him from now on. He is very competitive in his prices, and his work is top notch. Stop looking and go with Shed Pro!"},
   {"src": "google", "name": "Steve P.", "label": "Google review", "stars": 5, "text": "The team from Shedpro did an amazing job of building our shed. We are delighted to have our new shed! The workmanship is excellent and the shed looks so nice! They communicated well and asked great questions to build it to the specifications that we wanted. Thank you! Thank you!"},
@@ -32,10 +34,15 @@ var REVIEWS = [
   {"src": "facebook", "name": "Rachel M.", "label": "Facebook recommendation", "stars": null, "text": "Shed Pro did an incredible job for us! We did a 12x14 barn style shed and they finished it in one day! I love how you can customize it to fit your budget and their prices were way better then any shed lot around or Home Depot. Highly recommend! We love our shed!"},
   {"src": "google", "name": "Scott H.", "label": "Google review", "stars": 5, "text": "I am very happy with my shed they built, they were very fast, they were there on time, and the quality is top notch!\nEverything I asked for they did, they were very kind and great to work with!! I would strongly recommend going with Shed Pro."},
   {"src": "google", "name": "Brian F.", "label": "Google review", "stars": 5, "text": "Six Stars! Shed Pro was easy to work with and did custom work fast. A high quality build at pricing below HomeDepot. It was a joy to work with them!"},
-  {"src": "google", "name": "Rubi G.", "label": "Google review", "stars": 5, "text": "The customer service provided by ShedPro is top notch, and their sheds are absolutley beautiful. They pay great attention to detail, and it really shows in their craftsmanship. Highly recommend!"}
+  {"src": "google", "name": "Rubi G.", "label": "Google review", "stars": 5, "text": "The customer service provided by ShedPro is top notch, and their sheds are absolutley beautiful. They pay great attention to detail, and it really shows in their craftsmanship. Highly recommend!"},
+  {"src": "google", "name": "Scott M.", "label": "Google review", "stars": 5, "text": "Cristian and Alan finished our 4 x 12 lean-to shed in record time and with great results. The estimate process was speedy and clear. They communicated well during the build, handling some rescheduling due to weather with ease. Once at work they were very respectful of our house and our neighbors (We share a driveway). I was really impressed by the prefab process they’ve developed - it made fitment in the field minimal making the whole build easily completed in a day. The finished quality exceeded our expectations and Cristian guaranteed to correct any issues we found in the future. All that plus a great price. Recommend!"},
+  {"src": "facebook", "name": "Lupita R.", "label": "Facebook recommendation", "stars": null, "text": "Christian was such a great person !! I had a great experience with shed pro! I would recommend it to everyone looking to buy, fast and easy. I’m really happy with the outcome of my shed that they built! Great company to buy from 🙏🏼"},
+  {"src": "facebook", "name": "Michael J.", "label": "Facebook recommendation", "stars": null, "text": "Highly recommend! They came early and finished in a day! Quality work."},
+  {"src": "facebook", "name": "Dennis R.", "label": "Facebook recommendation", "stars": null, "text": "i've had 3 sheds built prior by 3 other companies, Shed pro is only company i will call.for next shed. Most patience I've ever had with contractor, started building as i left for work, color matched house and had done and cleaned 2 hours before i was able to come home."},
+  {"src": "facebook", "name": "Ron W.", "label": "Facebook recommendation", "stars": null, "text": "the shed pro crew was professional and hard working. the shed turned out to be more than we hoped built with the highest quality. they are very skilled at what they do. highly recommend"}
 ];
 /* The real totals the home page shows (rating pills + #reviews header). */
-var TOTALS = { google:{rating:'5.0', count:22}, facebook:{rec:'100%', count:21} };
+var TOTALS = { google:{rating:'5.0', count:25}, facebook:{rec:'100%', count:21} };
 var ALL_REVIEWS_URL = '/#reviews';
 var GOOGLE_URL = 'https://search.google.com/local/reviews?placeid=ChIJwwlFnLcoHgERAfeFtnSUYNc';
 DT.REVIEWS = REVIEWS; DT.TOTALS = TOTALS;
@@ -65,6 +72,7 @@ var idx=0, timer=null, host=null, expanded=false;
 function slideHTML(r){
   return '<span class="dt-src">'+mark(r)+rating(r)+'</span>'+
     '<span class="dt-q">\u201C'+esc(r.text.replace(/\s*\n\s*/g,' '))+'\u201D</span>'+
+    (r.note ? '<span class="dt-tr">'+esc(r.note)+'</span>' : '')+
     '<span class="dt-who">'+esc(r.name)+' \u00B7 '+esc(r.label)+'</span>';
 }
 function cardHTML(){
@@ -76,7 +84,7 @@ function cardHTML(){
       '<span class="dt-tg">'+FMARK+'<b>'+TOTALS.facebook.rec+'</b><span>recommend \u00B7 '+TOTALS.facebook.count+' Facebook reviews</span></span></div>'+
     picks.map(function(r){
       return '<figure class="dt-rv"><div class="dt-src">'+mark(r)+rating(r)+'</div>'+
-        '<blockquote>'+esc(r.text)+'</blockquote><figcaption>'+esc(r.name)+' \u00B7 '+esc(r.label)+'</figcaption></figure>';
+        '<blockquote>'+esc(r.text)+'</blockquote>'+(r.note ? '<span class="dt-tr">'+esc(r.note)+'</span>' : '')+'<figcaption>'+esc(r.name)+' \u00B7 '+esc(r.label)+'</figcaption></figure>';
     }).join('')+
     '<div class="dt-links"><a href="'+ALL_REVIEWS_URL+'" target="_blank" rel="noopener">See all reviews</a>'+
       '<a href="'+GOOGLE_URL+'" target="_blank" rel="noopener">Read all '+TOTALS.google.count+' on Google</a></div>';
@@ -197,7 +205,7 @@ var CSS=''+
 '.dt-stars{display:inline-flex;gap:1px}.dt-stars svg{width:11px;height:11px;fill:#FBBC04}'+
 '.dt-rec{font-size:10.5px;font-weight:700;color:#8fb7ff;letter-spacing:.02em}'+
 '.dt-q{font-size:12px;line-height:1.35;color:#e9edf1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}'+
-'.dt-who{font-size:10.5px;color:#9aa4ae;font-weight:600}'+
+'.dt-who{font-size:10.5px;color:#9aa4ae;font-weight:600}.dt-tr{display:block;font-size:10.5px;font-style:italic;color:#9aa4ae;margin-top:1px}'+
 '.dt-x{position:absolute;top:4px;right:4px;width:24px;height:24px;border:0;border-radius:50%;background:transparent;color:#9aa4ae;font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}'+
 '.dt-x:hover{color:#fff;background:rgba(255,255,255,.08)}'+
 '.dt-card{position:relative;width:320px;max-width:calc(100vw - 28px);max-height:var(--dt-maxh,420px);overflow-y:auto;background:rgba(20,22,26,.97);color:#fff;border:1px solid rgba(43,181,232,.35);border-radius:14px;padding:12px 14px;box-shadow:0 12px 32px rgba(0,0,0,.5)}'+
