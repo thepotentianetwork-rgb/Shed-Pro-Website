@@ -1,18 +1,16 @@
-/* designer-trust.js — credibility + promo inside the 3D designer.
-   1. A small floating review bubble over the 3D view (bottom-left on desktop,
-      a compact pill above the "Drag to rotate" hint on phones). It rotates
-      through the REAL reviews shown on the home page (#reviews in index.html),
-      copied verbatim with the names exactly as the home page shows them.
-      tests/ui/trust.test.mjs fails if any of them drifts from index.html, so
-      if you edit the home page reviews, paste the same change here.
-      Tap to expand into a card with 3 full reviews; x dismisses it for the
-      session. It steps aside whenever another overlay needs that corner (the
-      resume card, the consult nudge, the wall picker, edit mode, a dialog).
-   2. The "$500 off when you buy a shed" promo from the home page (same wording).
-      The banner itself is display only; the discount is in the price now
-      (Oct 2026): the worker lists the pad at $3,500 with a $500 promo, and the
-      Foundation step's pad tile shows the list price struck through and the
-      promo by name.
+/* designer-trust.js — credibility inside the 3D designer.
+   A small floating review bubble over the 3D view (bottom-left on desktop,
+   a compact pill above the "Drag to rotate" hint on phones). It rotates
+   through the REAL reviews shown on the home page (#reviews in index.html),
+   copied verbatim with the names exactly as the home page shows them.
+   tests/ui/trust.test.mjs fails if any of them drifts from index.html, so
+   if you edit the home page reviews, paste the same change here.
+   Tap to expand into a card with 3 full reviews; x dismisses it for the
+   session. It steps aside whenever another overlay needs that corner (the
+   resume card, the consult nudge, the wall picker, edit mode, a dialog).
+   Promo banners were removed (Nov 2026). DT.promoHTML is kept as a no-op so
+   the quote form hook in designer.html still runs. Pad prices still come from
+   the pricing worker.
    If this file fails to load, the designer works exactly as before. */
 (function(){
 'use strict';
@@ -42,14 +40,11 @@ var ALL_REVIEWS_URL = '/#reviews';
 var GOOGLE_URL = 'https://search.google.com/local/reviews?placeid=ChIJwwlFnLcoHgERAfeFtnSUYNc';
 DT.REVIEWS = REVIEWS; DT.TOTALS = TOTALS;
 
-/* ── 2. PROMO (mirrors index.html PROMO block) ── */
-var PROMO = {
-  main: '$500 off when you buy a shed.',
-  fine: 'Select sizes only. Ask your rep for details.'
-};
+/* Promo banners removed (Nov 2026). Stubs stay so designer.html can still call DT.promoHTML. */
+var PROMO = { main: '', fine: '' };
 DT.PROMO = PROMO;
-DT.now = function(){ return new Date(); };            // tests may override this
-DT.promoActive = function(){ return true; };
+DT.now = function(){ return new Date(); };
+DT.promoActive = function(){ return false; };
 
 function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function ss(k,v){ try{ if(v===undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k,v); }catch(e){ return null; } }
@@ -165,12 +160,7 @@ function mountBubble(){
 }
 
 /* ── promo placements ── */
-DT.promoHTML = function(where){
-  if(!DT.promoActive()) return '';
-  return '<div class="dt-promo" data-where="'+esc(where||'')+'">'+
-    '<span class="dt-promo-main"><strong>$500 off</strong> when you buy a shed.</span>'+
-    '<span class="dt-promo-fine">'+esc(PROMO.fine)+'</span></div>';
-};
+DT.promoHTML = function(where){ return ''; };
 function mountFoundationPromo(){
   var list=document.getElementById('foundationList'); if(!list || document.getElementById('dtPromoFoundation')) return;
   var h=DT.promoHTML('foundation'); if(!h) return;
@@ -228,13 +218,7 @@ var CSS=''+
   '.dt-x.dt-dismiss{top:1px;right:1px}'+
   '.dt-bub.dt-open{bottom:8px;right:8px;max-width:none}.dt-card{width:auto;max-width:none}'+
 '}'+
-'@media (prefers-reduced-motion:reduce){.dt-bub,.dt-slide{transition:none}}'+
-/* promo */
-'.dt-promo{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:0 0 10px;padding:9px 11px;border-radius:10px;background:linear-gradient(100deg,rgba(43,181,232,.14),rgba(43,181,232,.03) 70%);border:1px solid rgba(43,181,232,.28)}'+
-'.dt-promo-tag{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#06222e;background:#2BB5E8;padding:3px 7px;border-radius:999px;line-height:1}'+
-'.dt-promo-main{font-size:12.5px;color:#fff}.dt-promo-main strong{font-weight:800}'+
-'.dt-promo-fine{flex-basis:100%;font-size:11px;color:#9aa4ae;line-height:1.35}'+
-'.du-rv-note + .dt-promo,.du-rv + .dt-promo{margin-top:10px}';
+'@media (prefers-reduced-motion:reduce){.dt-bub,.dt-slide{transition:none}}';
 
 function maxH(){
   if(!host) return;

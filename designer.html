@@ -2365,11 +2365,11 @@ function foundationBasePrice(kind){
   var fp = quoteCache.optionPrices && quoteCache.optionPrices.foundation;
   return (fp && fp[kind]!=null) ? fp[kind] : 0;
 }
-/* The concrete pad tile. foundation.pad is what the customer PAYS; when the
-   server also sends a list price and a promo (the $500-off promo), the list
-   price is struck through beside it and the promo named, so the saving is
-   visible on the tile and not only in a banner. An older worker sends pad
-   alone and the tile reads exactly as before. */
+/* The concrete pad tile. foundation.pad is what the customer PAYS. Promo
+   banners and the strikethrough / promo pill were removed (Nov 2026).
+   padPromoParts is kept so a worker that still sends padList/padPromo does
+   not break anything; the tile no longer advertises that discount. The pay
+   amount still comes from the worker (foundation.pad) and is not changed here. */
 function padPromoParts(){
   var fp = quoteCache.optionPrices && quoteCache.optionPrices.foundation;
   if(!fp || !(fp.padPromo>0) || !(fp.padList>fp.pad)) return null;
@@ -2379,15 +2379,7 @@ function padPromoParts(){
    on conditions of the site" — both read as estimates wherever they are priced. */
 var SITE_ESTIMATE_NOTE='Estimate. Final price may vary based on site conditions.';
 function padPriceHTML(pr){
-  var base=pr(foundationBasePrice('pad'));
-  var pp=padPromoParts();
-  if(!pp) return base;
-  /* With prices hidden (the customer default) the tile still says the promo
-     is applied — the $500 is advertised on the home page anyway — but shows
-     no list or pay figure, same as every other tile. */
-  var pill='<div class="pad-promo" style="margin-top:3px;font-size:10px;font-weight:800;letter-spacing:.04em;color:#06222e;background:#2BB5E8;border-radius:999px;padding:2px 7px;display:inline-block">$'+Math.round(pp.promo).toLocaleString()+' promo'+(PRICE_LOCKED?' applied':'')+'</div>';
-  if(PRICE_LOCKED) return pill;
-  return '<span class="pad-was" style="text-decoration:line-through;opacity:.55;font-weight:600;margin-right:5px">$'+Math.round(pp.list).toLocaleString()+'</span>'+base+pill;
+  return pr(foundationBasePrice('pad'));
 }
 /* The pad is drawn from the ENCLOSURE, not the full footprint — buildFoundation
    sizes it w+0.10 x l+0.10 off encWft/encLft — so the area that gets broomed is
