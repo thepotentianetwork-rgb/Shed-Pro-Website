@@ -57,14 +57,14 @@ test('they run smallest to largest, so the strip reads as a ladder', () => {
   assert.deepEqual(area, sorted, `${area.join(', ')}`);
 });
 
-test('the permit line is marked, and marked correctly', () => {
-  // The box under the sliders already warns at 200 sqft. A tile that disagreed
-  // with it would be worse than a tile that said nothing.
+test('popular sizes stay at or under the permit line', () => {
+  // The box under the sliders warns at 200 sqft. We do not suggest sizes
+  // over that; the sliders still allow a larger shed.
   assert.equal(c.PERMIT_SQFT, 200);
-  const under = c.POPULAR_SIZES.filter(s => s.w * s.l <= c.PERMIT_SQFT);
   const over = c.POPULAR_SIZES.filter(s => s.w * s.l > c.PERMIT_SQFT);
-  assert.ok(under.length, 'some presets stay under the line');
-  assert.ok(over.length, 'and some do not — the mark means something');
+  assert.equal(over.length, 0, over.map(s => s.w + 'x' + s.l).join(', ') + ' is over the line');
+  assert.ok(c.POPULAR_SIZES.every(s => s.w * s.l <= c.PERMIT_SQFT));
+  assert.ok(c.POPULAR_SIZES.length > 0);
 });
 
 test('picking one sets the size, and counts as the customer choosing it', () => {

@@ -16843,19 +16843,17 @@ function currentSchemeKey(){
    one on the tile, so the list is checked against the sliders by a test
    rather than by eye.
 
-   PERMIT_SQFT is the line the box below the sliders already warns about. The
-   tiles mark it too, because the point of a preset is to decide before you
-   have started, and "this one needs a permit" is most of that decision. */
+   PERMIT_SQFT is the line the box below the sliders already warns about.
+   Popular tiles stay at or under it so we do not suggest a size that may
+   need a permit; the sliders still go larger. A tile added over the line
+   is marked so it cannot disagree with the box. */
 var PERMIT_SQFT = 200;
 var POPULAR_SIZES = [
   {w:8,  l:10},   // the small one: mower, bikes, bins
   {w:8,  l:12},
   {w:10, l:12},   // the default shell
   {w:10, l:16},
-  {w:12, l:16},   // 192 sqft - the biggest that stays under the permit line
-  {w:12, l:20},
-  {w:12, l:24},
-  {w:16, l:24}    // workshop / two-bay
+  {w:12, l:16}    // 192 sqft - the biggest that stays under the permit line
 ];
 function currentSizeKey(){
   for(var i=0;i<POPULAR_SIZES.length;i++){
