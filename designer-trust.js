@@ -8,11 +8,11 @@
       Tap to expand into a card with 3 full reviews; x dismisses it for the
       session. It steps aside whenever another overlay needs that corner (the
       resume card, the consult nudge, the wall picker, edit mode, a dialog).
-   2. The "$500 off a concrete pad" promo from the home page (same wording,
-      same end date, same auto-hide on Nov 4, 2026). The banner itself is
-      display only; the discount is in the price now (Oct 2026): the worker
-      lists the pad at $3,500 with a $500 promo, and the Foundation step's pad
-      tile shows the list price struck through and the promo by name.
+   2. The "$500 off when you buy a shed" promo from the home page (same wording).
+      The banner itself is display only; the discount is in the price now
+      (Oct 2026): the worker lists the pad at $3,500 with a $500 promo, and the
+      Foundation step's pad tile shows the list price struck through and the
+      promo by name.
    If this file fails to load, the designer works exactly as before. */
 (function(){
 'use strict';
@@ -42,15 +42,14 @@ var ALL_REVIEWS_URL = '/#reviews';
 var GOOGLE_URL = 'https://search.google.com/local/reviews?placeid=ChIJwwlFnLcoHgERAfeFtnSUYNc';
 DT.REVIEWS = REVIEWS; DT.TOTALS = TOTALS;
 
-/* ── 2. PROMO (mirrors index.html PROMO block; remove after Nov 3, 2026) ── */
+/* ── 2. PROMO (mirrors index.html PROMO block) ── */
 var PROMO = {
-  ends: '2026-11-04T00:00:00',          // hides from Nov 4, 2026 (local), like the home page
-  main: '$500 off a concrete pad when you buy a shed.',
-  fine: 'Valid through Nov 3, 2026 while weather allows. Select sizes only. Ask your rep for details.'
+  main: '$500 off when you buy a shed.',
+  fine: 'Select sizes only. Ask your rep for details.'
 };
 DT.PROMO = PROMO;
-DT.now = function(){ return new Date(); };            // tests override this
-DT.promoActive = function(){ return DT.now() < new Date(PROMO.ends); };
+DT.now = function(){ return new Date(); };            // tests may override this
+DT.promoActive = function(){ return true; };
 
 function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function ss(k,v){ try{ if(v===undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k,v); }catch(e){ return null; } }
@@ -168,9 +167,8 @@ function mountBubble(){
 /* ── promo placements ── */
 DT.promoHTML = function(where){
   if(!DT.promoActive()) return '';
-  return '<div class="dt-promo" data-promo-ends="2026-11-04" data-where="'+esc(where||'')+'">'+
-    '<span class="dt-promo-tag">Limited-time offer</span>'+
-    '<span class="dt-promo-main"><strong>$500 off a concrete pad</strong> when you buy a shed.</span>'+
+  return '<div class="dt-promo" data-where="'+esc(where||'')+'">'+
+    '<span class="dt-promo-main"><strong>$500 off</strong> when you buy a shed.</span>'+
     '<span class="dt-promo-fine">'+esc(PROMO.fine)+'</span></div>';
 };
 function mountFoundationPromo(){

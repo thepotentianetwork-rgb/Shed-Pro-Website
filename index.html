@@ -123,7 +123,7 @@ button{font:inherit;color:inherit}
 .hero-trust li{display:flex;align-items:center;gap:8px}
 .hero-trust svg{width:16px;height:16px;color:var(--blue)}
 
-/* promo — remove with the PROMO block after Nov 3, 2026 */
+/* promo */
 .promo{background:var(--dark);padding:28px 0 0}
 .promo-inner{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;padding:16px 22px;border-radius:var(--r);background:linear-gradient(100deg,rgba(43,181,232,.14),rgba(43,181,232,.03) 70%),var(--dark2);border:1px solid rgba(43,181,232,.28)}
 .promo-tag{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-ink);background:var(--blue);padding:5px 10px;border-radius:var(--pill);line-height:1}
@@ -603,16 +603,12 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
   </div>
 </section>
 
-<!-- ═══ PROMO START — "$500 off a concrete pad" — ENDS NOV 3, 2026 ═══
-     Delete everything from PROMO START to PROMO END after Nov 3, 2026, plus the one
-     promo line in the top-bar messages (search "PROMO"). Until then it also hides
-     itself automatically from Nov 4, 2026 via data-promo-ends. -->
-<section class="promo" id="promo" data-promo-ends="2026-11-04" aria-label="Limited-time offer">
+<!-- ═══ PROMO — "$500 off when you buy a shed" ═══ -->
+<section class="promo" id="promo" aria-label="$500 off">
   <div class="wrap">
     <div class="promo-inner">
-      <span class="promo-tag">Limited-time offer</span>
-      <p class="promo-main"><strong>$500 off a concrete pad</strong> when you buy a shed.</p>
-      <p class="promo-fine">Valid through Nov 3, 2026 while weather allows. Select sizes only. Ask your rep for details.</p>
+      <p class="promo-main"><strong>$500 off</strong> when you buy a shed.</p>
+      <p class="promo-fine">Select sizes only. Ask your rep for details.</p>
       <a class="link" href="/contact" data-cta="promo">Claim it with your free quote<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
     </div>
   </div>
@@ -1041,15 +1037,10 @@ footer{background:#070809;border-top:1px solid var(--border);padding:64px 0 32px
   var msgs=[
     "Free quote within 24 hours \u2014 a ShedPro rep calls you",
     "Design your shed in 3D with ShedPro Studio",
-    "$500 off a concrete pad through Nov 3 \u2014 select sizes", /* PROMO — remove this line after Nov 3, 2026 */
+    "$500 off when you buy a shed \u2014 select sizes",
     "3-Year Workmanship, 50-Year Siding & 30-Year Shingle Warranty",
     "Free in-home design consultations \u2014 call or text 435-277-0764"
   ];
-  /* PROMO auto-expiry (Nov 4, 2026): drop the promo message and any [data-promo-ends] block */
-  if(new Date()>=new Date('2026-11-04T00:00:00')){
-    msgs=msgs.filter(function(m){return m.indexOf('$500 off')===-1});
-    document.querySelectorAll('[data-promo-ends]').forEach(function(el){el.remove()});
-  }
   var el=document.getElementById('shTopbarMsg');
   if(el&&!reduce){var i=0;setInterval(function(){i=(i+1)%msgs.length;el.style.opacity='0';setTimeout(function(){el.textContent=msgs[i];el.style.opacity='1'},300)},4500);}
 })();

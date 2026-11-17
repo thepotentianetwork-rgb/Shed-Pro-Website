@@ -187,15 +187,10 @@
   var msgs=[
     "Free quote within 24 hours \u2014 a ShedPro rep calls you",
     "Design your shed in 3D with ShedPro Studio",
-    "$500 off a concrete pad through Nov 3 \u2014 select sizes", /* PROMO — remove this line after Nov 3, 2026 */
+    "$500 off when you buy a shed \u2014 select sizes",
     "3-Year Workmanship, 50-Year Siding & 30-Year Shingle Warranty",
     "Free in-home design consultations \u2014 call or text 435-277-0764"
   ];
-  /* PROMO auto-expiry (Nov 4, 2026): drop the promo message and any [data-promo-ends] block */
-  if(new Date()>=new Date('2026-11-04T00:00:00')){
-    msgs=msgs.filter(function(m){return m.indexOf('$500 off')===-1});
-    document.querySelectorAll('[data-promo-ends]').forEach(function(el){el.remove()});
-  }
   var el=document.getElementById('shTopbarMsg');
   if(el&&!reduce){var i=0;setInterval(function(){i=(i+1)%msgs.length;el.style.opacity='0';setTimeout(function(){el.textContent=msgs[i];el.style.opacity='1'},300)},4500);}
 })();
