@@ -6,8 +6,9 @@
  * offered at all until the worker prices it, so an older worker can never be
  * asked to quote heads it would drop.
  *
- * Pad promo: optionPrices.foundation.pad is what the customer pays; padList
- * and padPromo, when sent, put the list price struck through beside it.
+ * Pad promo display was removed (Nov 2026). optionPrices.foundation.pad is
+ * still what the customer pays if the worker sends a discounted amount;
+ * the tile no longer shows a struck list price or a "$500 promo" pill.
  *
  * Run: node --test tests/ui/sprinkler-promo.test.mjs
  */
@@ -89,15 +90,15 @@ test('saved in the design only when there are heads, restored, and cleared by a 
   c.SPRINKLERS.length = 0;
 });
 
-test('the pad tile: list struck through, the promo named, what they pay', () => {
+test('the pad tile shows the pay price with no promo label, even if the worker sends padPromo', () => {
   c.FOUNDATION = 'pad';
   prices({ foundation: { pad: 3000, padList: 3500, padPromo: 500, blocks: 0, existing: 0, gravel: 1100 },
            foundationFinish: { plain: 0, broom: 1000, coated: 300 } });
   sinks.foundationList.innerHTML = '';
   c.renderFoundation();
   const h = sinks.foundationList.innerHTML;
-  assert.match(h, /class="pad-was"[^>]*>\$3,500<\/span>\+\$3,000/);
-  assert.match(h, /class="pad-promo"[^>]*>\$500 promo</);
+  assert.ok(!/pad-was|pad-promo|\$500 promo/.test(h));
+  assert.match(h, /\+\$3,000/);
 });
 
 test('an older worker (pad only) shows the tile exactly as before', () => {
@@ -114,8 +115,7 @@ test('locked pricing shows no numbers on the tile or the sprinkler row', () => {
   prices({ foundation: { pad: 3000, padList: 3500, padPromo: 500 }, sprinkler: SPR });
   c.renderFoundation();
   const h = sinks.foundationList.innerHTML;
-  assert.ok(!/\$3,500|\$3,000|pad-was/.test(h), 'no list or pay figure');
-  assert.match(h, /class="pad-promo"[^>]*>\$500 promo applied</, 'but the promo is still named');
+  assert.ok(!/\$3,500|\$3,000|pad-was|pad-promo|\$500 promo/.test(h), 'no list, pay figure, or promo pill');
   c.setSprinklerCount(1);
   assert.ok(!/\$300/.test(addons()));
   c.setSprinklerCount(0);
