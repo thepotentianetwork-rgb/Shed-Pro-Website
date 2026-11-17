@@ -3,11 +3,6 @@
   "trailingSlash": false,
   "redirects": [
     {
-      "source": "/chicken-coops",
-      "destination": "https://coops.shedpro-utah.com",
-      "permanent": true
-    },
-    {
       "source": "/offers",
       "destination": "/",
       "permanent": true
