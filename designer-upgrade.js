@@ -131,7 +131,7 @@ DU.specRows = function(){
   /* Siding, trim and door colour each get their own row, so a brand paint pick
      (paint-codes.js) reads in full: "Siding · Sherwin-Williams SW 7006 Extra White". */
   rows.push(['Siding', (SIDING_NAMES[S.SIDING]||S.SIDING)+(S.SIDING!=='pine' && S.sn ? ' · '+S.sn : ''), 'Siding & color']);
-  rows.push(['Trim', S.TRIM_FINISH==='cedar' ? 'Natural cedar' : S.TRIM_FINISH==='stain' ? S.trimStainEntry().name+' wood stain' : (S.tn||''), 'Siding & color']);
+  rows.push(['Trim', (typeof S.trimDisplayName==='function') ? S.trimDisplayName() : (S.TRIM_FINISH==='cedar' ? 'Cedar' : S.TRIM_FINISH==='stain' ? (S.TRIM_STAIN==='stained-cedar'?'Stained Cedar':S.trimStainEntry().name+' wood stain') : (S.tn||'')), 'Siding & color']);
   var pcNames=null;
   try{ if(S.PC && S.PC.decorateConfig) pcNames=S.PC.decorateConfig({}).colorNames; }catch(e){}
   if(pcNames && pcNames.door) rows.push(['Door color', pcNames.door, 'Siding & color']);

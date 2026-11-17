@@ -778,7 +778,7 @@ textarea.inp{resize:vertical}
         </div>
         <div class="grp" data-csec="t">
           <span class="lbl">Trim Color</span>
-          <div class="wstep-sub" style="margin:0 0 8px">Corner boards, roof-edge fascia, and the trim around doors &amp; windows.</div>
+          <div class="wstep-sub" style="margin:0 0 8px">Corner boards, roof-edge fascia, and the trim around doors, windows &amp; vents.</div>
           <div id="cg-t"></div>
         </div>
         <div class="grp" data-csec="d">
@@ -1350,7 +1350,10 @@ var SOFFIT_COLORS=[
 /* "Match Trim" on a cedar trim finish is a cedar soffit, not the hidden paint swatch. */
 function soffitCedar(){
   if(typeof SOFFIT==='undefined') return false;
-  return SOFFIT==='cedar' || (SOFFIT==='trim' && typeof TRIM_FINISH!=='undefined' && TRIM_FINISH==='cedar');
+  if(SOFFIT==='cedar') return true;
+  // "Match Trim" follows a wood trim finish (cedar, stained cedar, or a
+  // legacy wood stain) rather than the hidden paint swatch.
+  return SOFFIT==='trim' && typeof TRIM_FINISH!=='undefined' && TRIM_FINISH!=='paint';
 }
 function soffitHex(){
   if(SOFFIT==='white') return 0xF2F0EC;
@@ -1377,9 +1380,21 @@ var SOFFIT_GLOW=0.15;
 function soffitFinishMat(rx, ry){
   var m;
   if(soffitCedar()){
-    var t=makeCedar(); t.wrapS=t.wrapT=THREE.RepeatWrapping;
-    t.repeat.set(Math.max(1,Math.round(rx)), Math.max(1,Math.round(ry)));
-    m=new THREE.MeshStandardMaterial({map:t, emissiveMap:t,
+    // Soffit boards keep their T&G plank lines (makeCedar). Stained cedar
+    // and a legacy wood stain use the matching darker grain.
+    var tex;
+    if(typeof TRIM_FINISH!=='undefined' && SOFFIT==='trim' && TRIM_FINISH==='stain'
+       && typeof makeWoodTrimTex==='function' && TRIM_STAIN==='stained-cedar'){
+      tex=makeWoodTrimTex('stained-cedar');
+    } else if(typeof TRIM_FINISH!=='undefined' && SOFFIT==='trim' && TRIM_FINISH==='stain'
+              && typeof makeStainedTrim==='function'){
+      tex=makeStainedTrim();
+    } else {
+      tex=makeCedar();
+    }
+    tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+    tex.repeat.set(Math.max(1,Math.round(rx)), Math.max(1,Math.round(ry)));
+    m=new THREE.MeshStandardMaterial({map:tex, emissiveMap:tex,
       emissive:0xffffff, emissiveIntensity:0.5, roughness:0.85, metalness:0.0});
   } else {
     m=new THREE.MeshStandardMaterial({color:soffitHex(), emissive:soffitHex(),
@@ -5564,9 +5579,23 @@ var TRIM_FINISH='paint';        // 'paint' | 'cedar' | 'stain'
 /* WOOD-STAIN TRIM reuses the siding's wood stains (PINE_STAINS: Honey /
    Golden Cedar / Walnut) — same names, swatches and multiply strength. */
 var TRIM_STAIN='golden';
+/* Stained Cedar is a trim-palette option, not one of the pine-siding stains
+   in PINE_STAINS, so it lives beside that list rather than on it. */
+var STAINED_CEDAR_TRIM={k:'stained-cedar', name:'Stained Cedar', css:'#5C3A22', op:0.9};
+function isStainedCedarTrim(){
+  return TRIM_FINISH==='stain' && TRIM_STAIN==='stained-cedar';
+}
 function trimStainEntry(){
+  if(TRIM_STAIN==='stained-cedar') return STAINED_CEDAR_TRIM;
   for(var i=0;i<PINE_STAINS.length;i++) if(PINE_STAINS[i].k===TRIM_STAIN) return PINE_STAINS[i];
   return PINE_STAINS[1];
+}
+/* Quote, CRM, estimate and the swatch label all read this one name. */
+function trimDisplayName(){
+  if(TRIM_FINISH==='cedar') return 'Cedar';
+  if(isStainedCedarTrim()) return 'Stained Cedar';
+  if(TRIM_FINISH==='stain' && typeof trimStainEntry==='function') return trimStainEntry().name+' wood stain';
+  return (typeof tn!=='undefined' && tn) ? String(tn) : '';
 }
 function makeStainedTrim(){
   var st=trimStainEntry(), key='trimStain:'+st.k, cv=_canvasCache[key];
@@ -5962,25 +5991,132 @@ function applyHexInterior(val){
   if(!/^[0-9a-fA-F]{6}$/.test(v)) return;
   setInteriorColor(parseInt(v,16), '#'+v.toUpperCase());
 }
+/* TRIM WOOD TEXTURE — grain only, no plank seams, no groove, no normal or
+   bump map. makeCedar() draws T&G seams for soffit boards; those must not
+   appear on corner boards, fascia, or window/door/vent casing. Cedar is the
+   same warm honey as the soffit cedar; Stained Cedar is the same grain,
+   visibly darker. Deterministic so the palette swatch matches the 3D boards. */
+function _woodTrimRand(seed){
+  var a=seed|0;
+  return function(){
+    a=a+0x6D2B79F5|0;
+    var t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function makeWoodTrimTex(kind){
+  var key='woodTrim:'+kind;
+  if(_canvasCache[key]) return texFromCanvas(_canvasCache[key], true);
+  var S=256, cv=document.createElement('canvas'); cv.width=cv.height=S;
+  var g=cv.getContext('2d');
+  var rnd=_woodTrimRand(kind==='stained-cedar'?0x5A1DCE:0xCEDA01);
+  var base=kind==='stained-cedar' ? [92,58,34] : [199,154,95];
+  g.fillStyle='rgb('+base[0]+','+base[1]+','+base[2]+')';
+  g.fillRect(0,0,S,S);
+  var i,x,y,h,t;
+  for(i=0;i<22;i++){
+    y=rnd()*S; h=16+rnd()*48; t=0.86+rnd()*0.28;
+    g.fillStyle='rgba('+(base[0]*t|0)+','+(base[1]*t|0)+','+(base[2]*t|0)+','+(0.16+rnd()*0.28)+')';
+    g.fillRect(0,y,S,h);
+  }
+  var dark=kind==='stained-cedar' ? 'rgba(28,14,6,' : 'rgba(92,56,24,';
+  var lite=kind==='stained-cedar' ? 'rgba(160,110,70,' : 'rgba(232,200,150,';
+  for(i=0;i<110;i++){
+    y=rnd()*S;
+    g.strokeStyle=dark+(0.07+rnd()*0.16)+')';
+    g.lineWidth=0.45+rnd()*1.35;
+    g.beginPath(); g.moveTo(0,y);
+    for(x=0;x<=S;x+=20) g.lineTo(x, y+Math.sin((x+i*17)/34)*1.6+(rnd()-0.5)*0.7);
+    g.stroke();
+  }
+  for(i=0;i<40;i++){
+    y=rnd()*S;
+    g.strokeStyle=lite+(0.05+rnd()*0.10)+')';
+    g.lineWidth=0.4+rnd()*0.9;
+    g.beginPath(); g.moveTo(0,y);
+    for(x=0;x<=S;x+=28) g.lineTo(x, y+Math.sin((x+i*11)/40)*1.2);
+    g.stroke();
+  }
+  _canvasCache[key]=cv;
+  return texFromCanvas(cv, true);
+}
+function woodTrimSwatchUrl(kind){
+  var tex=makeWoodTrimTex(kind);
+  var cv=_canvasCache['woodTrim:'+kind];
+  return cv ? cv.toDataURL('image/png') : '';
+}
 function paintMat(color, emi){
+  if(TRIM_FINISH==='cedar' || isStainedCedarTrim()){
+    var ct=makeWoodTrimTex(isStainedCedarTrim()?'stained-cedar':'cedar');
+    ct.wrapS=ct.wrapT=THREE.RepeatWrapping; ct.repeat.set(3,1);
+    // Grain only — never a bump or normal map, so trim cannot pick up the
+    // siding's LP panel grooves.
+    var wm=new THREE.MeshStandardMaterial({ map:ct, roughness:0.8, metalness:0.0,
+      bumpMap:null, normalMap:null });
+    wm.userData.woodTrim=true;
+    return wm;
+  }
   if(TRIM_FINISH==='stain'){
     var stt=makeStainedTrim();
     stt.wrapS=stt.wrapT=THREE.RepeatWrapping; stt.repeat.set(3,1);
-    return new THREE.MeshStandardMaterial({ map:stt, roughness:0.7, metalness:0.0 });
-  }
-  if(TRIM_FINISH==='cedar'){
-    var ct=makeCedar();
-    ct.wrapS=ct.wrapT=THREE.RepeatWrapping;
-    ct.repeat.set(3,1);
-    return new THREE.MeshStandardMaterial({ map:ct, roughness:0.8, metalness:0.0 });
+    var sm=new THREE.MeshStandardMaterial({ map:stt, roughness:0.7, metalness:0.0,
+      bumpMap:null, normalMap:null });
+    sm.userData.woodTrim=true;
+    return sm;
   }
   return new THREE.MeshStandardMaterial({
     color:color, roughness:0.55, metalness:0.0,
     emissive:color, emissiveIntensity:(emi==null?0.06:emi)
   });
 }
+/* Grain on the texture runs along U. BoxGeometry maps U across width and
+   V up the height, so a tall casing board would show the grain going
+   SIDEWAYS with three short repeats — it looked like a panel or a
+   herringbone, not a solid board. Rotate the UVs on any face whose V
+   edge is the long one, so the grain follows the board. */
+function alignWoodGrain(geo){
+  if(!geo || !geo.parameters || !geo.attributes || !geo.attributes.uv) return geo;
+  if(geo.userData && geo.userData.grainAligned) return geo;
+  var p=geo.parameters;
+  if(p.width==null || p.height==null || p.depth==null) return geo;
+  var uv=geo.attributes.uv, arr=uv.array;
+  if(arr.length<48) return geo;          // 6 faces x 4 verts x 2
+  // BoxGeometry face order: +x, -x, +y, -y, +z, -z. U then V on each face:
+  var faceUV=[[p.depth,p.height],[p.depth,p.height],[p.width,p.depth],[p.width,p.depth],[p.width,p.height],[p.width,p.height]];
+  for(var f=0;f<6;f++){
+    var uLen=faceUV[f][0], vLen=faceUV[f][1];
+    if(!(vLen>uLen*1.1)) continue;
+    for(var i=0;i<4;i++){
+      var idx=(f*4+i)*2, u=arr[idx], v=arr[idx+1];
+      arr[idx]=v; arr[idx+1]=1-u;
+    }
+  }
+  uv.needsUpdate=true;
+  if(!geo.userData) geo.userData={};
+  geo.userData.grainAligned=true;
+  return geo;
+}
+function alignAllWoodTrim(root){
+  if(!root) return;
+  root.traverse(function(o){
+    if(!o.isMesh || !o.geometry) return;
+    var mats=Array.isArray(o.material)?o.material:[o.material];
+    var wood=mats.some(function(m){ return m && m.userData && m.userData.woodTrim; });
+    if(wood) alignWoodGrain(o.geometry);
+  });
+}
 function setTrimFinish(f){
+
   TRIM_FINISH=f;
+  if(f==='cedar') tn='Cedar';
+  if(f==='stain' && isStainedCedarTrim()) tn='Stained Cedar';
+  if(typeof renderWallColors==='function') renderWallColors();
+  buildShed();
+}
+function setTrimWood(kind){
+  if(kind==='cedar'){ TRIM_FINISH='cedar'; tn='Cedar'; }
+  else { TRIM_FINISH='stain'; TRIM_STAIN='stained-cedar'; tn='Stained Cedar'; }
   if(typeof renderWallColors==='function') renderWallColors();
   buildShed();
 }
@@ -7663,6 +7799,7 @@ function buildShed(){
   buildFloor();
   if(typeof positionGroundLogos==='function') positionGroundLogos();
   buildWallPickers();
+  if(typeof alignAllWoodTrim==='function') alignAllWoodTrim(shedGroup);
 
   // The shed sits flush on the grass — no concrete pad.
 
@@ -9653,7 +9790,8 @@ function buildDoor(){
       if(doorTex.bumpMap) doorTex.bumpMap.repeat.set(dRepX,dRepY);
     }
     var doorMat=sidingMat(doorSc, doorTex);   // same satin finish as the walls
-    var doorDk=new THREE.MeshStandardMaterial({color:tc,roughness:0.6,metalness:0.0,emissive:tc,emissiveIntensity:0.05});
+    var doorDk=(typeof paintMat==='function') ? paintMat(tc,0.1)
+      : new THREE.MeshStandardMaterial({color:tc,roughness:0.6,metalness:0.0,emissive:tc,emissiveIntensity:0.05});
     var trimMat=paintMat(tc,0.1);
     // Door glass — SAME technique AND the same tint/opacity as the windows, so a
     // glazed door reads identically to a window in the same scene. It used to be
@@ -11784,8 +11922,13 @@ function buildWindows(){
       depthWrite:false
     });
   }
-  // Built per window inside the loop now — see winFrameMat below.
-  var trimMat2=new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
+  // Casing follows the shed trim — including Cedar / Stained Cedar — via
+  // paintMat. It used to be a flat MeshStandardMaterial({color:tc}), so a
+  // wood trim finish never reached the window boards, and even a painted
+  // colour missed paintMat's sheen. The sash/frame itself stays vinyl or
+  // aluminum unless the catalog entry has no colour of its own.
+  var trimMat2=(typeof paintMat==='function') ? paintMat(tc,0.1)
+    : new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
 
   /* Shutters and flower boxes belong on a WINDOW. A transom is a narrow accent
      light and a vent is a louvre — hanging shutters off either looks wrong, and
@@ -11806,8 +11949,17 @@ function buildWindows(){
   }
   windowsData.forEach(function(wd, idx){
     var dressable=isDressableWindow(wd);
-    var frameMat=new THREE.MeshStandardMaterial({
-      color:windowFrameHex(wd), roughness:0.5, metalness:0.3 });
+    var frameMat=(function(){
+      var hx=windowFrameHex(wd);
+      var hay=(function(){
+        var t=String(wd.type||''), cat=WINDOW_CATALOG, grp='', ci;
+        for(ci=0; ci<cat.length; ci++){ if(cat[ci].key===t){ grp=String(cat[ci].grp||''); break; } }
+        return (grp+' '+t).toLowerCase();
+      })();
+      var named=/white|black|brown|almond/.test(hay);
+      if(!named && typeof paintMat==='function') return paintMat(tc,0.1);
+      return new THREE.MeshStandardMaterial({color:hx, roughness:0.5, metalness:0.3});
+    })();
     if(!windowWallIsCut(wd.wall)) return;
     var winW=wd.w*0.2/12, winH=wd.h*0.2/12;
     if(wd.cy==null) wd.cy=52;
@@ -12617,9 +12769,10 @@ function buildVents(){
   if(ventsData.length===0) return;
   if(!styleHasGableEnds()) return;      // never build a vent with no gable under it
   var vW=VENT_W, vH=VENT_H;           // 16" wide x 8" tall
-  var frameMat=new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
+  var frameMat=(typeof paintMat==='function') ? paintMat(tc,0.1)
+    : new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
   // VENT COLOR — the louvre itself is black or white (user choice); the casing
-  // around it stays trim colour like every window.
+  // around it stays trim colour like every window, including a wood finish.
   var _vw=(VENT_COLOR==='white');
   var slatMat=new THREE.MeshStandardMaterial({color:_vw?0xd9d9d6:0x1f1f1f, roughness:0.7, metalness:0.1});
   var louvMat=new THREE.MeshStandardMaterial({color:_vw?0xf5f5f2:0x333333, roughness:0.6, metalness:0.1});
@@ -16968,42 +17121,49 @@ function renderWallColors(){
     : _swatchStrip(WALL_COLORS, sc, 's', (typeof sn!=='undefined'?sn:''));
   var ht=document.getElementById('cg-t');
   if(ht){
-    var cedar=(TRIM_FINISH==='cedar'||TRIM_FINISH==='stain'), stained=(TRIM_FINISH==='stain');
-    // Cedar sits alongside the paint swatches — it's a trim FINISH, so picking
-    // it overrides the colour rather than being another colour.
-    var strip=cedar
-      ? '<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-radius:10px;'+
-        'background:var(--d3);border:1px solid var(--br);opacity:.45;pointer-events:none">'+
-        WALL_COLORS.map(function(c){
-          return '<div style="width:30px;height:30px;border-radius:7px;background:#'+
-            c.hex.toString(16).padStart(6,'0')+';border:2px solid rgba(255,255,255,.18)"></div>';
-        }).join('')+'</div>'
-      : _swatchStrip(WALL_COLORS, tc, 't', (typeof tn!=='undefined'?tn:''));
-    ht.innerHTML = strip +
-      '<div style="display:flex;gap:8px;margin-top:8px">'+
-        '<div onclick="setTrimFinish(\'paint\')" style="flex:1;cursor:pointer;text-align:center;'+
-        'padding:9px;border-radius:8px;font-size:12px;font-weight:700;background:'+
-        (cedar?'var(--d3)':'rgba(43,181,232,.14)')+';border:1px solid '+
-        (cedar?'var(--br)':'#2BB5E8')+';color:var(--w)">Painted</div>'+
-        '<div onclick="setTrimFinish(\'cedar\')" style="flex:1;cursor:pointer;text-align:center;'+
-        'padding:9px;border-radius:8px;font-size:12px;font-weight:700;background:'+
-        ((cedar&&!stained)?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+
-        ((cedar&&!stained)?'#2BB5E8':'var(--br)')+';color:var(--w)">Cedar</div>'+
-        '<div onclick="setTrimStain(TRIM_STAIN)" style="flex:1;cursor:pointer;text-align:center;'+
-        'padding:9px;border-radius:8px;font-size:12px;font-weight:700;background:'+
-        (stained?'rgba(43,181,232,.14)':'var(--d3)')+';border:1px solid '+
-        (stained?'#2BB5E8':'var(--br)')+';color:var(--w)">Wood stain</div>'+
-      '</div>' +
-      (stained ? '<div style="display:flex;gap:8px;margin-top:8px">'+PINE_STAINS.map(function(c){
+    var wood=(TRIM_FINISH==='cedar'||TRIM_FINISH==='stain');
+    var stainedCedar=typeof isStainedCedarTrim==='function' && isStainedCedarTrim();
+    var legacyStain=TRIM_FINISH==='stain' && !stainedCedar;
+    // Paint chips and the two wood-grain chips share one strip so Cedar and
+    // Stained Cedar sit on the palette, obviously wood, at the same 30px size.
+    var h='<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-radius:10px;'+
+          'background:var(--d3);border:1px solid var(--br)">';
+    WALL_COLORS.forEach(function(c){
+      var hx='#'+c.hex.toString(16).padStart(6,'0');
+      var on=!wood && tc===c.hex;
+      h+='<div title="'+c.name+'" class="cs" onclick="setColor(\'t\','+c.hex+',\''+c.name+'\',this)" '+
+        'style="width:30px;height:30px;border-radius:7px;cursor:pointer;background:'+hx+
+        ';border:2px solid '+(on?'#fff':'rgba(255,255,255,.18)')+
+        ';box-shadow:'+(on?'0 0 0 2px #2BB5E8':'none')+'"></div>';
+    });
+    [['cedar','Cedar'],['stained-cedar','Stained Cedar']].forEach(function(pair){
+      var on=(pair[0]==='cedar' && TRIM_FINISH==='cedar') || (pair[0]==='stained-cedar' && stainedCedar);
+      var url=(typeof woodTrimSwatchUrl==='function') ? woodTrimSwatchUrl(pair[0]) : '';
+      h+='<div title="'+pair[1]+'" class="cs cs-wood" data-wood="'+pair[0]+'" onclick="setTrimWood(\''+pair[0]+'\')" '+
+        'style="width:30px;height:30px;border-radius:7px;cursor:pointer;'+
+        'background-image:url(\''+url+'\');background-size:cover;background-position:center;'+
+        'border:2px solid '+(on?'#fff':'rgba(255,255,255,.18)')+
+        ';box-shadow:'+(on?'0 0 0 2px #2BB5E8':'none')+'"></div>';
+    });
+    h+='</div>';
+    var label=typeof trimDisplayName==='function' ? trimDisplayName()
+              : (wood ? (TRIM_FINISH==='cedar'?'Cedar':(trimStainEntry().name+' wood stain')) : ((typeof tn!=='undefined'?tn:'')));
+    h+='<div style="display:flex;align-items:baseline;gap:8px;margin-top:8px">'+
+       '<span style="font-size:13px;font-weight:800;color:var(--w)">'+label+'</span></div>';
+    // A design already saved with Honey / Golden Cedar / Walnut stain still
+    // needs a way to see and change that tone. New picks use the palette.
+    if(legacyStain){
+      h+='<div style="display:flex;gap:8px;margin-top:8px">'+PINE_STAINS.map(function(c){
           var on=(TRIM_STAIN===c.k);
           return '<div onclick="setTrimStain(\''+c.k+'\')" style="flex:1;cursor:pointer;text-align:center">'+
             '<div style="height:30px;border-radius:7px;background:'+c.css+';border:2px solid '+(on?'#fff':'rgba(255,255,255,.18)')+
             ';box-shadow:'+(on?'0 0 0 2px #2BB5E8':'none')+'"></div>'+
             '<div style="font-size:10.5px;margin-top:4px;color:'+(on?'#8fe3ff':'var(--mu)')+'">'+c.name+'</div></div>';
-        }).join('')+'</div><div style="font-size:11px;color:var(--mu);margin-top:6px">'+trimStainEntry().name+
-        ' wood stain \u2014 the trim colour doesn\'t apply.</div>'
-      : cedar ? '<div style="font-size:11px;color:var(--mu);margin-top:6px">Natural cedar \u2014 the trim colour doesn\'t apply.</div>' : '');
+        }).join('')+'</div>';
+    }
+    ht.innerHTML=h;
   }
+
   if(typeof renderDoorColors==='function') renderDoorColors();
 }
 /* Same swatch strip as the Roof step, written to both hosts so a pick on
@@ -19975,7 +20135,7 @@ function addShedLights(){
 
 function setColor(part,hex,name,el){
   if(part==='s'){ sc=hex; sn=name; }
-  if(part==='t'){ tc=hex; tn=name; }
+  if(part==='t'){ tc=hex; tn=name; if(typeof TRIM_FINISH!=='undefined') TRIM_FINISH='paint'; }
   if(part==='r'){ rc=hex; rn=name; }
   // The strips re-render from state, so the highlight follows a CUSTOM hex too —
   // it used to be pinned to whichever swatch element was clicked, which meant
@@ -20345,6 +20505,9 @@ function applyDesignConfig(c){
     _PORCH_ADD_EAT = porchEatFt();      // w/l in a config are already the footprint
     TRIM_FINISH = (c.trimFinish==='cedar'||c.trimFinish==='stain') ? c.trimFinish : 'paint';
     if(c.trimStain) TRIM_STAIN=c.trimStain;
+    if(TRIM_FINISH==='cedar') tn='Cedar';
+    else if(TRIM_FINISH==='stain' && TRIM_STAIN==='stained-cedar') tn='Stained Cedar';
+    else if(TRIM_FINISH==='stain' && typeof trimStainEntry==='function') tn=trimStainEntry().name+' wood stain';
     // Saved by getDesignConfig but never read back, so a reopened design lost its deck choice.
     if(c.porchDeck)PORCH_DECK=c.porchDeck; if(c.deckColor)DECK_COLOR=c.deckColor; if(c.porchH!=null)PORCH_H=+c.porchH;
     if(c.dormerL!=null)DORMER_L=+c.dormerL; if(c.dormerR!=null)DORMER_R=+c.dormerR;

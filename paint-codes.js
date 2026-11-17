@@ -242,8 +242,14 @@ function decorateConfig(c){
   if(typeof W.ipc==='number') c.intColor=W.ipc;
   var names={};
   if(W.SIDING!=='pine' && W.sn) names.siding=String(W.sn);
-  if(W.tn) names.trim=(W.TRIM_FINISH==='cedar') ? 'Natural cedar' : String(W.tn);
-  if(W.TRIM_FINISH==='stain' && typeof W.trimStainEntry==='function') names.trim=W.trimStainEntry().name+' wood stain';
+  if(typeof W.trimDisplayName==='function' && (W.TRIM_FINISH==='cedar' || W.TRIM_FINISH==='stain' || W.tn)){
+    names.trim=W.trimDisplayName();
+  } else if(W.tn){
+    names.trim=(W.TRIM_FINISH==='cedar') ? 'Cedar' : String(W.tn);
+  }
+  if(!names.trim && W.TRIM_FINISH==='stain' && typeof W.trimStainEntry==='function'){
+    names.trim=(W.TRIM_STAIN==='stained-cedar') ? 'Stained Cedar' : (W.trimStainEntry().name+' wood stain');
+  }
   if(W.rn) names.roof=String(W.rn);
   if(typeof W.DOOR_PAINT==='number'){
     var dp=livePick('d');
@@ -282,7 +288,7 @@ function restoreConfig(c){
   if(PICKS.s) W.sn=label(PICKS.s);
   else if(c.colorNames && c.colorNames.siding) W.sn=String(c.colorNames.siding);
   if(PICKS.t) W.tn=label(PICKS.t);
-  else if(c.colorNames && c.colorNames.trim && c.colorNames.trim!=='Natural cedar' && !/ wood stain$/.test(String(c.colorNames.trim))) W.tn=String(c.colorNames.trim);
+  else if(c.colorNames && c.colorNames.trim && c.colorNames.trim!=='Natural cedar' && c.colorNames.trim!=='Cedar' && c.colorNames.trim!=='Stained Cedar' && !/ wood stain$/.test(String(c.colorNames.trim))) W.tn=String(c.colorNames.trim);
   refreshAll();
 }
 
