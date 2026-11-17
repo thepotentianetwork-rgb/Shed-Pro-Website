@@ -215,7 +215,7 @@ test('nothing fetches a paint book until someone searches', () => {
   assert.deepEqual(Object.keys(c.PC._data), []);
 });
 
-test('brand paint search sits in a bottom color-step card, not in the Siding or Trim cards', () => {
+test('brand paint search sits in a bottom color-step section, not in the Siding or Trim sections', () => {
   const html = readFileSync(join(REPO, 'designer.html'), 'utf8');
   const step = html.slice(html.indexOf('data-step="3"'), html.indexOf('<!-- STEP 7'));
   const slice = (from, to) => {
@@ -233,7 +233,8 @@ test('brand paint search sits in a bottom color-step card, not in the Siding or 
   assert.ok(trim.includes('id="cg-t"'));
   assert.ok(!trim.includes('pc-host'));
   assert.ok(!door.includes('pc-host'));
-  assert.ok(door.includes('id="csecCurD"'));
+  assert.ok(door.includes('id="cg-d"'));
+  assert.ok(roof.includes('id="cg-r"'));
   assert.ok(!roof.includes('pc-host'));
   assert.match(brand, /Know your preferred paint\? Select from popular brands and colors/);
   assert.match(brand, /Search any brand color by name or code for your siding, trim, or door\./);
@@ -247,30 +248,115 @@ test('brand paint search sits in a bottom color-step card, not in the Siding or 
   assert.ok(rest.includes('class="pc-host" data-part="i"'));
 });
 
-test('a brand pick from applyPick still fills the Siding and Trim header pills', async () => {
+test('the color step uses the same labels and spacing as the other steps, with no icons or cards', () => {
+  const html = readFileSync(join(REPO, 'designer.html'), 'utf8');
+  const step = html.slice(html.indexOf('data-step="3"'), html.indexOf('<!-- STEP 7'));
+  const size = html.slice(html.indexOf('data-step="1"'), html.indexOf('data-step="2"'));
+  const roofStep = html.slice(html.indexOf('data-step="4"'), html.indexOf('data-step="5"'));
+  assert.ok(!step.includes('csec-ico'));
+  assert.ok(!step.includes('class="csec"') && !/class="grp csec/.test(step));
+  assert.ok(!/\.csec[^-a-z]/.test(html.slice(0, html.indexOf('</style>'))));
+  for (const label of ['Siding Color', 'Trim Color', 'Door Color', 'Roof Color']) {
+    assert.match(step, new RegExp('class="lbl">' + label + '<'));
+  }
+  assert.match(step, /class="wstep-sub"[^>]*>The main wall panels\./);
+  // Same heading and hint classes the Size and Roof steps already use
+  assert.match(size, /class="lbl">Popular Sizes</);
+  assert.match(roofStep, /class="lbl">Roof Type</);
+  assert.match(size, /class="wstep-sub"|class="sv"/);
+});
+
+test('a brand pick from applyPick still updates siding, trim and door colour state', async () => {
   const c = setup();
   await c.PC.loadAll();
   c.__stubLights();
   const behr = c.PC.search('Behr PPU18-01', 1).hits[0];
   const sw = c.PC.search('SW 7006', 1).hits[0];
-  // paintColorSecHeads writes into real nodes; the harness stubs getElementById
-  // with a fresh element each call, so reuse one node per pill id.
-  const pills = {};
-  const orig = c.document.getElementById;
-  c.document.getElementById = (id) => {
-    if (id === 'csecCurS' || id === 'csecCurT' || id === 'csecCurD') {
-      if (!pills[id]) pills[id] = orig.call(c.document, id);
-      return pills[id];
-    }
-    return orig.call(c.document, id);
-  };
   c.PC.applyPick('s', behr.b, behr.e);
   c.PC.applyPick('t', sw.b, sw.e);
   assert.equal(c.sn, 'Behr PPU18-01 Cracked Pepper');
   assert.equal(c.tn, 'Sherwin-Williams SW 7006 Extra White');
-  assert.match(String(pills.csecCurS && pills.csecCurS.innerHTML), /Behr PPU18-01 Cracked Pepper/);
-  assert.match(String(pills.csecCurT && pills.csecCurT.innerHTML), /Sherwin-Williams SW 7006 Extra White/);
   const bm = c.PC.search('Revere Pewter', 1).hits[0];
   c.PC.applyPick('d', bm.b, bm.e);
-  assert.match(String(pills.csecCurD && pills.csecCurD.innerHTML), /Benjamin Moore HC-172 Revere Pewter/);
+  assert.equal(c.DOOR_PAINT, parseInt(bm.e[2], 16));
+  assert.equal(c.PC.livePick('d').name, 'Revere Pewter');
+  const cfg = c.getDesignConfig();
+  assert.equal(cfg.colorNames.siding, 'Behr PPU18-01 Cracked Pepper');
+  assert.equal(cfg.colorNames.trim, 'Sherwin-Williams SW 7006 Extra White');
+  assert.equal(cfg.colorNames.door, 'Benjamin Moore HC-172 Revere Pewter');
+  assert.equal(cfg.doorColor, c.DOOR_PAINT);
+});
+
+test('color-step roof swatches use the same list as the Roof step and stay in sync', () => {
+  const c = setup();
+  const nodes = {};
+  const orig = c.document.getElementById;
+  c.document.getElementById = (id) => {
+    if (id === 'roofColorList' || id === 'cg-r') {
+      if (!nodes[id]) nodes[id] = orig.call(c.document, id);
+      return nodes[id];
+    }
+    return orig.call(c.document, id);
+  };
+  const build = c.buildShed;
+  c.buildShed = () => {};
+  // Names from the VM context are another-realm strings; compare as local text.
+  const names = (html) => [...String(html).matchAll(/title="([^"]+)"/g)].map(m => m[1]);
+  const listNames = (list) => [...list].map(x => String(x.name));
+  c.ROOFTYPE = 'metal';
+  c.rc = c.METAL_COLORS[0].hex;
+  c.rn = String(c.METAL_COLORS[0].name);
+  c.renderRoofColors();
+  assert.deepEqual(names(nodes['cg-r'].innerHTML), listNames(c.METAL_COLORS));
+  assert.equal(String(nodes['cg-r'].innerHTML), String(nodes.roofColorList.innerHTML));
+  c.setColor('r', c.METAL_COLORS[2].hex, String(c.METAL_COLORS[2].name));
+  assert.equal(c.rc, c.METAL_COLORS[2].hex);
+  assert.equal(String(c.rn), String(c.METAL_COLORS[2].name));
+  assert.equal(String(nodes['cg-r'].innerHTML), String(nodes.roofColorList.innerHTML));
+  assert.match(String(nodes['cg-r'].innerHTML), new RegExp(String(c.METAL_COLORS[2].name)));
+  c.setRoofType('shingle');
+  assert.equal(String(c.ROOFTYPE), 'shingle');
+  assert.deepEqual(names(nodes['cg-r'].innerHTML), listNames(c.SHINGLE_COLORS));
+  assert.equal(String(nodes['cg-r'].innerHTML), String(nodes.roofColorList.innerHTML));
+  c.setColor('r', c.SHINGLE_COLORS[1].hex, String(c.SHINGLE_COLORS[1].name));
+  assert.equal(c.rc, c.SHINGLE_COLORS[1].hex);
+  assert.equal(String(c.rn), String(c.SHINGLE_COLORS[1].name));
+  assert.equal(nodes['cg-r'].innerHTML, nodes.roofColorList.innerHTML);
+  c.buildShed = build;
+});
+
+test('door color swatches and Match siding use the existing doorColor path', () => {
+  const c = setup();
+  const nodes = {};
+  const orig = c.document.getElementById;
+  c.document.getElementById = (id) => {
+    if (id === 'cg-d') {
+      if (!nodes[id]) nodes[id] = orig.call(c.document, id);
+      return nodes[id];
+    }
+    return orig.call(c.document, id);
+  };
+  const build = c.buildShed;
+  c.buildShed = () => {};
+  c.sc = 0x2C3E52;
+  c.renderDoorColors();
+  assert.match(String(nodes['cg-d'].innerHTML), /Match siding/);
+  assert.match(String(nodes['cg-d'].innerHTML), /Matches siding/);
+  const white = c.WALL_COLORS[0];
+  c.setDoorPaintColor(white.hex);
+  assert.equal(c.DOOR_PAINT, white.hex);
+  const cfg = c.getDesignConfig();
+  assert.equal(cfg.doorColor, white.hex);
+  assert.equal(cfg.colorNames.door, white.name);
+  assert.match(String(nodes['cg-d'].innerHTML), new RegExp(white.name));
+  // A save/load round trip keeps the door colour
+  c.DOOR_PAINT = null;
+  c.applyDesignConfig(JSON.parse(JSON.stringify(cfg)));
+  assert.equal(c.DOOR_PAINT, white.hex);
+  c.matchDoorToSiding();
+  assert.equal(c.DOOR_PAINT, null);
+  const cfg2 = c.getDesignConfig();
+  assert.equal(cfg2.doorColor, undefined);
+  assert.match(String(nodes['cg-d'].innerHTML), /Matches siding/);
+  c.buildShed = build;
 });

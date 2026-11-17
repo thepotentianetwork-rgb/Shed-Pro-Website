@@ -211,21 +211,23 @@ function applyPick(part, b, e){
     if(typeof W.renderWallColors==='function') W.renderWallColors();
     if(typeof W.buildShed==='function') W.buildShed();
   } else if(part==='d'){
-    // Door picks don't go through renderWallColors, but the Door card pill
-    // and mini-shed icon still need to follow the new colour.
-    if(typeof W.paintColorSecHeads==='function') W.paintColorSecHeads();
+    // Door picks don't go through renderWallColors, but the Door swatches
+    // and Match siding button still need to follow the new colour.
+    if(typeof W.renderDoorColors==='function') W.renderDoorColors();
     if(typeof W.buildShed==='function') W.buildShed();
   }
   refreshAll();
   try{ if(W.DU && DU.track) DU.track('paint_code_applied', {part:PARTS[part].cfg, brand:b}); }catch(err){}
 }
 function swatch(id, hx){ var el=document.getElementById(id); if(el) el.style.background=hx; }
-function clearDoor(){
-  delete PICKS.d; W.DOOR_PAINT=null;
-  if(typeof W.paintColorSecHeads==='function') W.paintColorSecHeads();
+function setDoorPaint(hex){
+  delete PICKS.d;
+  W.DOOR_PAINT=(hex==null || !isFinite(+hex)) ? null : +hex;
+  if(typeof W.renderDoorColors==='function') W.renderDoorColors();
   if(typeof W.buildShed==='function') W.buildShed();
   refreshAll();
 }
+function clearDoor(){ setDoorPaint(null); }
 
 /* ── config: getDesignConfig / applyDesignConfig call these ── */
 function decorateConfig(c){
@@ -245,7 +247,13 @@ function decorateConfig(c){
   if(W.rn) names.roof=String(W.rn);
   if(typeof W.DOOR_PAINT==='number'){
     var dp=livePick('d');
-    names.door=dp ? label(dp) : ('#'+hex6(W.DOOR_PAINT));
+    if(dp) names.door=label(dp);
+    else {
+      var wc=(typeof W.WALL_COLORS!=='undefined' && W.WALL_COLORS)
+        ? W.WALL_COLORS.filter(function(c){return c.hex===W.DOOR_PAINT;})[0]
+        : null;
+      names.door=wc ? wc.name : ('#'+hex6(W.DOOR_PAINT));
+    }
   }
   if(W.INT_FINISH==='painted' && W.ipn) names.interior=String(W.ipn);
   c.colorNames=names;
@@ -453,6 +461,7 @@ function boot(){
 
 W.PC={ search:search, parseQuery:parseQuery, load:load, loadAll:loadAll, applyPick:applyPick,
        decorateConfig:decorateConfig, restoreConfig:restoreConfig, livePick:livePick,
+       setDoorPaint:setDoorPaint, clearDoor:clearDoor,
        picks:function(){ return PICKS; }, brands:BRANDS, _data:DATA, refresh:refreshAll, NOTE:NOTE };
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
