@@ -59,15 +59,21 @@ test('the totals in the bubble are the ones the home page shows', () => {
   assert.match(INDEX, new RegExp(DT.TOTALS.facebook.rec + '</strong>[\\s\\S]{0,120}' + DT.TOTALS.facebook.count + ' Facebook reviews'));
 });
 
-test('promo: same wording and end date as the home page, gone from Nov 4, 2026', () => {
+test('promo: same wording as the home page, with no end date or auto-hide', () => {
   const DT = loadDT();
-  assert.match(INDEX, /data-promo-ends="2026-11-04"/);
-  assert.ok(INDEX.includes('<strong>$500 off a concrete pad</strong> when you buy a shed.'));
+  assert.ok(!INDEX.includes('data-promo-ends'), 'home page promo has no expiry attribute');
+  assert.ok(INDEX.includes('<strong>$500 off</strong> when you buy a shed.'));
+  assert.ok(!INDEX.includes('$500 off a concrete pad'), 'promo is general, not tied to a concrete pad');
+  assert.ok(!INDEX.includes('Limited-time offer'));
+  assert.ok(!INDEX.includes('through Nov 3'));
   assert.ok(INDEX.includes(DT.PROMO.fine), 'fine print matches the home page');
-  DT.now = () => new Date('2026-11-03T23:59:00');
-  assert.match(DT.promoHTML('review'), /\$500 off a concrete pad/);
+  assert.equal(DT.PROMO.fine, 'Select sizes only. Ask your rep for details.');
+  assert.match(DT.promoHTML('review'), /<strong>\$500 off<\/strong> when you buy a shed\./);
+  assert.ok(!DT.promoHTML('review').includes('Limited-time offer'));
+  assert.ok(!DT.promoHTML('review').includes('data-promo-ends'));
+  // Previously hid itself on Nov 4, 2026; the offer now stays visible.
   DT.now = () => new Date('2026-11-04T00:00:01');
-  assert.equal(DT.promoHTML('review'), '');
+  assert.match(DT.promoHTML('review'), /\$500 off/);
   assert.ok(DESIGNER.includes("DT.promoHTML('quote')"), 'promo is in the quote form');
   assert.ok(DESIGNER.includes('<script src="designer-trust.js"></script>'));
 });
