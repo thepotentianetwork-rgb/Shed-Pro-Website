@@ -214,3 +214,63 @@ test('nothing fetches a paint book until someone searches', () => {
   assert.deepEqual(asked.filter(u => /paint-colors/.test(u)), []);
   assert.deepEqual(Object.keys(c.PC._data), []);
 });
+
+test('brand paint search sits in a bottom color-step card, not in the Siding or Trim cards', () => {
+  const html = readFileSync(join(REPO, 'designer.html'), 'utf8');
+  const step = html.slice(html.indexOf('data-step="3"'), html.indexOf('<!-- STEP 7'));
+  const slice = (from, to) => {
+    const a = step.indexOf(from); const b = step.indexOf(to, a + 1);
+    assert.ok(a >= 0 && b > a, from + ' .. ' + to);
+    return step.slice(a, b);
+  };
+  const siding = slice('data-csec="s"', 'data-csec="t"');
+  const trim = slice('data-csec="t"', 'data-csec="d"');
+  const door = slice('data-csec="d"', 'data-csec="r"');
+  const roof = slice('data-csec="r"', 'data-csec="brand"');
+  const brand = step.slice(step.indexOf('data-csec="brand"'));
+  assert.ok(siding.includes('id="cg-s"'));
+  assert.ok(!siding.includes('pc-host'));
+  assert.ok(trim.includes('id="cg-t"'));
+  assert.ok(!trim.includes('pc-host'));
+  assert.ok(!door.includes('pc-host'));
+  assert.ok(door.includes('id="csecCurD"'));
+  assert.ok(!roof.includes('pc-host'));
+  assert.match(brand, /Know your preferred paint\? Select from popular brands and colors/);
+  assert.match(brand, /Search any brand color by name or code for your siding, trim, or door\./);
+  assert.ok(brand.includes('data-part="s"') && brand.includes('data-part="t"') && brand.includes('data-part="d"'));
+  assert.ok(!brand.includes('data-part="i"'));
+  // labelled, in that order
+  const labels = [...brand.matchAll(/class="pc-part-name">([^<]+)</g)].map(m => m[1]);
+  assert.deepEqual(labels, ['Siding', 'Trim', 'Door']);
+  // interior search stays on the Interior step
+  const rest = html.slice(html.indexOf('<!-- STEP 7'));
+  assert.ok(rest.includes('class="pc-host" data-part="i"'));
+});
+
+test('a brand pick from applyPick still fills the Siding and Trim header pills', async () => {
+  const c = setup();
+  await c.PC.loadAll();
+  c.__stubLights();
+  const behr = c.PC.search('Behr PPU18-01', 1).hits[0];
+  const sw = c.PC.search('SW 7006', 1).hits[0];
+  // paintColorSecHeads writes into real nodes; the harness stubs getElementById
+  // with a fresh element each call, so reuse one node per pill id.
+  const pills = {};
+  const orig = c.document.getElementById;
+  c.document.getElementById = (id) => {
+    if (id === 'csecCurS' || id === 'csecCurT' || id === 'csecCurD') {
+      if (!pills[id]) pills[id] = orig.call(c.document, id);
+      return pills[id];
+    }
+    return orig.call(c.document, id);
+  };
+  c.PC.applyPick('s', behr.b, behr.e);
+  c.PC.applyPick('t', sw.b, sw.e);
+  assert.equal(c.sn, 'Behr PPU18-01 Cracked Pepper');
+  assert.equal(c.tn, 'Sherwin-Williams SW 7006 Extra White');
+  assert.match(String(pills.csecCurS && pills.csecCurS.innerHTML), /Behr PPU18-01 Cracked Pepper/);
+  assert.match(String(pills.csecCurT && pills.csecCurT.innerHTML), /Sherwin-Williams SW 7006 Extra White/);
+  const bm = c.PC.search('Revere Pewter', 1).hits[0];
+  c.PC.applyPick('d', bm.b, bm.e);
+  assert.match(String(pills.csecCurD && pills.csecCurD.innerHTML), /Benjamin Moore HC-172 Revere Pewter/);
+});

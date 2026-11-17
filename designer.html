@@ -366,6 +366,17 @@ textarea.inp{resize:vertical}
 .csec-cur b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .csec-help{font-size:11.5px;color:var(--mu);line-height:1.35;margin:0 0 10px}
 .csec-roofnote .csec-help{margin-bottom:0}
+/* Brand-paint search card at the bottom of the colour step. Siding and
+   Trim above stay as ShedPro swatches; a pick here still fills those
+   cards' selected-color pills. Each host is labelled Siding / Trim / Door. */
+.csec-brand .csec-title{line-height:1.3}
+.pc-parts{display:flex;flex-direction:column;gap:12px;margin-top:2px}
+.pc-part{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.10);border-radius:10px;padding:10px 10px 11px}
+.pc-part-name{display:block;font-size:13px;font-weight:800;color:var(--w);letter-spacing:.01em;margin:0 0 6px}
+.pc-part .pc{margin-top:0}
+/* The visible part name is the heading; keep the input's <label> for
+   assistive tech but don't show a second line of the same idea. */
+.pc-part .pc-lbl{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 /* Mini shed icon in each card header: the part that card paints is filled
    with its current colour and outlined in blue; the rest of the shed is dim. */
 .csec-ico{width:40px;height:33px;flex-shrink:0;overflow:visible}
@@ -795,26 +806,46 @@ textarea.inp{resize:vertical}
           <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="s" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Siding color</span><span class="csec-cur" id="csecCurS"></span></div>
           <div class="csec-help">The main wall panels (highlighted in the picture).</div>
           <div id="cg-s"></div>
-          <!-- Brand paint search (paint-codes.js): SW / BM / Behr / Valspar / PPG / Dunn-Edwards. -->
-          <div class="pc-host" data-part="s"></div>
           <!-- Custom #RRGGBB entry removed (Nando, Nov 2026): swatches only. applyHex* stay so a saved custom hex still loads and renders as "Custom #HEX". -->
         </div>
         <div class="grp csec" data-csec="t">
           <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="t" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Trim color</span><span class="csec-cur" id="csecCurT"></span></div>
           <div class="csec-help">Corner boards, roof-edge fascia, and the trim around doors &amp; windows.</div>
           <div id="cg-t"></div>
-          <div class="pc-host" data-part="t"></div>
         </div>
-        <div class="grp csec" data-csec="d">
-          <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="d" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Door color</span></div>
+        <div class="grp csec csec-roofnote" data-csec="d">
+          <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="d" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Door color</span><span class="csec-cur" id="csecCurD"></span></div>
           <div class="csec-help">Matches the siding unless you pick your own.</div>
-          <div class="pc-host" data-part="d"></div>
         </div>
         <!-- Roof colour is picked on the Roof step; shown here read-only so the
              siding / trim / roof set reads as one, with a pointer to where it changes. -->
         <div class="grp csec csec-roofnote" data-csec="r">
           <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="r" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Roof color</span><span class="csec-cur" id="csecCurR"></span></div>
           <div class="csec-help">You can change the roof color on the next step (Roof).</div>
+        </div>
+        <!-- Brand paint search (paint-codes.js): SW / BM / Behr / Valspar /
+             PPG / Dunn-Edwards. One card at the bottom of this step so the
+             Siding and Trim cards stay swatches-only. A customer who already
+             knows a brand colour can look it up here and apply it to siding,
+             trim or the door — including Match siding for the door
+             (Nando, Nov 2026). -->
+        <div class="grp csec csec-brand" data-csec="brand">
+          <div class="csec-head"><span class="csec-title">Know your preferred paint? Select from popular brands and colors</span></div>
+          <div class="csec-help">Search any brand color by name or code for your siding, trim, or door.</div>
+          <div class="pc-parts">
+            <div class="pc-part">
+              <span class="pc-part-name">Siding</span>
+              <div class="pc-host" data-part="s"></div>
+            </div>
+            <div class="pc-part">
+              <span class="pc-part-name">Trim</span>
+              <div class="pc-host" data-part="t"></div>
+            </div>
+            <div class="pc-part">
+              <span class="pc-part-name">Door</span>
+              <div class="pc-host" data-part="d"></div>
+            </div>
+          </div>
         </div>
                       </div>
 
@@ -16955,6 +16986,13 @@ function paintColorSecHeads(){
       pill('csecCurT', tcol, tname);
     }
     if(typeof rc==='number') pill('csecCurR', hx(rc), (typeof rn!=='undefined'&&rn)||'');
+    if(typeof DOOR_PAINT==='number'){
+      var dp=(typeof PC!=='undefined' && PC && typeof PC.livePick==='function') ? PC.livePick('d') : null;
+      var dhex=('000000'+(DOOR_PAINT>>>0).toString(16)).slice(-6).toUpperCase();
+      pill('csecCurD', hx(DOOR_PAINT), dp ? (dp.brand+' '+dp.code+' '+dp.name) : ('Custom #'+dhex));
+    } else if(typeof sc==='number'){
+      pill('csecCurD', hx(sc), 'Matches siding');
+    }
     var paintIco=function(part, col){
       var ic=document.querySelector('.csec-ico[data-hl="'+part+'"]'); if(!ic) return;
       var sel={s:'.p-wall',t:'.p-trim',d:'.p-door',r:'.p-roof'}[part];

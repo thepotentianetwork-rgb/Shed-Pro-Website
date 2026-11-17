@@ -211,6 +211,9 @@ function applyPick(part, b, e){
     if(typeof W.renderWallColors==='function') W.renderWallColors();
     if(typeof W.buildShed==='function') W.buildShed();
   } else if(part==='d'){
+    // Door picks don't go through renderWallColors, but the Door card pill
+    // and mini-shed icon still need to follow the new colour.
+    if(typeof W.paintColorSecHeads==='function') W.paintColorSecHeads();
     if(typeof W.buildShed==='function') W.buildShed();
   }
   refreshAll();
@@ -219,6 +222,7 @@ function applyPick(part, b, e){
 function swatch(id, hx){ var el=document.getElementById(id); if(el) el.style.background=hx; }
 function clearDoor(){
   delete PICKS.d; W.DOOR_PAINT=null;
+  if(typeof W.paintColorSecHeads==='function') W.paintColorSecHeads();
   if(typeof W.buildShed==='function') W.buildShed();
   refreshAll();
 }
@@ -407,6 +411,10 @@ function refresh(ui){
   if(part==='s'){
     var pine=(W.SIDING==='pine');
     ui.host.style.display=pine?'none':'';
+    // Hide the labelled Siding wrapper in the bottom brand card too, so a
+    // pine build doesn't leave a 'Siding' heading over an empty box.
+    var wrap=ui.host.closest ? ui.host.closest('.pc-part') : null;
+    if(wrap) wrap.style.display=pine?'none':'';
   }
   if(part==='d'){
     var own=(typeof W.DOOR_PAINT==='number') || !!ui.ownMode;
