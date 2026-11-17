@@ -345,45 +345,15 @@ textarea.inp{resize:vertical}
 .scheme-name{font-size:12px;font-weight:800;color:var(--w);line-height:1.2}
 .scheme-sub{font-size:10px;color:var(--mu);line-height:1.3;margin-top:2px}
 @media (max-width:400px){.scheme-strip{grid-template-columns:1fr}}
-/* COLOR STEP SECTIONS. Siding, trim, door and roof each get their own card so
-   they stop reading as one long run of identical swatch strips. The card is a
-   shade lighter than the swatch panels inside it, with a left accent bar, a
-   white heading (not another small blue caps label) and the current pick in
-   the header. */
-.csec{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.16);border-left:4px solid var(--blue);
-  border-radius:14px;padding:14px 13px 15px;margin:0 0 22px;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-/* A visible rule between neighbouring cards, in the gap, so two dark panels
-   never read as one. */
-.csec + .csec{position:relative}
-.csec + .csec::before{content:'';position:absolute;left:18%;right:18%;top:-12px;height:1px;background:rgba(255,255,255,.14)}
-.csec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px}
-.csec-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800;color:var(--w);line-height:1.2}
-.csec-tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}
-.csec-cur{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-size:11.5px;font-weight:700;color:var(--w);
-  background:var(--d2);border:1px solid var(--br);border-radius:var(--pill);padding:3px 9px 3px 4px;min-width:0}
-.csec-cur:empty{display:none}
-.csec-cur i{width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,.3);flex-shrink:0}
-.csec-cur b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.csec-help{font-size:11.5px;color:var(--mu);line-height:1.35;margin:0 0 10px}
-.csec-roofnote .csec-help{margin-bottom:0}
-/* Brand-paint search card at the bottom of the colour step. Siding and
-   Trim above stay as ShedPro swatches; a pick here still fills those
-   cards' selected-color pills. Each host is labelled Siding / Trim / Door. */
-.csec-brand .csec-title{line-height:1.3}
-.pc-parts{display:flex;flex-direction:column;gap:12px;margin-top:2px}
-.pc-part{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.10);border-radius:10px;padding:10px 10px 11px}
-.pc-part-name{display:block;font-size:13px;font-weight:800;color:var(--w);letter-spacing:.01em;margin:0 0 6px}
+/* Brand paint search at the bottom of the colour step. Plain groups, same
+   typography as the other steps — no cards or icons. Each host is labelled
+   Siding / Trim / Door with the standard .lbl style. */
+.pc-parts{display:flex;flex-direction:column;gap:14px;margin-top:2px}
+.pc-part-name{display:block;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:0 0 8px}
 .pc-part .pc{margin-top:0}
 /* The visible part name is the heading; keep the input's <label> for
    assistive tech but don't show a second line of the same idea. */
 .pc-part .pc-lbl{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-/* Mini shed icon in each card header: the part that card paints is filled
-   with its current colour and outlined in blue; the rest of the shed is dim. */
-.csec-ico{width:40px;height:33px;flex-shrink:0;overflow:visible}
-.csec-ico *{fill:#2a2d31;stroke:rgba(255,255,255,.22);stroke-width:.8;stroke-linejoin:round}
-.csec-ico .p-trim{fill:rgba(255,255,255,.12);stroke:none}
-.csec-ico[data-hl="s"] .p-wall,.csec-ico[data-hl="t"] .p-trim,
-.csec-ico[data-hl="d"] .p-door,.csec-ico[data-hl="r"] .p-roof{stroke:var(--blue);stroke-width:1.6}
 /* POPULAR SIZES — the colour-scheme strip's shape, three across because a
    size tile is a number and a number is narrow. */
 .size-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
@@ -754,13 +724,11 @@ textarea.inp{resize:vertical}
 
       <!-- STEP 4 · ROOF (type, color, pitch, overhang, soffit, cupola) -->
       <div class="wstep" data-step="3">
-        <!-- Each colour control is its own card (csec) with a plain-English
-             heading and the current pick spelled out in the header. Nando, Nov
-             2026: "hard to tell apart siding from trim" when every section was
-             the same small blue label over the same dark swatch panel. Layout
-             only; every id, onclick and render target inside is unchanged. -->
-        <!-- Siding STYLE stays a plain group (not a colour card): its three
-             buttons need the full panel width on a 390px phone. -->
+        <!-- Colour sections use the same .grp / .lbl / .wstep-sub pattern as
+             Size, Foundation and Roof — wording only, no icons or cards.
+             Siding, trim, door and roof are each their own group. -->
+        <!-- Siding STYLE stays its own group: its three buttons need the full
+             panel width on a 390px phone. -->
         <div class="grp" style="margin-bottom:20px">
           <span class="lbl">Siding Style &middot; LP SmartSide</span>
           <div class="optrow" style="display:grid;grid-template-columns:1fr;gap:7px">
@@ -802,36 +770,39 @@ textarea.inp{resize:vertical}
              applyColorScheme and renderSchemeStrip stay: a use-preset can still
              carry a `scheme` key, and renderSchemeStrip returns early now that
              #schemeStrip is gone. Defaults (sc/tc/rc) are untouched. -->
-        <div class="grp csec" data-csec="s">
-          <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="s" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Siding color</span><span class="csec-cur" id="csecCurS"></span></div>
-          <div class="csec-help">The main wall panels (highlighted in the picture).</div>
+        <div class="grp" data-csec="s">
+          <span class="lbl">Siding Color</span>
+          <div class="wstep-sub" style="margin:0 0 8px">The main wall panels.</div>
           <div id="cg-s"></div>
           <!-- Custom #RRGGBB entry removed (Nando, Nov 2026): swatches only. applyHex* stay so a saved custom hex still loads and renders as "Custom #HEX". -->
         </div>
-        <div class="grp csec" data-csec="t">
-          <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="t" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Trim color</span><span class="csec-cur" id="csecCurT"></span></div>
-          <div class="csec-help">Corner boards, roof-edge fascia, and the trim around doors &amp; windows.</div>
+        <div class="grp" data-csec="t">
+          <span class="lbl">Trim Color</span>
+          <div class="wstep-sub" style="margin:0 0 8px">Corner boards, roof-edge fascia, and the trim around doors &amp; windows.</div>
           <div id="cg-t"></div>
         </div>
-        <div class="grp csec csec-roofnote" data-csec="d">
-          <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="d" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Door color</span><span class="csec-cur" id="csecCurD"></span></div>
-          <div class="csec-help">Matches the siding unless you pick your own.</div>
+        <div class="grp" data-csec="d">
+          <span class="lbl">Door Color</span>
+          <div class="wstep-sub" style="margin:0 0 8px">Matches the siding unless you pick your own.</div>
+          <div id="cg-d"></div>
         </div>
-        <!-- Roof colour is picked on the Roof step; shown here read-only so the
-             siding / trim / roof set reads as one, with a pointer to where it changes. -->
-        <div class="grp csec csec-roofnote" data-csec="r">
-          <div class="csec-head"><span class="csec-title"><svg class="csec-ico" data-hl="r" viewBox="0 0 44 36" aria-hidden="true"><polygon class="p-roof" points="2,15 22,3 42,15"/><rect class="p-wall" x="7" y="15" width="30" height="19"/><rect class="p-door" x="17" y="21" width="10" height="13"/><path class="p-trim" d="M7 15h4v19H7zM33 15h4v19h-4zM16 20h12v2H16zM16 20h2v14h-2zM26 20h2v14h-2zM5 14.2 22 4.6 39 14.2 39 16.4 22 6.8 5 16.4z"/></svg>Roof color</span><span class="csec-cur" id="csecCurR"></span></div>
-          <div class="csec-help">You can change the roof color on the next step (Roof).</div>
+        <!-- Roof colour is also on the Roof step; both lists come from the same
+             SHINGLE_COLORS / METAL_COLORS + setColor('r',...) path, so a pick
+             here stays in sync there and the other way around. -->
+        <div class="grp" data-csec="r">
+          <span class="lbl">Roof Color</span>
+          <div class="wstep-sub" style="margin:0 0 8px">For the roof type you have now. You can also change this on the Roof step.</div>
+          <div id="cg-r"></div>
         </div>
         <!-- Brand paint search (paint-codes.js): SW / BM / Behr / Valspar /
-             PPG / Dunn-Edwards. One card at the bottom of this step so the
-             Siding and Trim cards stay swatches-only. A customer who already
+             PPG / Dunn-Edwards. One section at the bottom of this step so the
+             Siding and Trim sections stay swatches-only. A customer who already
              knows a brand colour can look it up here and apply it to siding,
              trim or the door — including Match siding for the door
              (Nando, Nov 2026). -->
-        <div class="grp csec csec-brand" data-csec="brand">
-          <div class="csec-head"><span class="csec-title">Know your preferred paint? Select from popular brands and colors</span></div>
-          <div class="csec-help">Search any brand color by name or code for your siding, trim, or door.</div>
+        <div class="grp" data-csec="brand">
+          <span class="lbl">Know your preferred paint? Select from popular brands and colors</span>
+          <div class="wstep-sub" style="margin:0 0 8px">Search any brand color by name or code for your siding, trim, or door.</div>
           <div class="pc-parts">
             <div class="pc-part">
               <span class="pc-part-name">Siding</span>
@@ -847,7 +818,7 @@ textarea.inp{resize:vertical}
             </div>
           </div>
         </div>
-                      </div>
+        </div>
 
       <!-- STEP 7 · UPGRADES -->
       <div class="wstep" data-step="4">
@@ -14760,7 +14731,7 @@ function wizRender(){
   if(typeof renderAddons==='function') renderAddons();
   if(typeof paintCupolaTag==='function') paintCupolaTag();
   if(typeof paintSidingTags==='function') paintSidingTags();
-  if(typeof paintColorSecHeads==='function') paintColorSecHeads();   // door icon follows DOOR_PAINT
+  if(typeof renderDoorColors==='function') renderDoorColors();         // door swatches follow DOOR_PAINT
   if(typeof paintElecTags==='function') paintElecTags();
   var steps=document.querySelectorAll('.wstep');
   steps.forEach(function(s){ s.classList.toggle('on', +s.getAttribute('data-step')===wizStep); });
@@ -16953,52 +16924,14 @@ function _swatchStrip(list, curHex, part, curName){
        curHex.toString(16).padStart(6,'0').toUpperCase()+'</span>')+'</div>';
   return h;
 }
-/* Fills the "current pick" pill in each colour-step card header. Display
-   only — reads sc/sn, tc/tn, rc/rn and the trim finish, never writes them. */
+/* Kept as a no-op alias: the colour-step cards and mini-shed icons are gone,
+   and the selected name now lives under each swatch strip. Call sites and
+   paint-codes.js may still invoke this after a door pick. */
 function paintColorSecHeads(){
-  var hx=function(v){ return '#'+(v>>>0).toString(16).padStart(6,'0'); };
-  var esc=function(t){ return String(t).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];}); };
-  var pill=function(id, color, name){
-    var el=document.getElementById(id); if(!el) return;
-    el.innerHTML = name ? '<i style="background:'+color+'"></i><b>'+esc(name)+'</b>' : '';
-  };
-  try{
-    var pine=(typeof SIDING!=='undefined' && SIDING==='pine');
-    if(typeof sc==='number'){
-      var ks=WALL_COLORS.filter(function(c){return c.hex===sc;})[0];
-      pill('csecCurS', hx(sc), pine ? 'Pine stain' : (ks?ks.name:((typeof sn!=='undefined'&&sn)||'Custom')));
-    }
-    if(typeof tc==='number'){
-      var tf=(typeof TRIM_FINISH!=='undefined')?TRIM_FINISH:'paint';
-      var kt=WALL_COLORS.filter(function(c){return c.hex===tc;})[0];
-      var tname = tf==='stain' && typeof trimStainEntry==='function' ? trimStainEntry().name+' stain'
-                : tf==='cedar' ? 'Natural cedar'
-                : (kt?kt.name:((typeof tn!=='undefined'&&tn)||'Custom'));
-      var tcol = tf==='cedar' ? '#B07A4F' : (tf==='stain' && typeof trimStainEntry==='function' && trimStainEntry().css) ? trimStainEntry().css : hx(tc);
-      pill('csecCurT', tcol, tname);
-    }
-    if(typeof rc==='number') pill('csecCurR', hx(rc), (typeof rn!=='undefined'&&rn)||'');
-    if(typeof DOOR_PAINT==='number'){
-      var dp=(typeof PC!=='undefined' && PC && typeof PC.livePick==='function') ? PC.livePick('d') : null;
-      var dhex=('000000'+(DOOR_PAINT>>>0).toString(16)).slice(-6).toUpperCase();
-      pill('csecCurD', hx(DOOR_PAINT), dp ? (dp.brand+' '+dp.code+' '+dp.name) : ('Custom #'+dhex));
-    } else if(typeof sc==='number'){
-      pill('csecCurD', hx(sc), 'Matches siding');
-    }
-    var paintIco=function(part, col){
-      var ic=document.querySelector('.csec-ico[data-hl="'+part+'"]'); if(!ic) return;
-      var sel={s:'.p-wall',t:'.p-trim',d:'.p-door',r:'.p-roof'}[part];
-      var el=ic.querySelector(sel); if(el) el.style.fill=col;
-    };
-    if(typeof sc==='number') paintIco('s', hx(sc));
-    if(typeof tc==='number') paintIco('t', (document.getElementById('csecCurT')||{}).firstChild ? document.getElementById('csecCurT').firstChild.style.background : hx(tc));
-    if(typeof rc==='number') paintIco('r', hx(rc));
-    paintIco('d', (typeof DOOR_PAINT==='number') ? hx(DOOR_PAINT) : (typeof sc==='number'?hx(sc):''));
-  }catch(e){}
+  if(typeof renderDoorColors==='function') renderDoorColors();
 }
 function renderWallColors(){
   if(typeof renderSchemeStrip==='function') renderSchemeStrip();
-  paintColorSecHeads();
   var hs=document.getElementById('cg-s');
   var pine=(typeof SIDING!=='undefined' && SIDING==='pine');
   if(hs) hs.innerHTML = pine
@@ -17044,10 +16977,12 @@ function renderWallColors(){
         ' wood stain \u2014 the trim colour doesn\'t apply.</div>'
       : cedar ? '<div style="font-size:11px;color:var(--mu);margin-top:6px">Natural cedar \u2014 the trim colour doesn\'t apply.</div>' : '');
   }
+  if(typeof renderDoorColors==='function') renderDoorColors();
 }
-function renderRoofColors(){
-  if(typeof paintColorSecHeads==='function') paintColorSecHeads();
-  var host=document.getElementById('roofColorList'); if(!host) return;
+/* Same swatch strip as the Roof step, written to both hosts so a pick on
+   either page stays highlighted on the other. setColor('r',...) is the
+   only writer for rc/rn. */
+function roofColorStripHTML(){
   var list=(ROOFTYPE==='metal')?METAL_COLORS:SHINGLE_COLORS;
   var cur=list.filter(function(c){return c.hex===rc;})[0];
   var html='<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-radius:10px;'+
@@ -17066,7 +17001,59 @@ function renderRoofColors(){
       '<span style="font-size:13px;font-weight:800;color:var(--w)">'+cur.name+'</span>'+
       '<span style="font-size:11px;color:var(--mu)">'+cur.sub+'</span></div>';
   }
-  host.innerHTML=html;
+  return html;
+}
+function renderRoofColors(){
+  var html=roofColorStripHTML();
+  var a=document.getElementById('roofColorList');
+  var b=document.getElementById('cg-r');
+  if(a) a.innerHTML=html;
+  if(b) b.innerHTML=html;
+}
+
+/* Door colour on the colour step: the siding palette plus Match siding
+   (the default). Uses DOOR_PAINT / doorColor so saves, loads and quotes
+   keep working. Brand search at the bottom of the step can still set a
+   paint-code colour. */
+function doorColorLabel(){
+  if(typeof DOOR_PAINT!=='number') return 'Matches siding';
+  var dp=(typeof PC!=='undefined' && PC && typeof PC.livePick==='function') ? PC.livePick('d') : null;
+  if(dp) return dp.brand+' '+dp.code+' '+dp.name;
+  var known=WALL_COLORS.filter(function(c){return c.hex===DOOR_PAINT;})[0];
+  if(known) return known.name;
+  return 'Custom #'+(DOOR_PAINT>>>0).toString(16).padStart(6,'0').toUpperCase();
+}
+function renderDoorColors(){
+  var host=document.getElementById('cg-d'); if(!host) return;
+  var own=(typeof DOOR_PAINT==='number');
+  var h='<div style="display:flex;gap:8px;margin-bottom:8px">'+
+    '<div onclick="matchDoorToSiding()" style="flex:1;cursor:pointer;text-align:center;'+
+    'padding:9px;border-radius:8px;font-size:12px;font-weight:700;background:'+
+    (own?'var(--d3)':'rgba(43,181,232,.14)')+';border:1px solid '+
+    (own?'var(--br)':'#2BB5E8')+';color:var(--w)">Match siding</div>'+
+    '</div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-radius:10px;'+
+     'background:var(--d3);border:1px solid var(--br)">';
+  WALL_COLORS.forEach(function(c){
+    var hx='#'+c.hex.toString(16).padStart(6,'0');
+    var on=own && DOOR_PAINT===c.hex;
+    h+='<div title="'+c.name+'" class="cs" onclick="setDoorPaintColor('+c.hex+')" '+
+      'style="width:30px;height:30px;border-radius:7px;cursor:pointer;background:'+hx+
+      ';border:2px solid '+(on?'#fff':'rgba(255,255,255,.18)')+
+      ';box-shadow:'+(on?'0 0 0 2px #2BB5E8':'none')+'"></div>';
+  });
+  h+='</div>';
+  h+='<div style="display:flex;align-items:baseline;gap:8px;margin-top:8px">'+
+     '<span style="font-size:13px;font-weight:800;color:var(--w)">'+doorColorLabel()+'</span></div>';
+  host.innerHTML=h;
+}
+function setDoorPaintColor(hex){
+  if(typeof PC!=='undefined' && PC && typeof PC.setDoorPaint==='function') PC.setDoorPaint(hex);
+  else { DOOR_PAINT=hex; renderDoorColors(); if(typeof buildShed==='function') buildShed(); }
+}
+function matchDoorToSiding(){
+  if(typeof PC!=='undefined' && PC && typeof PC.clearDoor==='function') PC.clearDoor();
+  else { DOOR_PAINT=null; renderDoorColors(); if(typeof buildShed==='function') buildShed(); }
 }
 
 // ---- Drill-in sub-page overlay ----
