@@ -10854,6 +10854,13 @@ function clampOpeningsToWalls(){
   });
   // Nothing may straddle a partial porch's step or sit in its open end.
   if(typeof porchFitOpenings==='function') porchFitOpenings();
+  /* And nothing may sit under the porch door. The clearing used to run only
+     when the porch was picked, so anything that changed the wall afterwards
+     — a shorter length (pos is a fraction of the wall), a window added or
+     dragged there, a saved design — could put a window back over the door.
+     It moves only what actually overlaps, so a clean wall is untouched. */
+  var _pw=(typeof porchWall==='function') ? porchWall() : null;
+  if(_pw && typeof porchClearDoorWall==='function') porchClearDoorWall(_pw);
 }
 function buildWallWithOpenings(wall, fo){
   // fo: a frame to build INSTEAD of the wall's own — the stepped-in wall of a
@@ -14785,8 +14792,29 @@ function wizPrev(){ if(wizStep>0){ wizStep--; wizRender(); } }
    one render. Dismissing the chooser leaves it set, which is right — you did
    choose that wall. */
 var WALL_PICK_FOR=null;
+/* ── THE DOOR WALL IS THE FRONT (Nando, 17 Nov 2026) ───────────────────────
+   "The wall with the standard door is the front", on every style. Internally
+   'front' is always the +z gable end, and a side porch puts its door on
+   'right' (+x) — so the customer-facing names, and the quote snapshot, are
+   taken relative to the wall the main door is on: stand facing that door and
+   it is the Front, the wall on your left is Left, on your right is Right,
+   behind it is Back. With the door on the internal front (every style but
+   the side porch) nothing changes. Stored walls stay as they are, so saved
+   designs, pricing and the quote are untouched. */
+var WALL_THETA={front:0, right:Math.PI/2, back:Math.PI, left:3*Math.PI/2};
+function doorFrontWall(){
+  var d=(typeof doorsData!=='undefined' && doorsData && doorsData.length) ? doorsData[0] : null;
+  return (d && WALL_THETA[d.wall]!=null) ? d.wall : 'front';
+}
+function wallRelName(w){
+  if(WALL_THETA[w]==null) return '';
+  var t=WALL_THETA[w]-WALL_THETA[doorFrontWall()];
+  var q=((Math.round(t/(Math.PI/2))%4)+4)%4;
+  return ['Front','Right','Back','Left'][q];
+}
 function wallLabelFor(w){
-  return ({front:'Front wall', back:'Back wall', left:'Left wall', right:'Right wall'})[w] || 'Wall';
+  var n=wallRelName(w);
+  return n ? n+' wall' : 'Wall';
 }
 function showWallPick(wall){
   if(!wall) return;
@@ -14905,6 +14933,7 @@ function pickStyle(style, el){
   // to clear the porch — otherwise picking Barn would leave a porch attached to
   // a shell that can't build one.
   if(typeof PORCH_LOC!=='undefined' && PORCH_LOC!=='none'){ PORCH_LOC='none'; SIDE_PORCH=0; PORCH_LEN=0; PORCH_OFF=0; }
+  if(typeof sidePorchStdRestore==='function') sidePorchStdRestore();
   syncPorchFootprint();   // drop the porch's added depth BEFORE a style start size lands
   document.querySelectorAll('.style-btn').forEach(function(b){b.classList.remove('on');});
   /* Before buildShed, so the size change and the style change land in one
@@ -18280,8 +18309,67 @@ function porchClearDoorWall(wall){
   });
   return moved;
 }
+/* ── SIDE PORCH STANDARD LAYOUT (Nando, 17 Nov 2026) ──────────────────────
+   "For the side porch style switch the standard shed to have windows on both
+   the right wall and left wall." A side porch faces you along the length:
+   the door is on the porch wall ('right' internally) and the two gable ends
+   ('front' and 'back') are the walls to its left and right. The standard
+   shed carries one window centred on each LONG side, so one of them sat on
+   the door wall, behind the porch, fighting the door for room. On the side
+   porch the standard pair moves to the gable ends instead, one centred on
+   each, and nothing is left on the door wall.
+   Only the untouched standard pair moves (one window on each long side,
+   both centred, nothing else). Windows a customer placed themselves stay
+   where they are and only the door-wall guard (porchClearDoorWall) applies.
+   Leaving the side porch puts the pair back on the long sides, as long as
+   it is still exactly where this put it. Same window records, same count,
+   same sizes and types, so nothing prices differently. */
+var SP_STD_SWAP=null;      // [{o:window record, wall:its wall before}] while swapped
+function spIsCentred(w){ return Math.abs((+w.pos)-0.5)<0.02; }
+function sidePorchStdWindows(){
+  if(typeof windowsData==='undefined') return false;
+  if(SP_STD_SWAP){
+    // Still exactly as placed? Then there is nothing to do.
+    var same=SP_STD_SWAP.length===windowsData.length && SP_STD_SWAP.every(function(r){
+      return windowsData.indexOf(r.o)>=0 && r.o.wall===r.to && spIsCentred(r.o); });
+    if(same) return false;
+    SP_STD_SWAP=null;
+  }
+  if(windowsData.length!==2) return false;
+  var l=windowsData.filter(function(w){ return w.wall==='left'; }),
+      r=windowsData.filter(function(w){ return w.wall==='right'; });
+  if(l.length!==1 || r.length!==1 || !spIsCentred(l[0]) || !spIsCentred(r[0])) return false;
+  if(winRetQ(l[0]) || winRetQ(r[0])) return false;
+  // Facing the porch, 'front' is on your left and 'back' on your right.
+  SP_STD_SWAP=[{o:l[0], from:'left', to:'front'}, {o:r[0], from:'right', to:'back'}];
+  SP_STD_SWAP.forEach(function(x){ x.o.wall=x.to; x.o.pos=0.5; });
+  return true;
+}
+function sidePorchStdRestore(){
+  if(!SP_STD_SWAP || typeof windowsData==='undefined'){ SP_STD_SWAP=null; return false; }
+  var ok=SP_STD_SWAP.length===windowsData.length && SP_STD_SWAP.every(function(x){
+    return windowsData.indexOf(x.o)>=0 && x.o.wall===x.to && spIsCentred(x.o); });
+  if(ok) SP_STD_SWAP.forEach(function(x){ x.o.wall=x.from; x.o.pos=0.5; });
+  SP_STD_SWAP=null;
+  return ok;
+}
+/* One call for every place the porch location changes: on to Side it
+   moves the standard pair to the gable ends, off Side it puts them back. */
+function porchStdLayout(){
+  if(typeof PORCH_LOC!=='undefined' && PORCH_LOC==='side' && SIDE_PORCH>0 && STYLE==='gable') sidePorchStdWindows();
+  else sidePorchStdRestore();
+}
 // The door belongs on the wall the porch opens onto.
 function porchMoveDoor(){
+  /* The footprint FIRST. W and L only catch up with a porch change at the
+     top of the next buildShed, so going Front -> Side used to clear the door
+     wall against the front porch's 16ft length: the window stepped aside on
+     a 16ft wall, then the shed rebuilt 12ft long and, with pos being a
+     fraction of the wall, slid right back under the door. syncPorchFootprint
+     applies only the change since the last sync, so buildShed's own call
+     afterwards is a no-op. */
+  if(typeof syncPorchFootprint==='function') syncPorchFootprint();
+  porchStdLayout();
   var target=porchWall();
   if(!target) return;
   if(typeof doorsData==='undefined') return;
@@ -18866,7 +18954,7 @@ var ADD_WALL='front';
 // Wall is now chosen by tapping it in the 3D view. syncWallUI refreshes the
 // "Active wall: X" labels on the Windows and Doors steps.
 function syncWallUI(){
-  var cap = ADD_WALL.charAt(0).toUpperCase()+ADD_WALL.slice(1);
+  var cap = (typeof wallRelName==='function' && wallRelName(ADD_WALL)) || (ADD_WALL.charAt(0).toUpperCase()+ADD_WALL.slice(1));
   var a=document.getElementById('winActiveWall'); if(a) a.textContent='Active wall: '+cap;
   var b=document.getElementById('doorActiveWall'); if(b) b.textContent='Active wall: '+cap;
 }
@@ -20428,6 +20516,11 @@ function captureRenders(){
   var views=[
     {view:'perspective', phi:1.2,  theta:0.62}   // front three-quarter, matches the opening view
   ];
+  /* Front means the DOOR wall (see doorFrontWall): the same three-quarter,
+     turned to face whichever wall the main door is on. 0.62 exactly when
+     the door is on the internal front, so every other style is unchanged. */
+  var frontTheta=(typeof doorFrontWall==='function') ? WALL_THETA[doorFrontWall()] : 0;
+  views.forEach(function(v){ v.theta+=frontTheta; });
   try{
     for(var i=0;i<views.length;i++){
       phi=views[i].phi; theta=views[i].theta;
