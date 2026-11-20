@@ -102,6 +102,13 @@ header{background:rgba(12,12,12,.96);border-bottom:1px solid var(--br);padding:0
   display:inline-flex;align-items:center;justify-content:center;font-size:13px;
   line-height:1;cursor:pointer;opacity:.45;color:var(--mu);
   -webkit-user-select:none;user-select:none;flex-shrink:0}
+/* STAFF PADLOCK, SMALL AND PLAIN (Nando, 20 Nov 2026: a small simple lock,
+   nothing that distorts the header). No ring, narrower than the round
+   buttons, and grey: the emoji's own colour was a yellow lock beside
+   monochrome icons. Locked/unlocked still reads from the closed/open shackle
+   and the opacity syncPriceLockBtn sets. On a phone the round 24px pill took
+   ~29px from the logo line and cut the slogan to "Let's Build". */
+.hb .lock-btn{border:none;width:18px;border-radius:0;filter:grayscale(1)}
 /* Same round pill as .lock-btn, but these are customer-facing so they carry
    full opacity and light up on hover. Stroke icons at 2px to match the tile
    artwork elsewhere in the file; currentColor so one colour drives both. */
@@ -142,15 +149,22 @@ canvas{display:block;width:100%;height:100%}
   .sb{width:100%;height:auto;flex:1;border-left:none;border-top:1px solid var(--br);min-height:0}
   header{padding:0 12px;height:50px}
   .hb{gap:5px}
+  /* EVEN SPACING (Nando, 20 Nov 2026: "utilize that space to space out the
+     icons nicely"). With the slogan hidden the buttons sat bunched at the
+     right with a wide hole after SHEDPRO. The button group now takes the
+     free width and spreads its buttons with equal gaps; the empty ::before
+     is a zero-width first item, so the space between the wordmark and the
+     first button is one of those same gaps. -22px pulls the group's start
+     back over the build tag's invisible tap target (16px + 6px margin, see
+     #buildTag), so the gap is measured from the visible "PRO", and
+     pointer-events lets taps fall through to that target. Get Quote stays
+     on the header padding; button sizes and the 50px height are untouched.
+     The gap rule below (5px here, 4px at 400px) is still the minimum. */
+  header .hb{flex:1 1 auto;justify-content:space-between;margin-left:-22px;pointer-events:none}
+  header .hb>*{pointer-events:auto}
+  header .hb::before{content:'';width:0}
   .logo-sub{display:none}     /* "/ Shed Designer" — the page is self-evident; drop it to give the title room */
-  /* At 12px with a pipe the slogan truncated to "Let's Build To…" here, which
-     looks broken rather than tight. Smaller, and the separator goes: the
-     wordmark's weight already separates them at this size. The header budget
-     on a 390px phone is 350px inner; the buttons take 157px, leaving 193px for
-     the wordmark (83px in Barlow Condensed), the slogan and the build tag's
-     hit area — which all fit at this size with room to spare. */
-  .logo-slogan{font-size:10px;margin-left:6px}
-  .logo-slogan::before{display:none}
+  /* The slogan is hidden on phones: see the rule after the consult nudge. */
   .bt-word{display:none}      /* "build" — keep the tap target, just the "v398" is worth the width on a phone */
   .btn{padding:7px 11px;font-size:12.5px;gap:4px}
   /* Arrow only. Adding call and text to the header cost ~60px, which pushed
@@ -161,6 +175,7 @@ canvas{display:block;width:100%;height:100%}
      is what a screen reader reads at every width. */
   .btn-word{display:none}
   .lock-btn{width:27px;height:27px;font-size:12px}
+  .hb .lock-btn{width:14px}
   .ico-btn{width:27px;height:27px}
   .ico-btn svg{width:14px;height:14px}
   .hint{bottom:8px;font-size:10px;padding:5px 12px}
@@ -261,6 +276,7 @@ canvas{display:block;width:100%;height:100%}
   .hb{gap:4px}
   .btn{padding:6px 9px;font-size:11.5px;gap:3px}
   .lock-btn{width:24px;height:24px;font-size:11px}
+  .hb .lock-btn{width:13px}
   .ico-btn{width:24px;height:24px}
   .ico-btn svg{width:13px;height:13px}
 }
@@ -384,13 +400,13 @@ textarea.inp{resize:vertical}
 .consult-nudge-yes{flex:1;padding:9px;background:var(--blue);color:#000;border:none;border-radius:var(--pill);font-family:'Barlow',sans-serif;font-weight:800;font-size:12px;cursor:pointer}
 .consult-nudge-no{padding:9px 13px;background:none;border:1px solid rgba(255,255,255,.18);border-radius:var(--pill);color:var(--mu);font-family:'Barlow',sans-serif;font-weight:600;font-size:12px;cursor:pointer}
 @media (max-width:900px){.consult-nudge{left:12px;right:12px;bottom:12px;max-width:none}}
-/* Width only — deliberately NOT folded into the 400px block above, whose
-   aspect-ratio clause also matches a 390px portrait phone and would have
-   dropped the slogan on the most common screen there is. Measured in the real
-   Barlow Condensed, not a fallback face, and re-measured after the call and
-   text buttons joined the row: 375px still clears it by 14px, 360px is 1px
-   short. So 370px is the line. */
-@media (max-width:370px){.logo-slogan{display:none}}
+/* NO SLOGAN ON PHONES (Nando, 20 Nov 2026: "Hide it"). Same breakpoint as the
+   phone header block above, so desktop and tablet keep it. Even at 10px with
+   tight spacing "Let's Build Together" was clipped on every phone except a
+   390px customer view (measured: 13-43px short at 390/375/360 with the staff
+   lock, 15-30px short at 375/360 without), and a clipped slogan reads as
+   broken. This used to stop at 370px. */
+@media (max-width:600px), (max-width:700px) and (max-aspect-ratio:5/7){.logo-slogan{display:none}}
 /* ===== WIZARD ===== */
 .wprog{display:flex;gap:4px;padding:12px 14px 0}
 .wprog-seg{flex:1;height:4px;border-radius:2px;background:var(--br);transition:background .25s}
