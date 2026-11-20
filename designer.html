@@ -150,14 +150,7 @@ canvas{display:block;width:100%;height:100%}
   header{padding:0 12px;height:50px}
   .hb{gap:5px}
   .logo-sub{display:none}     /* "/ Shed Designer" — the page is self-evident; drop it to give the title room */
-  /* At 12px with a pipe the slogan truncated to "Let's Build To…" here, which
-     looks broken rather than tight. Smaller, and the separator goes: the
-     wordmark's weight already separates them at this size. The header budget
-     on a 390px phone is 350px inner; the buttons take 157px, leaving 193px for
-     the wordmark (83px in Barlow Condensed), the slogan and the build tag's
-     hit area — which all fit at this size with room to spare. */
-  .logo-slogan{font-size:10px;margin-left:6px}
-  .logo-slogan::before{display:none}
+  /* The slogan is hidden on phones: see the rule after the consult nudge. */
   .bt-word{display:none}      /* "build" — keep the tap target, just the "v398" is worth the width on a phone */
   .btn{padding:7px 11px;font-size:12.5px;gap:4px}
   /* Arrow only. Adding call and text to the header cost ~60px, which pushed
@@ -393,13 +386,13 @@ textarea.inp{resize:vertical}
 .consult-nudge-yes{flex:1;padding:9px;background:var(--blue);color:#000;border:none;border-radius:var(--pill);font-family:'Barlow',sans-serif;font-weight:800;font-size:12px;cursor:pointer}
 .consult-nudge-no{padding:9px 13px;background:none;border:1px solid rgba(255,255,255,.18);border-radius:var(--pill);color:var(--mu);font-family:'Barlow',sans-serif;font-weight:600;font-size:12px;cursor:pointer}
 @media (max-width:900px){.consult-nudge{left:12px;right:12px;bottom:12px;max-width:none}}
-/* Width only — deliberately NOT folded into the 400px block above, whose
-   aspect-ratio clause also matches a 390px portrait phone and would have
-   dropped the slogan on the most common screen there is. Measured in the real
-   Barlow Condensed, not a fallback face, and re-measured after the call and
-   text buttons joined the row: 375px still clears it by 14px, 360px is 1px
-   short. So 370px is the line. */
-@media (max-width:370px){.logo-slogan{display:none}}
+/* NO SLOGAN ON PHONES (Nando, 20 Nov 2026: "Hide it"). Same breakpoint as the
+   phone header block above, so desktop and tablet keep it. Even at 10px with
+   tight spacing "Let's Build Together" was clipped on every phone except a
+   390px customer view (measured: 13-43px short at 390/375/360 with the staff
+   lock, 15-30px short at 375/360 without), and a clipped slogan reads as
+   broken. This used to stop at 370px. */
+@media (max-width:600px), (max-width:700px) and (max-aspect-ratio:5/7){.logo-slogan{display:none}}
 /* ===== WIZARD ===== */
 .wprog{display:flex;gap:4px;padding:12px 14px 0}
 .wprog-seg{flex:1;height:4px;border-radius:2px;background:var(--br);transition:background .25s}
