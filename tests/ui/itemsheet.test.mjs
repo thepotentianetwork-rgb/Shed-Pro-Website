@@ -121,9 +121,9 @@ test('vent colour: each vent can carry its own; without one it follows the shed-
   c.setVentColorIdx(0, 'siding'); assert.equal(c.ventsData[0].color, 'white', 'match siding is gone');
   assert.equal(c.ventsData[1].color, undefined, 'only that vent');
   c.setVentColorIdx(0, 'purple'); assert.equal(c.ventsData[0].color, 'white', 'unknown colour ignored');
-  // built louvre uses siding colour on vent 0, black on vent 1
+  // built louvre blades are white on vent 0, black on vent 1
   const louvHex = (i) => { const m = c.ventMeshes.find((x) => x.index === i); let hx = null;
-    m.group.traverse((o) => { if (o.isMesh && o.geometry.parameters && Math.abs(o.geometry.parameters.depth - 0.012) < 1e-9) hx = o.material.color.getHex(); }); return hx; };
+    m.group.traverse((o) => { if (o.isMesh && o.userData.ventPart === 'blades') hx = o.material.color.getHex(); }); return hx; };
   assert.equal(louvHex(0), 0xf5f5f2);
   assert.equal(louvHex(1), 0x333333);
   // saved and reopened

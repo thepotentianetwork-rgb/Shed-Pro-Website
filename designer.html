@@ -12888,6 +12888,62 @@ function setVentColorIdx(i, k){
   }
   if(typeof saveState==='function') try{ saveState(); }catch(e){}
 }
+/* GEOMETRY FOR THE VENT INSERT, in the vent's local frame (x across, y up,
+   z out of the wall, z=0 at the siding face, centred on the opening). Each
+   part is several boxes baked into ONE BufferGeometry, so a vent stays a
+   handful of draw calls on a phone. r128 has no mergeGeometries in core,
+   hence the small merge below. */
+function _ventMerge(parts){
+  var pos=[], nor=[];
+  parts.forEach(function(p){
+    var g=p.g.index ? p.g.toNonIndexed() : p.g;
+    g.applyMatrix4(p.m);
+    pos.push(g.attributes.position.array); nor.push(g.attributes.normal.array);
+    if(g!==p.g) g.dispose(); p.g.dispose();
+  });
+  function cat(a){ var n=0; a.forEach(function(x){ n+=x.length; }); var o=new Float32Array(n), k=0; a.forEach(function(x){ o.set(x,k); k+=x.length; }); return o; }
+  var out=new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(cat(pos),3));
+  out.setAttribute('normal',   new THREE.BufferAttribute(cat(nor),3));
+  out.computeBoundingBox(); out.computeBoundingSphere();
+  return out;
+}
+function _vBox(w,h,d,x,y,z,rx){
+  var m=new THREE.Matrix4().makeTranslation(x,y,z);
+  if(rx) m.multiply(new THREE.Matrix4().makeRotationX(rx));
+  return {g:new THREE.BoxGeometry(w,h,d), m:m};
+}
+var VENT_LIP=0.010;          // ~0.6in lip round the opening
+var VENT_INSERT_Z=0.010;     // insert face, ~0.5in behind the 0.018 trim face
+var VENT_BLADES=6;
+var VENT_BLADE_TILT=0.80;    // rad (~46deg): front edge lower than back
+function buildVentInsertGeo(vW, vH){
+  var L=VENT_LIP, Z=VENT_INSERT_Z, iw=vW-2*L, ih=vH-2*L;
+  var lip=_ventMerge([
+    _vBox(vW, L, Z, 0,  vH/2-L/2, Z/2), _vBox(vW, L, Z, 0, -vH/2+L/2, Z/2),
+    _vBox(L, ih, Z, -vW/2+L/2, 0, Z/2), _vBox(L, ih, Z,  vW/2-L/2, 0, Z/2)]);
+  // charcoal back, just off the siding face so it never z-fights it
+  var back=_ventMerge([_vBox(iw, ih, 0.001, 0, 0, 0.0008)]);
+  // shadow line on the lip's outer edge where it meets the trim
+  var sz=Z+0.0003;
+  var shadow=_ventMerge([
+    _vBox(vW, 0.0055, 0.0004, 0,  vH/2-0.00275, sz),
+    _vBox(0.0035, vH-0.0055, 0.0004, -vW/2+0.00175, -0.00275, sz),
+    _vBox(0.0035, vH-0.0055, 0.0004,  vW/2-0.00175, -0.00275, sz),
+    _vBox(vW-0.007, 0.0015, 0.0004, 0, -vH/2+0.00075, sz)]);
+  // blades: a slab tilted about x so its front edge drops, nosing on that edge
+  var n=VENT_BLADES, pitch=ih/n, bd=0.012, bt=0.0022, a=VENT_BLADE_TILT;
+  var bw=iw-0.0006, zc=0.0015+(bd*Math.cos(a))/2;
+  var bl=[], ns=[];
+  for(var i=0;i<n;i++){
+    // centred a touch high in its slot so the dark gap opens underneath
+    var yc=-ih/2+(i+0.5)*pitch+pitch*0.12;
+    bl.push(_vBox(bw, bt, bd, 0, yc, zc, a));
+    var fy=yc-(bd/2)*Math.sin(a), fz=zc+(bd/2)*Math.cos(a);
+    ns.push(_vBox(bw, 0.0042, 0.0022, 0, fy-0.0006, Math.min(fz, Z-0.0012)));
+  }
+  return {lip:lip, back:back, shadow:shadow, blades:_ventMerge(bl), nose:_ventMerge(ns)};
+}
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
@@ -12902,14 +12958,23 @@ function buildVents(){
      follows the shed-wide VENT_COLOR, so every design saved before this
      builds exactly as it did. One material pair per colour, built lazily. */
   var _vmats={};
+  /* slat = the lip (the old body colour, a shade off the louvre so the lip
+     stays quiet beside the trim), louv = the blades (the old slat colour),
+     nose = the blades' front edge, a step lighter so each blade has a visible
+     edge. Only the charcoal back and the shadow line are shared by both. */
   function ventMats(k){
     if(_vmats[k]) return _vmats[k];
-    var body, slat;
-    if(k==='white'){ body=0xd9d9d6; slat=0xf5f5f2; }
-    else { body=0x1f1f1f; slat=0x333333; }
-    return (_vmats[k]={slat:new THREE.MeshStandardMaterial({color:body, roughness:0.7, metalness:0.1}),
-                       louv:new THREE.MeshStandardMaterial({color:slat, roughness:0.6, metalness:0.1})});
+    var body, slat, nose;
+    if(k==='white'){ body=0xd9d9d6; slat=0xf5f5f2; nose=0xffffff; }
+    else { body=0x1f1f1f; slat=0x333333; nose=0x4a4a4a; }
+    return (_vmats[k]={slat:new THREE.MeshStandardMaterial({color:body, roughness:0.65, metalness:0.1}),
+                       louv:new THREE.MeshStandardMaterial({color:slat, roughness:0.6, metalness:0.1}),
+                       nose:new THREE.MeshStandardMaterial({color:nose, roughness:0.5, metalness:0.1})});
   }
+  var _vBack=null, _vShadow=null, _vGeo=null;
+  function _ventBackMat(){ return _vBack || (_vBack=new THREE.MeshStandardMaterial({color:0x161616, roughness:1, metalness:0})); }
+  function _ventShadowMat(){ return _vShadow || (_vShadow=new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.55, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-1, polygonOffsetUnits:-1})); }
+  function ventInsertGeo(){ return _vGeo || (_vGeo=buildVentInsertGeo(vW, vH)); }
   ventsData.forEach(function(vd, idx){
     var _vm=ventMats(ventColorKey(vd)), slatMat=_vm.slat, louvMat=_vm.louv;
     // Vents ride near the wall top. Measure "the top" from THIS wall's real
@@ -12944,15 +13009,27 @@ function buildVents(){
     vboard(vW+VENT_CASE*2, VENT_CASE, 0, -vH/2-VENT_CASE/2);   // sill
     vboard(VENT_CASE, vH, -vW/2-VENT_CASE/2, 0);               // left leg
     vboard(VENT_CASE, vH,  vW/2+VENT_CASE/2, 0);               // right leg
-    // dark louvre body, recessed a touch inside the casing so the boards read
-    // as standing proud of it the way a real casing does.
-    grp.add(mk(new THREE.BoxGeometry(vW, vH, 0.016), slatMat, 0, cy, WALL_Z+0.016/2));
-    // horizontal slats (lighter lines)
-    var slats=4;
-    for(var s=0;s<slats;s++){
-      var sy=cy - vH/2 + (s+0.5)*(vH/slats);
-      grp.add(mk(new THREE.BoxGeometry(vW-0.02, vH/slats*0.5, 0.012), louvMat, 0, sy, WALL_Z+0.010));
-    }
+    /* THE INSERT (Nando, 20 Nov 2026). The casing above is the shed's trim and
+       is untouched. Inside it the insert used to be a flat box with four
+       painted stripes. Now, front to back:
+         - a slim lip round the opening, its face set back behind the trim face
+           (insert face at WALL_Z+0.010, trim face at WALL_Z+0.018: ~0.5in),
+         - a thin shadow line where the lip meets the trim, heavier at the head
+           where light comes from, so trim and insert read as two pieces,
+         - real blades sloping down toward the outside, each with a front
+           nosing that catches light and a dark gap under it,
+         - a matte charcoal back so the gaps read as depth, in either colour.
+       Everything stays in front of the siding face (WALL_Z): the wall has no
+       hole, so anything behind it would vanish. Shared geometry (built once
+       per buildVents call, reused by every vent) and merged into five meshes
+       per vent, the same count as before; buildShed disposes them as usual. */
+    var ins=ventInsertGeo();
+    function vpart(m, name){ m.userData.ventPart=name; grp.add(m); return m; }
+    vpart(mk(ins.lip,    slatMat,           0, cy, WALL_Z), 'lip');
+    vpart(mk(ins.back,   _ventBackMat(),    0, cy, WALL_Z), 'back');
+    var _vsh=mk(ins.shadow, _ventShadowMat(), 0, cy, WALL_Z); _vsh.castShadow=false; _vsh.receiveShadow=false; vpart(_vsh,'shadow');
+    vpart(mk(ins.blades, louvMat,           0, cy, WALL_Z), 'blades');
+    vpart(mk(ins.nose,   _vm.nose,          0, cy, WALL_Z), 'nose');
     if(EDIT_MODE && selectedKind==='vent' && selectedVent===idx){
       grp.add(mk(new THREE.BoxGeometry(vW+0.12, vH+0.12, 0.006),
         new THREE.MeshBasicMaterial({color:0x2BB5E8, transparent:true, opacity:0.5, side:THREE.DoubleSide}), 0, cy, outZ+0.02));
