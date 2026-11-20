@@ -149,6 +149,20 @@ canvas{display:block;width:100%;height:100%}
   .sb{width:100%;height:auto;flex:1;border-left:none;border-top:1px solid var(--br);min-height:0}
   header{padding:0 12px;height:50px}
   .hb{gap:5px}
+  /* EVEN SPACING (Nando, 20 Nov 2026: "utilize that space to space out the
+     icons nicely"). With the slogan hidden the buttons sat bunched at the
+     right with a wide hole after SHEDPRO. The button group now takes the
+     free width and spreads its buttons with equal gaps; the empty ::before
+     is a zero-width first item, so the space between the wordmark and the
+     first button is one of those same gaps. -22px pulls the group's start
+     back over the build tag's invisible tap target (16px + 6px margin, see
+     #buildTag), so the gap is measured from the visible "PRO", and
+     pointer-events lets taps fall through to that target. Get Quote stays
+     on the header padding; button sizes and the 50px height are untouched.
+     The gap rule below (5px here, 4px at 400px) is still the minimum. */
+  header .hb{flex:1 1 auto;justify-content:space-between;margin-left:-22px;pointer-events:none}
+  header .hb>*{pointer-events:auto}
+  header .hb::before{content:'';width:0}
   .logo-sub{display:none}     /* "/ Shed Designer" — the page is self-evident; drop it to give the title room */
   /* The slogan is hidden on phones: see the rule after the consult nudge. */
   .bt-word{display:none}      /* "build" — keep the tap target, just the "v398" is worth the width on a phone */
@@ -161,7 +175,7 @@ canvas{display:block;width:100%;height:100%}
      is what a screen reader reads at every width. */
   .btn-word{display:none}
   .lock-btn{width:27px;height:27px;font-size:12px}
-  .hb .lock-btn{width:14px;margin:0 -2px}
+  .hb .lock-btn{width:14px}
   .ico-btn{width:27px;height:27px}
   .ico-btn svg{width:14px;height:14px}
   .hint{bottom:8px;font-size:10px;padding:5px 12px}
