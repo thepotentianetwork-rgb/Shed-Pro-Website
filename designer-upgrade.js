@@ -128,6 +128,12 @@ DU.specRows = function(){
   var porch = (S.PORCH_LOC && S.PORCH_LOC!=='none' && S.SIDE_PORCH>0);
   rows.push(['Style & size', (S.shedSizeW?S.shedSizeW():S.W)+'×'+(S.shedSizeL?S.shedSizeL():S.L)+' ft '+DU.styleName()+' · '+S.H+' ft walls'+(porch?' · '+S.SIDE_PORCH+' ft '+S.PORCH_LOC+' '+(S.porchKindWord?S.porchKindWord():'porch')+((S.PORCH_ADDS&&S.porchEatFt&&(S.porchEatFt().w||S.porchEatFt().l))?' added, not counted in sq ft ('+S.W+'×'+S.L+' overall)':' (counts toward sq ft)'):''), 'Pick your size']);
   rows.push(['Foundation', FOUNDATION_NAMES[S.FOUNDATION]||S.FOUNDATION, 'Foundation']);
+  // Roof before siding and colour, the same order as the steps.
+  var roof=(S.ROOFTYPE==='metal'?'Metal':'Shingle')+' · '+(S.rn||'');
+  if(S.STYLE!=='barn' && S.STYLE!=='leanto' && S.PITCH) roof+=' · '+S.PITCH+'/12 pitch';
+  if(S.OVH) roof+=' · '+S.OVH+'" overhang';
+  if(S.STYLE==='leanto' && S.LEANTO_FRONT_OVH!=null && S.LEANTO_FRONT_OVH!=='match') roof+=' · '+S.LEANTO_FRONT_OVH+'" front eave';
+  rows.push(['Roof', roof, 'Roof']);
   /* Siding, trim and door colour each get their own row, so a brand paint pick
      (paint-codes.js) reads in full: "Siding · Sherwin-Williams SW 7006 Extra White". */
   rows.push(['Siding', (SIDING_NAMES[S.SIDING]||S.SIDING)+(S.SIDING!=='pine' && S.sn ? ' · '+S.sn : ''), 'Siding & color']);
@@ -135,11 +141,6 @@ DU.specRows = function(){
   var pcNames=null;
   try{ if(S.PC && S.PC.decorateConfig) pcNames=S.PC.decorateConfig({}).colorNames; }catch(e){}
   if(pcNames && pcNames.door) rows.push(['Door color', pcNames.door, 'Siding & color']);
-  var roof=(S.ROOFTYPE==='metal'?'Metal':'Shingle')+' · '+(S.rn||'');
-  if(S.STYLE!=='barn' && S.STYLE!=='leanto' && S.PITCH) roof+=' · '+S.PITCH+'/12 pitch';
-  if(S.OVH) roof+=' · '+S.OVH+'" overhang';
-  if(S.STYLE==='leanto' && S.LEANTO_FRONT_OVH!=null && S.LEANTO_FRONT_OVH!=='match') roof+=' · '+S.LEANTO_FRONT_OVH+'" front eave';
-  rows.push(['Roof', roof, 'Roof']);
   rows.push(['Doors', (S.doorsData||[]).length ? countBy(S.doorsData, doorName).join(', ') : 'None', 'Doors']);
   rows.push(['Windows', (S.windowsData||[]).length ? countBy(S.windowsData, function(w){ return w.type||(w.w+'×'+w.h); }).join(', ') : 'None', 'Windows & Vents']);
   var inside=[];
@@ -353,6 +354,17 @@ DU.startAiRender = function(o){
 };
 
 /* ── autosave + resume ── */
+/* Which step a saved session reopens on. Saves now carry the step TITLE, so a
+   reordered flow lands on the same page. Saves from before 19 Nov 2026 carry
+   only an index into the old order, where Siding & color (3) came before
+   Roof (4); those two are mapped by name, every other index is unchanged. */
+var LEGACY_STEP_TITLES={3:'Siding & color', 4:'Roof'};
+DU.resumeStepIndex = function(s){
+  var steps=window.WIZ_STEPS||[], i;
+  var want=(s && s.stepTitle) || (s && LEGACY_STEP_TITLES[+s.step]) || null;
+  if(want) for(i=0;i<steps.length;i++) if(steps[i].title===want) return i;
+  return Math.max(0, Math.min(steps.length-1, +(s&&s.step)||0));
+};
 function markInteract(){ interacted=true; dirty=true; }
 function autosave(){
   if(!interacted || !dirty || typeof window.getDesignConfig!=='function') return;
@@ -365,7 +377,8 @@ function autosave(){
       var a=Object.assign({},cfg,{use:null}), b=Object.assign({},window.STOCK_CONFIG,{use:null});
       if(JSON.stringify(a)===JSON.stringify(b)) return;
     }
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({t:Date.now(), step:window.wizStep||0, cfg:cfg}));
+    var _st=(window.WIZ_STEPS||[])[window.wizStep||0];
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({t:Date.now(), step:window.wizStep||0, stepTitle:_st?_st.title:null, cfg:cfg}));
   }catch(e){}
 }
 function readSaved(){
@@ -409,10 +422,10 @@ function offerResume(){
     if(typeof window.renderUseGrid==='function') window.renderUseGrid();
     if(typeof window.renderStyleTiles==='function') window.renderStyleTiles();
     if(typeof window.updateSum==='function') window.updateSum();
-    var st=Math.max(0, Math.min((window.WIZ_STEPS||[]).length-1, +s.step||0));
+    var st=DU.resumeStepIndex(s);
     window.wizStep=st; window.wizRender();
     interacted=true; lastSavedHash=JSON.stringify(window.getDesignConfig())+'|'+st;
-    DU.track('design_resumed', {step:st});
+    DU.track('design_resumed', {step:st, title:((window.WIZ_STEPS||[])[st]||{}).title||null});
   });
   $('duResumeNo').addEventListener('click', function(){
     card.remove();

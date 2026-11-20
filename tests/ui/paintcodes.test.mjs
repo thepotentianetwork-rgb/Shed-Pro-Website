@@ -217,7 +217,7 @@ test('nothing fetches a paint book until someone searches', () => {
 
 test('brand paint search sits in a bottom color-step section, not in the Siding or Trim sections', () => {
   const html = readFileSync(join(REPO, 'designer.html'), 'utf8');
-  const step = html.slice(html.indexOf('data-step="3"'), html.indexOf('<!-- STEP 7'));
+  const step = html.slice(html.indexOf('data-step="4"'), html.indexOf('<!-- STEP 3 · ROOF'));
   const slice = (from, to) => {
     const a = step.indexOf(from); const b = step.indexOf(to, a + 1);
     assert.ok(a >= 0 && b > a, from + ' .. ' + to);
@@ -244,15 +244,15 @@ test('brand paint search sits in a bottom color-step section, not in the Siding 
   const labels = [...brand.matchAll(/class="pc-part-name">([^<]+)</g)].map(m => m[1]);
   assert.deepEqual(labels, ['Siding', 'Trim', 'Door']);
   // interior search stays on the Interior step
-  const rest = html.slice(html.indexOf('<!-- STEP 7'));
+  const rest = html.slice(html.indexOf('<!-- STEP 3 · ROOF'));
   assert.ok(rest.includes('class="pc-host" data-part="i"'));
 });
 
 test('the color step uses the same labels and spacing as the other steps, with no icons or cards', () => {
   const html = readFileSync(join(REPO, 'designer.html'), 'utf8');
-  const step = html.slice(html.indexOf('data-step="3"'), html.indexOf('<!-- STEP 7'));
+  const step = html.slice(html.indexOf('data-step="4"'), html.indexOf('<!-- STEP 3 · ROOF'));
   const size = html.slice(html.indexOf('data-step="1"'), html.indexOf('data-step="2"'));
-  const roofStep = html.slice(html.indexOf('data-step="4"'), html.indexOf('data-step="5"'));
+  const roofStep = html.slice(html.indexOf('data-step="3"'), html.indexOf('data-step="5"'));
   assert.ok(!step.includes('csec-ico'));
   assert.ok(!step.includes('class="csec"') && !/class="grp csec/.test(step));
   assert.ok(!/\.csec[^-a-z]/.test(html.slice(0, html.indexOf('</style>'))));

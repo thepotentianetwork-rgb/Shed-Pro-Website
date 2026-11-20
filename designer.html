@@ -722,8 +722,8 @@ textarea.inp{resize:vertical}
         </div>
       </div>
 
-      <!-- STEP 4 · ROOF (type, color, pitch, overhang, soffit, cupola) -->
-      <div class="wstep" data-step="3">
+      <!-- STEP 4 · SIDING & COLOR (comes after Roof since 19 Nov 2026) -->
+      <div class="wstep" data-step="4">
         <!-- Colour sections use the same .grp / .lbl / .wstep-sub pattern as
              Size, Foundation and Roof — wording only, no icons or cards.
              Siding, trim, door and roof are each their own group. -->
@@ -820,8 +820,8 @@ textarea.inp{resize:vertical}
         </div>
         </div>
 
-      <!-- STEP 7 · UPGRADES -->
-      <div class="wstep" data-step="4">
+      <!-- STEP 3 · ROOF (type, color, pitch, overhang, soffit, cupola) -->
+      <div class="wstep" data-step="3">
         <div class="grp">
           <span class="lbl">Roof Type</span>
           <div class="optrow" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
@@ -10058,6 +10058,7 @@ function buildDoor(){
       lf.castShadow=true; DG.add(lf);
       return;
     }
+    if(!g && RES_BASE==='resDouble'){ buildSixPanelLeaf(x, lw); return; }
     if(!g){ bx(lw, dh, 0.05, leafMat, x, dh/2, 0); return; }
     if(isSlider){
       // A slider panel is a slim aluminum/vinyl frame around glass on all
@@ -10084,6 +10085,54 @@ function buildDoor(){
     bx(stile, y1-y0, 0.05, leafMat, x+(lw/2-stile/2), (y0+y1)/2, 0);  // right stile
     var gp=new THREE.Mesh(new THREE.PlaneGeometry(lw-stile*2, y1-y0), glassMat);
     gp.position.set(x,(y0+y1)/2,0); gp.renderOrder=3; DG.add(gp);
+  }
+  /* ── RESIDENTIAL DOUBLE: SIX RAISED PANELS PER LEAF (Phase 2, 19 Nov 2026) ──
+     The 6-panel residential double was drawn as a flat slab: its leaves fell
+     through to the plain solid box, so there was no panel relief at all. A
+     real colonial 6-panel leaf is a frame — stiles, a top, frieze, lock and
+     bottom rail, and a centre mullion — with each opening carrying a RAISED
+     panel: a flat field a little below the stile face, falling to the frame
+     through a sloped bevel. Built that way here, with no CSG:
+       - the frame pieces are full-depth boards (same 0.05 leaf, face 0.025);
+       - each opening is closed behind by a back board whose face sits 0.6in
+         down (z 0.015), so the opening reads as a recess;
+       - the raised panel is one ExtrudeGeometry per opening with a 1-segment
+         bevel: its wide base lands on the back board, its field stops ~1/4in
+         below the stile face, and the sloped bevel between catches the light.
+     12 small meshes per double door, so phones stay quick. Same leaf
+     material, so it takes the door's factory finish; the casing still
+     follows the trim. Geometry only: style keys, sizes and price untouched. */
+  function buildSixPanelLeaf(x, lw){
+    var ST=Math.min(0.075, lw*0.16), MU=0.07;                 // stile, centre mullion (~4.5in, 4.2in)
+    var rB=0.15, rL=0.13, rF=0.07, rT=0.075;                  // bottom, lock, frieze, top rails
+    var avail=dh-(rB+rL+rF+rT);
+    // The lock rail carries the knob (residKnob sits at dh*0.45), as on a real door.
+    var hB=Math.max(avail*0.28, Math.min(avail*0.5, dh*0.45-rL/2-rB));
+    var hM=(avail-hB)*0.68, hT=avail-hB-hM;                    // tall middle, small top panels
+    var BD=0.05, FACE=0.025, BACKZ=0.015;
+    var pw=(lw-2*ST-MU)/2;
+    // frame
+    bx(ST, dh, BD, leafMat, x-(lw/2-ST/2), dh/2, 0);
+    bx(ST, dh, BD, leafMat, x+(lw/2-ST/2), dh/2, 0);
+    var y=0, rows=[];
+    function rail(h){ bx(lw-2*ST, h, BD, leafMat, x, y+h/2, 0); y+=h; }
+    function row(h){ rows.push({y0:y, h:h}); y+=h; }
+    rail(rB); row(hB); rail(rL); row(hM); rail(rF); row(hT); rail(rT);
+    rows.forEach(function(r){
+      bx(MU, r.h, BD, leafMat, x, r.y0+r.h/2, 0);                                // mullion
+      [-1,1].forEach(function(sd){
+        var cx=x+sd*(MU/2+pw/2), cy=r.y0+r.h/2;
+        bx(pw, r.h, BACKZ+BD/2, leafMat, cx, cy, (BACKZ-BD/2)/2);   // back board: closes the opening, face at BACKZ
+        var bs=Math.min(0.018, pw*0.16, r.h*0.16), bt=0.006, dep=0.001;
+        var sh=new THREE.Shape(), fw=pw/2-bs, fh=r.h/2-bs;
+        sh.moveTo(-fw,-fh); sh.lineTo(fw,-fh); sh.lineTo(fw,fh); sh.lineTo(-fw,fh); sh.closePath();
+        var pg=new THREE.ExtrudeGeometry(sh,{depth:dep, bevelEnabled:true, bevelThickness:bt, bevelSize:bs, bevelSegments:1});
+        var pm=new THREE.Mesh(pg, leafMat);
+        pm.position.set(cx, cy, BACKZ-dep);          // wide base on the back board; field at BACKZ+bt
+        pm.castShadow=true; pm.receiveShadow=true; pm.userData.raisedPanel=true;
+        DG.add(pm);
+      });
+    });
   }
   /* The trim board's dimensions. Out here rather than inside addOverlays
      because the HARDWARE needs them too: a strap hinge that is fitted to a
@@ -14836,8 +14885,12 @@ var WIZ_STEPS = [
   {title:"Start your design",  sub:"Pick a style to start."},
   {title:"Pick your size",     sub:"Width, length, and wall height."},
   {title:"Foundation", skip:true,         sub:"What your shed sits on. We can pour a pad or set it level on blocks."},
-  {title:"Siding & color",     sub:"Pick your look early."},
+  /* Roof before Siding & color (Nando, 19 Nov 2026): the roof is the bigger
+     structural choice and the colour step offers its colour again, so pick
+     the roof, then dress the walls. Panels follow via data-step (Roof 3,
+     Siding & color 4); everything else goes by title. */
   {title:"Roof",               sub:"Type, color, pitch, overhang & details."},
+  {title:"Siding & color",     sub:"Pick your look early."},
   {title:"Doors",              sub:"Pick a size, then a style."},
   {title:"Windows & Vents", skip:true,    sub:"Tap to add, then move or delete."},
 {title:"Interior", skip:true,           sub:"Finish the inside, add a loft or shelves."},
