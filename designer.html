@@ -1587,10 +1587,10 @@ function renderPlacedPorchLights(){
       var surfs=(typeof plSurfaces==='function')?plSurfaces(pld.wall):[];
       var cur=pld.ret||'main', curLbl=(surfs.filter(function(x){ return x.id===cur; })[0]||{}).label;
       var where=(pld.ret && curLbl) ? curLbl.toLowerCase() : pld.wall;
-      var row='<div class="placed-row" onclick="editPorchLightIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
+      var row='<div class="placed-row" onclick="openItemSheet(\'plight\','+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
         '<span>'+(byKey[pld.style]||'Porch Light')+' &middot; '+where+
         ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
-        '<span class="placed-x" onclick="event.stopPropagation();removePorchLightIdx('+i+')">&times;</span></div>';
+        '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'plight\','+i+')">&times;</span></div>';
       if(!sel) return row;
       /* Selected: which porch wall it hangs on, and a nudge either way — the
          same moves the drag makes, for a phone where a 2-inch fixture is a
@@ -3079,8 +3079,8 @@ function init(){
   // empty space still rotates the camera.
   var raycaster=new THREE.Raycaster();
   var ndc=new THREE.Vector2();
-  var draggingWindow=false;
-  var pressHit=null;            // item grabbed on press; a still release opens its sheet     // true while moving a selected window
+  var draggingWindow=false;     // true while moving a selected window
+  var pressHit=null;            // item grabbed on press; a still release opens its sheet
   var pressMoved=false;         // did the pointer move enough to count as a drag?
   var pressStart=null;          // {x,y} of press, to measure tap vs drag
 
@@ -3322,11 +3322,11 @@ function init(){
         }
         buildShed();
         syncEditorPanel();
-        /* Doors and windows ask first: Replace / Move / Delete (openItemSheet).
+        /* Placed items ask first: Replace / Remove / Cancel (openItemSheet).
            The press that may turn into a drag passes noOpen, and the sheet
            opens on release only if the pointer never moved. */
         if(!noOpen){
-          if((hit.kind==='window'||hit.kind==='door') && typeof openItemSheet==='function') openItemSheet(hit.kind, hit.index);
+          if(typeof SHEET_KINDS!=='undefined' && SHEET_KINDS[hit.kind]) openItemSheet(hit.kind, hit.index);
         }
         var selObj = hit.kind==='window'?windowsData[hit.index]:hit.kind==='door'?doorsData[hit.index]:null;
         if(selObj) showMeasureGuide(selObj);
@@ -3383,7 +3383,7 @@ function init(){
       if(hadGuide) buildShed();
       // A tap, not a drag: ask what to do with it.
       var _ph=pressHit; pressHit=null;
-      if(_ph && !pressMoved && (_ph.kind==='window'||_ph.kind==='door') && typeof openItemSheet==='function')
+      if(_ph && !pressMoved && typeof SHEET_KINDS!=='undefined' && SHEET_KINDS[_ph.kind])
         openItemSheet(_ph.kind, _ph.index);
     }
     /* TAP AN ITEM WITH EDIT MODE OFF -> GO TO ITS STEP.
@@ -3420,7 +3420,7 @@ function init(){
         selectHit(jump, true);
         if(dest && typeof wizGoTo==='function') wizGoTo(dest);
         // wizGoTo closes any open page, so ask Replace / Move / Delete after it.
-        if((jump.kind==='window'||jump.kind==='door') && typeof openItemSheet==='function') openItemSheet(jump.kind, jump.index);
+        if(typeof SHEET_KINDS!=='undefined' && SHEET_KINDS[jump.kind]) openItemSheet(jump.kind, jump.index);
         else selectHit(jump);
       }
       pressStart=null;
@@ -15833,9 +15833,9 @@ function renderPlacedWindows(){
   });
   ventsData.forEach(function(vd,i){
     var selV=(selectedKind==='vent' && selectedVent===i);
-    html+='<div class="placed-row" onclick="editVentIdx('+i+')" style="cursor:pointer'+(selV?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
+    html+='<div class="placed-row" onclick="openItemSheet(\'vent\','+i+')" style="cursor:pointer'+(selV?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
       '<span>Vent '+VENT_SIZE_LABEL+' &middot; '+vd.wall+'</span>'+
-      '<span class="placed-x" onclick="event.stopPropagation();removeVentIdx('+i+')">&times;</span></div>';
+      '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'vent\','+i+')">&times;</span></div>';
   });
   host.innerHTML = html
     ? '<div class="wstep-sub" style="margin-bottom:6px">Tap a window to change its type &mdash; or tap it in the 3D view to select, drag, or swap it.</div>'+html
@@ -15859,11 +15859,11 @@ function renderPlacedShelves(){
   shelvesData.forEach(function(sd,i){
     var wallLen=(sd.wall==='front'||sd.wall==='back')?W:L;
     var sel=(selectedKind==='shelf' && selectedShelf===i);
-    html+='<div class="placed-row" onclick="editShelfIdx('+i+')" style="cursor:pointer'+
+    html+='<div class="placed-row" onclick="openItemSheet(\'shelf\','+i+')" style="cursor:pointer'+
       (sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
       '<span>'+shelfRowLabel(sd, wallLen)+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
-      '<span class="placed-x" onclick="event.stopPropagation();removeShelfIdx('+i+')">&times;</span></div>';
+      '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'shelf\','+i+')">&times;</span></div>';
   });
   /* The count, said out loud. Shelving is priced by the foot, so four of them
      is real money and the customer should not have to infer it. */
@@ -16628,88 +16628,115 @@ function removeDoorIdx(i){
   buildShed(); renderPlacedDoors();
 }
 
-/* ── TAP A DOOR OR WINDOW: REPLACE / MOVE / DELETE ──────────────────────
-   Tapping one (in 3D or its list row) used to open the full options grid,
-   with Remove at the very bottom; the list row's x deleted at once, no undo.
-   Now a short page asks first. Replace opens the same options grid as before,
-   which swaps type/size in place and keeps the position. Delete removes it and
-   offers Undo. Move closes the page and leaves it selected to drag.
+/* ── TAP A PLACED ITEM: REPLACE / REMOVE / CANCEL ───────────────────────
+   Doors, windows, vents, shelves and porch lights. Tapping one (in 3D, or
+   its list row) used to open the full options grid with Remove at the very
+   bottom, and the list row's x removed at once with no undo. Now a short
+   page asks first, with exactly three buttons:
+     Replace - the same swap the item had before (door/window options grid,
+               which swaps in place and keeps the position; for a porch light
+               the style tiles; for a shelf its length/depth controls).
+               Vents come in one size, so a vent has no Replace.
+     Remove  - takes it off and offers Undo for a few seconds.
+     Cancel  - closes the page, nothing changes.
+   Moving is still a drag in the 3D view, outside this page.
    THE MAIN DOOR (doorsData[0]) stays: it is the door that makes its wall the
-   Front (doorFrontWall), so deleting it would rename every wall. It gets
-   Replace and Move only, with a line saying why. */
+   Front (doorFrontWall), so removing it would rename every wall. It gets
+   Replace and Cancel only, with a line saying why. */
+var SHEET_KINDS={
+  door:   {word:'door',        title:'Door',        list:function(){ return doorsData; },        rm:function(i){ removeDoorIdx(i); },        redraw:function(){ renderPlacedDoors(); }},
+  window: {word:'window',      title:'Window',      list:function(){ return windowsData; },      rm:function(i){ removeWindowIdx(i); },      redraw:function(){ renderPlacedWindows(); }},
+  vent:   {word:'vent',        title:'Vent',        list:function(){ return ventsData; },        rm:function(i){ removeVentIdx(i); },        redraw:function(){ renderPlacedWindows(); }},
+  shelf:  {word:'shelf',       title:'Shelf',       list:function(){ return shelvesData; },      rm:function(i){ removeShelfIdx(i); },
+           redraw:function(){ if(typeof refreshInterior==='function') refreshInterior(); renderPlacedShelves(); }},
+  plight: {word:'porch light', title:'Porch Light', list:function(){ return porchLightsData; }, rm:function(i){ removePorchLightIdx(i); }, redraw:function(){ renderPlacedPorchLights(); }}
+};
 function doorIsRequired(i){ return i===0 && !!doorsData[0]; }
+function _ftIn(inch){ var f=Math.floor(inch/12), r=Math.round(inch-f*12); return r ? f+"'"+r+'"' : String(f); }
+// Short name: "Window 24×36 on Left wall", "Door 6×6'4" on Front wall".
 function itemSheetName(kind, i){
-  var it=(kind==='door'?doorsData:windowsData)[i]; if(!it) return '';
-  var nm = (kind==='door')
-    ? ((typeof supplierDoorLabel==='function' && supplierDoorLabel(it)) || (DOOR_STYLE_NAMES[it.style]||it.style)+' door')
-    : ((typeof supplierWindowLabel==='function' && supplierWindowLabel(it.type,it.w,it.h)) || ('Window '+it.w+'\u00d7'+it.h));
-  return nm+' on '+wallLabelFor(it.wall);
+  var K=SHEET_KINDS[kind]; if(!K) return '';
+  var it=K.list()[i]; if(!it) return '';
+  var x='\u00d7', nm;
+  if(kind==='window') nm='Window '+it.w+x+it.h;
+  else if(kind==='door') nm='Door '+_ftIn(it.w)+x+_ftIn(it.h);
+  else if(kind==='vent') nm='Vent '+String(VENT_SIZE_LABEL).replace('x',x);
+  else if(kind==='shelf'){ var wl=(it.wall==='front'||it.wall==='back')?W:L; nm='Shelf '+Math.min(it.len||wl, wl)+' ft'; }
+  else nm='Porch light';
+  return nm+' on '+wallLabelFor(it.wall||'back');
 }
+function itemSheetHasReplace(kind){ return kind!=='vent'; }
 function itemSheetHTML(kind, i){
+  var K=SHEET_KINDS[kind];
   var req=(kind==='door' && doorIsRequired(i));
   var b='display:block;width:100%;margin-top:10px';
   var h='<div class="wstep-sub" style="font-size:14px;color:var(--w);font-weight:700;margin-bottom:4px">'+_sheetEsc(itemSheetName(kind,i))+'</div>';
-  h+='<div class="wstep-sub" style="margin-bottom:6px">What would you like to do with this '+kind+'?</div>';
-  h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetReplace()">Replace</button>';
-  h+='<button type="button" class="wbtn wbtn-back" style="'+b+'" onclick="itemSheetMove()">Move</button>';
-  if(req) h+='<div class="wstep-sub" style="margin-top:12px">This is your main door. It sets which wall is the front, so it can be replaced or moved but not deleted.</div>';
-  else h+='<button type="button" class="wbtn wbtn-back" style="'+b+';color:#ff6b6b" onclick="itemSheetDelete()">Delete</button>';
+  h+='<div class="wstep-sub" style="margin-bottom:6px">What would you like to do with this '+K.word+'?</div>';
+  if(itemSheetHasReplace(kind)) h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetReplace()">Replace</button>';
+  if(req) h+='<div class="wstep-sub" style="margin-top:12px">This is your main door. It sets which wall is the front, so it can be replaced but not removed.</div>';
+  else h+='<button type="button" class="wbtn wbtn-back" style="'+b+';color:#ff6b6b" onclick="itemSheetRemove()">Remove</button>';
   h+='<button type="button" class="wbtn wbtn-back" style="'+b+';background:transparent" onclick="closeSubPage()">Cancel</button>';
   return h;
 }
 function _sheetEsc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 var ITEM_SHEET=null;   // {kind, index} the open sheet is about
 function openItemSheet(kind, i){
-  var list=(kind==='door')?doorsData:windowsData; if(!list[i]) return;
+  var K=SHEET_KINDS[kind]; if(!K || !K.list()[i]) return;
   ITEM_SHEET={kind:kind, index:i};
+  _sheetSelect();
   if(typeof closeSubPage==='function') closeSubPage();
-  openSubPage(kind==='door'?'Door':'Window', itemSheetHTML(kind, i));
+  openSubPage(K.title, itemSheetHTML(kind, i));
 }
+// Select the sheet's item (and adopt its wall), the same as tapping it did.
 function _sheetSelect(){
   var s=ITEM_SHEET; if(!s) return null;
   selectedKind=s.kind; selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
-  if(s.kind==='door') selectedDoor=s.index; else selectedWindow=s.index;
-  var it=(s.kind==='door'?doorsData:windowsData)[s.index];
-  if(it && it.wall!==ADD_WALL){ ADD_WALL=it.wall; WIZ_ADDWALL_DOOR=it.wall; if(typeof syncWallUI==='function') syncWallUI(); }
+  if(s.kind==='door') selectedDoor=s.index;
+  else if(s.kind==='window') selectedWindow=s.index;
+  else if(s.kind==='vent') selectedVent=s.index;
+  else if(s.kind==='shelf') selectedShelf=s.index;
+  else selectedPorchLight=s.index;
+  var it=SHEET_KINDS[s.kind].list()[s.index];
+  if(it && it.wall && s.kind!=='shelf' && it.wall!==ADD_WALL){ ADD_WALL=it.wall; WIZ_ADDWALL_DOOR=it.wall; if(typeof syncWallUI==='function') syncWallUI(); }
+  buildShed();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(s.kind==='shelf' && typeof populateShelfLengths==='function') populateShelfLengths();
+  SHEET_KINDS[s.kind].redraw();
   return s;
 }
-// Same options grid a tap opened before; picking one swaps in place. Back returns here.
+function _scrollTo(id){ var el=document.getElementById(id); if(el && el.scrollIntoView) el.scrollIntoView({block:'center', behavior:'smooth'}); }
 function itemSheetReplace(){
   var s=_sheetSelect(); if(!s) return;
-  if(s.kind==='door') openOptionsForSelectedDoor(); else openOptionsForSelectedWindow();
+  if(s.kind==='door') openOptionsForSelectedDoor();          // stacks: Back returns to the sheet
+  else if(s.kind==='window') openOptionsForSelectedWindow();
+  else if(s.kind==='plight'){ closeSubPage(); _scrollTo('placedPorchLights'); showToast('Tap a style to swap this porch light.'); }
+  else if(s.kind==='shelf'){ closeSubPage(); _scrollTo('shelfSelControls'); showToast('Change the shelf length and depth below.'); }
 }
-function itemSheetMove(){
-  var s=_sheetSelect(); if(!s) return;
-  closeSubPage();
-  if(typeof EDIT_MODE!=='undefined' && !EDIT_MODE && typeof toggleEditMode==='function') toggleEditMode();
-  buildShed(); if(typeof syncEditorPanel==='function') syncEditorPanel();
-  showToast('Drag the '+s.kind+' along the wall in the 3D view to move it.');
-}
-function itemSheetDelete(){ var s=ITEM_SHEET; if(s) deleteItem(s.kind, s.index); }
-/* Delete with Undo. Puts the same object back at the same index, so its
+function itemSheetRemove(){ var s=ITEM_SHEET; if(s) deleteItem(s.kind, s.index); }
+/* Remove with Undo. Puts the same object back at the same index, so its
    position, colour and every other field come back exactly. */
 var _undoItem=null;
 function deleteItem(kind, i){
-  var list=(kind==='door')?doorsData:windowsData;
+  var K=SHEET_KINDS[kind]; if(!K) return false;
+  var list=K.list();
   if(!list[i] || (kind==='door' && doorIsRequired(i))) return false;
   var label=itemSheetName(kind, i);
   _undoItem={kind:kind, index:i, item:list[i]};
-  if(kind==='door') removeDoorIdx(i); else removeWindowIdx(i);
+  K.rm(i);
   ITEM_SHEET=null;
   if(typeof closeSubPage==='function') closeSubPage();
   if(typeof syncEditorPanel==='function') syncEditorPanel();
   if(typeof refreshPrice==='function') refreshPrice();
-  showUndoToast('Deleted '+label+'.');
+  showUndoToast('Removed '+label+'.');
   return true;
 }
 function undoDelete(){
   var u=_undoItem; _undoItem=null; if(!u) return;
-  var list=(u.kind==='door')?doorsData:windowsData;
+  var K=SHEET_KINDS[u.kind], list=K.list();
   list.splice(Math.min(u.index, list.length), 0, u.item);
-  if(u.kind==='door'){ if(selectedDoor>=u.index) selectedDoor++; }
-  else { if(selectedWindow>=u.index) selectedWindow++; }
-  buildShed();
-  if(u.kind==='door') renderPlacedDoors(); else renderPlacedWindows();
+  var sel={door:'selectedDoor', window:'selectedWindow', vent:'selectedVent', shelf:'selectedShelf', plight:'selectedPorchLight'}[u.kind];
+  if(window[sel]>=u.index) window[sel]++;
+  buildShed(); K.redraw();
   if(typeof syncEditorPanel==='function') syncEditorPanel();
   if(typeof refreshPrice==='function') refreshPrice();
   showToast('Put it back.');

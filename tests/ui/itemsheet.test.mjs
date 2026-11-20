@@ -1,4 +1,4 @@
-/* TAP A DOOR OR WINDOW -> REPLACE / MOVE / DELETE (preview, 19 Nov 2026).
+/* TAP A PLACED ITEM -> REPLACE / REMOVE / CANCEL (preview, 19 Nov 2026).
  *   node --test tests/ui/itemsheet.test.mjs
  */
 import { test } from 'node:test';
@@ -20,25 +20,46 @@ function setup() {
 }
 const buttons = (h) => [...h.matchAll(/<button[^>]*>([^<]+)<\/button>/g)].map((m) => m[1]);
 
-test('a window sheet names it by wall (door wall = Front) and offers Replace, Move, Delete, Cancel', () => {
+test('a window sheet: short name by wall (door wall = Front), exactly Replace, Remove, Cancel', () => {
   const c = setup();
-  assert.match(c.itemSheetName('window', 0), / on Left wall$/);
-  assert.deepEqual(buttons(c.itemSheetHTML('window', 0)), ['Replace', 'Move', 'Delete', 'Cancel']);
+  assert.equal(c.itemSheetName('window', 0), 'Window ' + c.windowsData[0].w + '\u00d7' + c.windowsData[0].h + ' on Left wall');
+  assert.deepEqual(buttons(c.itemSheetHTML('window', 0)), ['Replace', 'Remove', 'Cancel']);
+  assert.ok(!/Move|Delete/.test(c.itemSheetHTML('window', 0)));
 });
 
-test('the main door gets Replace and Move only, with the reason; a second door can be deleted', () => {
+test('the main door gets Replace and Cancel only, with the reason; a second door can be removed', () => {
   const c = setup();
+  assert.equal(c.itemSheetName('door', 0), "Door 6\u00d76'4\" on Front wall");
+  assert.equal(c.itemSheetName('door', 1), "Door 3\u00d76'4\" on Back wall");
   const h = c.itemSheetHTML('door', 0);
-  assert.deepEqual(buttons(h), ['Replace', 'Move', 'Cancel']);
+  assert.deepEqual(buttons(h), ['Replace', 'Cancel']);
   assert.match(h, /main door/);
   assert.equal(c.deleteItem('door', 0), false);
   assert.equal(c.doorsData.length, 2);
   assert.ok(!c.doorEditHTML(0).includes('Remove this door'));
-  assert.deepEqual(buttons(c.itemSheetHTML('door', 1)), ['Replace', 'Move', 'Delete', 'Cancel']);
+  assert.deepEqual(buttons(c.itemSheetHTML('door', 1)), ['Replace', 'Remove', 'Cancel']);
   assert.ok(c.doorEditHTML(1).includes('Remove this door'));
 });
 
-test('Delete removes it, and Undo puts the same item back at the same place', () => {
+test('vents, shelves and porch lights get the same sheet; a vent has nothing to replace', () => {
+  const c = setup();
+  c.ventsData.length = 0; c.ventsData.push({ wall: 'front', pos: 0.5 });
+  c.shelvesData.length = 0; c.shelvesData.push({ wall: 'back', pos: 0.5, len: 8, depth: 16, cy: 48 });
+  c.porchLightsData.length = 0; c.porchLightsData.push({ wall: 'front', pos: 0.3, style: c.PORCH_LIGHT_CATALOG[0].key });
+  assert.match(c.itemSheetName('vent', 0), /^Vent \d+\u00d7\d+ on Front wall$/);
+  assert.deepEqual(buttons(c.itemSheetHTML('vent', 0)), ['Remove', 'Cancel']);
+  assert.match(c.itemSheetName('shelf', 0), /^Shelf \d+ ft on Back wall$/);
+  assert.deepEqual(buttons(c.itemSheetHTML('shelf', 0)), ['Replace', 'Remove', 'Cancel']);
+  assert.equal(c.itemSheetName('plight', 0), 'Porch light on Front wall');
+  assert.deepEqual(buttons(c.itemSheetHTML('plight', 0)), ['Replace', 'Remove', 'Cancel']);
+  for (const [k, list] of [['vent', c.ventsData], ['shelf', c.shelvesData], ['plight', c.porchLightsData]]) {
+    const it = list[0];
+    assert.equal(c.deleteItem(k, 0), true, k); assert.equal(list.length, 0, k);
+    c.undoDelete(); assert.equal(list[0], it, k + ' undo');
+  }
+});
+
+test('Remove takes it off, and Undo puts the same item back at the same place', () => {
   const c = setup();
   const w0 = c.windowsData[0], before = JSON.stringify(c.windowsData);
   assert.equal(c.deleteItem('window', 0), true);
