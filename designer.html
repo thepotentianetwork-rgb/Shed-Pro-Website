@@ -9933,6 +9933,7 @@ function buildDoor(){
      behind every gap close it off so no daylight shows through. Residential,
      slider and roll-up doors keep the old fill-the-reveal jamb. */
   var shedGap = !isResid && !isRollup && !isSlider;
+  var astragalRightEdge=null;
   var SG_GAP = 5/16*(0.2/12), SG_JAMB = 0.010;
   if(shedGap && !isFairytale){
     if(isSingle) leaves=[{x:0, w:dw-2*SG_JAMB-2*SG_GAP}];
@@ -9942,6 +9943,7 @@ function buildDoor(){
     }
   }
 
+  var basicAstragal = shedGap && !isFairytale && !isSingle && !isCedar && DOOR==='basic';
   // ---- JAMB FRAME — lines the cut opening like a real prehung unit. The leaf is
   // deliberately narrower than the opening, and without a jamb that reveal reads
   // as a GAP between the door and the shed. Side jambs fill the EXACT reveal
@@ -10570,7 +10572,29 @@ function buildDoor(){
     bx(dw-2*SG_JAMB, (dh-jt+0.002)-_lT+0.010, _SD, jambMat, 0, ((dh-jt+0.002)+_lT-0.010)/2+0.001, _SZ);  // head stop
     bx(dw-2*SG_JAMB, _lB-_sillTop+0.014, _SD, jambMat, 0, (_lB+_sillTop-0.014)/2+0.003, _SZ);        // bottom stop
     // the astragal is the double's centre stop: on the room side, behind the gap
-    if(!isSingle) bx(0.03, _lT-_lB+0.006, _SD, doorDk, 0, (_lB+_lT)/2, _SZ);
+    // (every double EXCEPT the Basic, which gets the real exterior strip below)
+    if(!isSingle && !basicAstragal) bx(0.03, _lT-_lB+0.006, _SD, doorDk, 0, (_lB+_lT)/2, _SZ);
+    /* BASIC DOUBLE: EXTERIOR CENTRE ASTRAGAL (Nando, approved 19 Nov 2026).
+       The real ShedPro Basic double has one vertical strip on the OUTSIDE at
+       the meeting line, painted the door colour, running the leaf height.
+       The barrel bolt sits on the LEFT leaf (inactive); the strip is fastened
+       to the RIGHT (active) leaf and laps ~3/4in over the left, covering the
+       5/16in centre gap. The interior photo shows a bare seam, so there is no
+       room-side centre stop on this door. Cedar doubles keep their own look
+       (no strip); residential doors are not shed-gap doors and never get it.
+       Plain paint in the door colour, not the leaf's siding texture: a 1.5in
+       strip carrying the board grooves would read as a sliver of siding. */
+    if(basicAstragal){
+      var _AW=1.5*IN, _AD=0.75*IN, _aL=-(SG_GAP/2+0.75*IN);
+      var _aZ=0.039+_AD/2;                       // seated on the leaf trim face
+      var _aMat=(typeof SIDING!=='undefined' && SIDING==='pine') ? doorMat      // a pine door gets a pine strip
+        : (typeof paintMat==='function' && TRIM_FINISH!=='cedar' && !(typeof isStainedCedarTrim==='function' && isStainedCedarTrim()))
+        ? paintMat(doorSc,0.1)
+        : new THREE.MeshStandardMaterial({color:doorSc, roughness:0.6, metalness:0.0});
+      var _ast=bx(_AW, _lT-_lB, _AD, _aMat, _aL+_AW/2, (_lB+_lT)/2, _aZ);
+      _ast.userData.astragal='basic-active-right';
+      astragalRightEdge=_aL+_AW;
+    }
   } else if(!isSingle && !isRollup && !isSlider) bx(0.03, dh-0.04, 0.05, doorDk, 0, dh/2, 0.012);
   /* ---- Pass 7: DOOR GAPS + CONTACT SHADOWS (hinged shed-style doors only) ----
      Soft gradient planes, not black outlines: a dark falloff that reads as a
@@ -10881,7 +10905,8 @@ function buildDoor(){
     // the leaves — whose face is proud of the leaves (0.012 + 0.025).
     /* Door gaps: the astragal went to the room side as the centre stop, so the
        handle sits on the active (right) leaf's edge stile instead. */
-    if(shedGap) doorKnob(SG_GAP/2+0.021, sgY(dh*0.44), 0.039);
+    if(basicAstragal) doorKnob(astragalRightEdge+0.0175+0.002, sgY(dh*0.44), 0.039);   // T-handle right beside the strip, on the active leaf
+    else if(shedGap) doorKnob(SG_GAP/2+0.021, sgY(dh*0.44), 0.039);
     else doorKnob(0, dh*0.44, 0.037);
   }
 
@@ -12097,6 +12122,14 @@ function buildWindows(){
       m.position.set(dx, winCY+dy, cZ+cD/2); m.castShadow=true; grp.add(m);
     }
     cboard(winW+cB*2, cB, 0, winH/2+cB/2);    // head
+    /* DRIP CAP (Phase 1 exterior trim). A real head casing carries a thin cap
+       that sheds water off the face: a hair wider than the casing and a
+       little proud of it. Trim material, so it follows the trim colour,
+       Cedar and Stained Cedar included (paintMat is grain-only). */
+    var dcH=0.010, dcD=cD+0.010;
+    var dcap=new THREE.Mesh(new THREE.BoxGeometry(winW+cB*2+0.012, dcH, dcD), trimMat2);
+    dcap.position.set(0, winCY+winH/2+cB+dcH/2, cZ+dcD/2); dcap.castShadow=true;
+    dcap.userData.dripCap=true; grp.add(dcap);
     cboard(cB, winH, -winW/2-cB/2, 0);         // left leg
     cboard(cB, winH,  winW/2+cB/2, 0);         // right leg
     cboard(winW+cB*2, cB, 0, -winH/2-cB/2);   // apron
@@ -12134,7 +12167,17 @@ function buildWindows(){
          21 Oct 2026): no horizontal centre bar. The slider gets the
          vertical meeting rail an XO actually has; the sidelight is clear.
          Every other window keeps its centre divider exactly as before. */
-      if(!winNoGrid(wd)) grp.add(vbar(winW, fT*0.7, 0, 0));        // center divider
+      /* SINGLE-HUNG SASHES (Phase 1 windows). An upright unit is two sashes,
+         the upper one OUTBOARD of the lower, so the meeting rail is two rails
+         at two depths with a small step between them, not one flat bar. A
+         wide band (transom-shaped) keeps the single divider it always had. */
+      if(!winNoGrid(wd)){
+        if(winH>=winW*0.9){
+          var mrH=fT*0.45;
+          var up=vbar(winW, mrH, 0, mrH/2);   up.position.z+=0.004; grp.add(up);    // upper sash bottom rail, outboard
+          var lo=vbar(winW, mrH, 0, -mrH/2);  lo.position.z-=0.002; grp.add(lo);    // lower sash top rail, inboard
+        } else grp.add(vbar(winW, fT*0.7, 0, 0));                                   // center divider
+      }
       else if(/72x48$/.test(String(wd.type))) grp.add(vbar(fT*0.8, winH, 0, 0));   // XO meeting rail
     }
     // GRIDS: 12in muntins in the frame colour on every pane (not the no-grid 72x48 / sidelight units).
