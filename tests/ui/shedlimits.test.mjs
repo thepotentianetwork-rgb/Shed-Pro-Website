@@ -41,7 +41,7 @@ test('the markup bounds are sane, and width reaches 26', () => {
   const [w, l, h] = markupSliders();
   assert.equal(w.max, 26, `the width slider stops at ${w.max}ft`);
   assert.equal(l.max, 34);
-  assert.ok(w.min >= 6 && l.min >= 6 && h.max >= 12);
+  assert.ok(w.min >= 4 && l.min >= 6 && h.max >= 12);   // 4x6 is the smallest (Nando, 20 Nov 2026)
   // Even step sizes, so a slider can actually land on its own maximum.
   for (const s of [w, l]) {
     assert.equal((s.max - s.min) % s.step, 0,
