@@ -12869,6 +12869,22 @@ function setVentColor(c){
   if(typeof buildShed==='function') buildShed();
   if(typeof saveState==='function') try{ saveState(); }catch(e){}
 }
+var VENT_COLOR_OPTS=[{k:'black',name:'Black'},{k:'white',name:'White'},{k:'trim',name:'Match trim'},{k:'siding',name:'Match siding'}];
+function ventColorKey(vd){
+  var k=vd && vd.color;
+  return (k && VENT_COLOR_OPTS.some(function(o){ return o.k===k; })) ? k : VENT_COLOR;
+}
+function ventColorName(vd){ var k=ventColorKey(vd); return (VENT_COLOR_OPTS.filter(function(o){ return o.k===k; })[0]||{}).name||''; }
+function setVentColorIdx(i, k){
+  var vd=ventsData[i]; if(!vd || !VENT_COLOR_OPTS.some(function(o){ return o.k===k; })) return;
+  vd.color=k;
+  if(typeof buildShed==='function') buildShed();
+  if(typeof renderPlacedWindows==='function') renderPlacedWindows();
+  if(typeof ventColorPageHTML==='function' && typeof _spStack!=='undefined' && _spStack.length){
+    _spStack[_spStack.length-1].b=ventColorPageHTML(i); _spRender(true);
+  }
+  if(typeof saveState==='function') try{ saveState(); }catch(e){}
+}
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
@@ -12878,10 +12894,23 @@ function buildVents(){
     : new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
   // VENT COLOR — the louvre itself is black or white (user choice); the casing
   // around it stays trim colour like every window, including a wood finish.
-  var _vw=(VENT_COLOR==='white');
-  var slatMat=new THREE.MeshStandardMaterial({color:_vw?0xd9d9d6:0x1f1f1f, roughness:0.7, metalness:0.1});
-  var louvMat=new THREE.MeshStandardMaterial({color:_vw?0xf5f5f2:0x333333, roughness:0.6, metalness:0.1});
+  /* PER-VENT COLOUR (19 Nov 2026). A vent may carry its own vd.color
+     (black, white, trim, siding), picked from its tap sheet. Without one it
+     follows the shed-wide VENT_COLOR, so every design saved before this
+     builds exactly as it did. One material pair per colour, built lazily. */
+  var _vmats={};
+  function ventMats(k){
+    if(_vmats[k]) return _vmats[k];
+    var body, slat;
+    if(k==='white'){ body=0xd9d9d6; slat=0xf5f5f2; }
+    else if(k==='black'){ body=0x1f1f1f; slat=0x333333; }
+    else { var base=new THREE.Color(k==='siding'?sc:tc);
+           body=base.clone().multiplyScalar(0.82).getHex(); slat=base.getHex(); }
+    return (_vmats[k]={slat:new THREE.MeshStandardMaterial({color:body, roughness:0.7, metalness:0.1}),
+                       louv:new THREE.MeshStandardMaterial({color:slat, roughness:0.6, metalness:0.1})});
+  }
   ventsData.forEach(function(vd, idx){
+    var _vm=ventMats(ventColorKey(vd)), slatMat=_vm.slat, louvMat=_vm.louv;
     // Vents ride near the wall top. Measure "the top" from THIS wall's real
     // height — the lean-to's back wall is shorter than H, so (H*12)-12 sat
     // above its roof. ventCyIn() holds that arithmetic; see the note on it.
@@ -15834,7 +15863,7 @@ function renderPlacedWindows(){
   ventsData.forEach(function(vd,i){
     var selV=(selectedKind==='vent' && selectedVent===i);
     html+='<div class="placed-row" onclick="openItemSheet(\'vent\','+i+')" style="cursor:pointer'+(selV?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>Vent '+VENT_SIZE_LABEL+' &middot; '+vd.wall+'</span>'+
+      '<span>Vent '+VENT_SIZE_LABEL+' &middot; '+vd.wall+' &middot; '+ventColorName(vd)+'</span>'+
       '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'vent\','+i+')">&times;</span></div>';
   });
   host.innerHTML = html
@@ -16557,8 +16586,8 @@ function doorEditHTML(i){
        ';color:#06222e;font-weight:800;text-align:center;line-height:22px">'+(awOn?'\u2713':'')+'</div></div>';
   }
 
-  // ---- remove, at the bottom (not on the main door: see doorIsRequired) ----
-  if(!doorIsRequired(i)) h+='<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--br)">'+
+  // ---- remove, at the bottom ----
+  h+='<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--br)">'+
      '<div onclick="removeSelectedDoor()" style="cursor:pointer;text-align:center;padding:13px;'+
      'border-radius:9px;border:1px solid rgba(255,107,107,.45);background:rgba(255,107,107,.08);'+
      'color:#ff6b6b;font-weight:800;font-size:13px">Remove this door</div></div>';
@@ -16600,7 +16629,7 @@ function renderPlacedDoors(){
       '<span>'+(supplierDoorLabel(dd)||(szl+' '+(names[dd.style]||dd.style)))+colorSuffix(dd)+' &middot; '+dd.wall+
       (dd.awning?' <span style="color:var(--blue);font-size:10px">&middot; overhang</span>':'')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
-      (doorIsRequired(i) ? '' : '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'door\','+i+')">&times;</span>')+'</div>';
+      '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'door\','+i+')">&times;</span></div>';
   });
   var addBtn='<div onclick="startAnotherDoor()" style="cursor:pointer;text-align:center;'+
     'margin-top:8px;padding:11px;border-radius:9px;border:1px dashed rgba(43,181,232,.55);'+
@@ -16636,13 +16665,15 @@ function removeDoorIdx(i){
      Replace - the same swap the item had before (door/window options grid,
                which swaps in place and keeps the position; for a porch light
                the style tiles; for a shelf its length/depth controls).
-               Vents come in one size, so a vent has no Replace.
+               Vents come in one size, so a vent has Change color instead.
      Remove  - takes it off and offers Undo for a few seconds.
      Cancel  - closes the page, nothing changes.
    Moving is still a drag in the 3D view, outside this page.
-   THE MAIN DOOR (doorsData[0]) stays: it is the door that makes its wall the
-   Front (doorFrontWall), so removing it would rename every wall. It gets
-   Replace and Cancel only, with a line saying why. */
+   THE MAIN DOOR (doorsData[0]) can be removed too (Nando, 19 Nov 2026). It
+   is the door that makes its wall the Front (doorFrontWall), so the next door
+   left becomes the front and the wall names follow it; with no doors left
+   doorFrontWall falls back to the shed's own front. Undo puts it back at
+   index 0, so it is the main door again. */
 var SHEET_KINDS={
   door:   {word:'door',        title:'Door',        list:function(){ return doorsData; },        rm:function(i){ removeDoorIdx(i); },        redraw:function(){ renderPlacedDoors(); }},
   window: {word:'window',      title:'Window',      list:function(){ return windowsData; },      rm:function(i){ removeWindowIdx(i); },      redraw:function(){ renderPlacedWindows(); }},
@@ -16651,7 +16682,6 @@ var SHEET_KINDS={
            redraw:function(){ if(typeof refreshInterior==='function') refreshInterior(); renderPlacedShelves(); }},
   plight: {word:'porch light', title:'Porch Light', list:function(){ return porchLightsData; }, rm:function(i){ removePorchLightIdx(i); }, redraw:function(){ renderPlacedPorchLights(); }}
 };
-function doorIsRequired(i){ return i===0 && !!doorsData[0]; }
 function _ftIn(inch){ var f=Math.floor(inch/12), r=Math.round(inch-f*12); return r ? f+"'"+r+'"' : String(f); }
 // Short name: "Window 24×36 on Left wall", "Door 6×6'4" on Front wall".
 function itemSheetName(kind, i){
@@ -16666,15 +16696,35 @@ function itemSheetName(kind, i){
   return nm+' on '+wallLabelFor(it.wall||'back');
 }
 function itemSheetHasReplace(kind){ return kind!=='vent'; }
+/* A vent comes in one size, so it has nothing to replace; what you can change
+   is its colour (Nando: "Vents only needs remove or change color"). */
+function ventColorPageHTML(i){
+  var vd=ventsData[i]; if(!vd) return '';
+  var cur=ventColorKey(vd);
+  var h='<div class="wstep-sub" style="font-size:14px;color:var(--w);font-weight:700;margin-bottom:4px">'+_sheetEsc(itemSheetName('vent',i))+'</div>';
+  h+='<div class="wstep-sub" style="margin-bottom:10px">Pick a color for this vent. The board around it always matches your trim.</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  VENT_COLOR_OPTS.forEach(function(o){
+    var on=(o.k===cur);
+    h+='<button type="button" class="wbtn wbtn-back vent-pick" data-vc="'+o.k+'" onclick="setVentColorIdx('+i+',\''+o.k+'\')" style="'+
+       (on?'border-color:#2BB5E8;background:rgba(43,181,232,.14)':'')+'">'+o.name+'</button>';
+  });
+  h+='</div>';
+  h+='<button type="button" class="wbtn wbtn-next" style="display:block;width:100%;margin-top:14px" onclick="closeSubPage()">Done</button>';
+  return h;
+}
+function itemSheetVentColor(){
+  var s=_sheetSelect(); if(!s || s.kind!=='vent') return;
+  openSubPage('Vent Color', ventColorPageHTML(s.index));   // stacks: Back returns to the sheet
+}
 function itemSheetHTML(kind, i){
   var K=SHEET_KINDS[kind];
-  var req=(kind==='door' && doorIsRequired(i));
   var b='display:block;width:100%;margin-top:10px';
   var h='<div class="wstep-sub" style="font-size:14px;color:var(--w);font-weight:700;margin-bottom:4px">'+_sheetEsc(itemSheetName(kind,i))+'</div>';
   h+='<div class="wstep-sub" style="margin-bottom:6px">What would you like to do with this '+K.word+'?</div>';
-  if(itemSheetHasReplace(kind)) h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetReplace()">Replace</button>';
-  if(req) h+='<div class="wstep-sub" style="margin-top:12px">This is your main door. It sets which wall is the front, so it can be replaced but not removed.</div>';
-  else h+='<button type="button" class="wbtn wbtn-back" style="'+b+';color:#ff6b6b" onclick="itemSheetRemove()">Remove</button>';
+  if(kind==='vent') h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetVentColor()">Change color</button>';
+  else if(itemSheetHasReplace(kind)) h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetReplace()">Replace</button>';
+  h+='<button type="button" class="wbtn wbtn-back" style="'+b+';color:#ff6b6b" onclick="itemSheetRemove()">Remove</button>';
   h+='<button type="button" class="wbtn wbtn-back" style="'+b+';background:transparent" onclick="closeSubPage()">Cancel</button>';
   return h;
 }
@@ -16719,7 +16769,7 @@ var _undoItem=null;
 function deleteItem(kind, i){
   var K=SHEET_KINDS[kind]; if(!K) return false;
   var list=K.list();
-  if(!list[i] || (kind==='door' && doorIsRequired(i))) return false;
+  if(!list[i]) return false;
   var label=itemSheetName(kind, i);
   _undoItem={kind:kind, index:i, item:list[i]};
   K.rm(i);
