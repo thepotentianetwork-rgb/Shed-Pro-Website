@@ -4,6 +4,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadDesigner } from '../harness.mjs';
+import vmMod from 'node:vm';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+const DU_SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'designer-upgrade.js'), 'utf8');
+const await_import_vm = () => vmMod;
 
 function setup() {
   const { c } = loadDesigner();
@@ -22,15 +28,15 @@ const buttons = (h) => [...h.matchAll(/<button[^>]*>([^<]+)<\/button>/g)].map((m
 
 test('a window sheet: short name by wall (door wall = Front), exactly Replace, Remove, Cancel', () => {
   const c = setup();
-  assert.equal(c.itemSheetName('window', 0), 'Window ' + c.windowsData[0].w + '\u00d7' + c.windowsData[0].h + ' on Left wall');
+  assert.equal(c.itemSheetName('window', 0), 'Transom window 12\u00d724 \u00b7 White frame \u00b7 ' + c.trimDisplayName() + ' trim on Left wall');
   assert.deepEqual(buttons(c.itemSheetHTML('window', 0)), ['Replace', 'Remove', 'Cancel']);
   assert.ok(!/Move|Delete/.test(c.itemSheetHTML('window', 0)));
 });
 
 test('every door, the main one too, gets Replace, Remove, Cancel; the next door becomes the front', () => {
   const c = setup();
-  assert.equal(c.itemSheetName('door', 0), "Door 6\u00d76'4\" on Front wall");
-  assert.equal(c.itemSheetName('door', 1), "Door 3\u00d76'4\" on Back wall");
+  assert.equal(c.itemSheetName('door', 0), "Double door 6\u00d76'4\" \u00b7 Siding color (" + c.sn + ") \u00b7 " + c.trimDisplayName() + " trim on Front wall");
+  assert.match(c.itemSheetName('door', 1), /^Door 3\u00d76'4" \u00b7 .* on Back wall$/);
   const h = c.itemSheetHTML('door', 0);
   assert.deepEqual(buttons(h), ['Replace', 'Remove', 'Cancel']);
   assert.ok(!/can't|cannot|not removed|main door/i.test(h));
@@ -43,7 +49,7 @@ test('every door, the main one too, gets Replace, Remove, Cancel; the next door 
   assert.equal(c.doorFrontWall(), 'back', 'the remaining door becomes the front');
   assert.equal(c.wallRelName('back'), 'Front');
   assert.equal(c.wallRelName('left'), 'Right', 'labels follow the new front');
-  assert.equal(c.itemSheetName('door', 0), "Door 3\u00d76'4\" on Front wall");
+  assert.match(c.itemSheetName('door', 0), /^Door 3\u00d76'4" \u00b7 .* on Front wall$/);
   c.undoDelete();
   assert.equal(c.doorsData[0], main, 'Undo restores it as the main door');
   assert.equal(c.doorFrontWall(), 'front');
@@ -61,11 +67,11 @@ test('vents, shelves and porch lights get the same sheet; a vent has Change colo
   c.ventsData.length = 0; c.ventsData.push({ wall: 'front', pos: 0.5 });
   c.shelvesData.length = 0; c.shelvesData.push({ wall: 'back', pos: 0.5, len: 8, depth: 16, cy: 48 });
   c.porchLightsData.length = 0; c.porchLightsData.push({ wall: 'front', pos: 0.3, style: c.PORCH_LIGHT_CATALOG[0].key });
-  assert.match(c.itemSheetName('vent', 0), /^Vent \d+\u00d7\d+ on Front wall$/);
+  assert.match(c.itemSheetName('vent', 0), /^Vent \d+\u00d7\d+ \u00b7 (Black|White) on Front wall$/);
   assert.deepEqual(buttons(c.itemSheetHTML('vent', 0)), ['Change color', 'Remove', 'Cancel']);
-  assert.match(c.itemSheetName('shelf', 0), /^Shelf \d+ ft on Back wall$/);
+  assert.match(c.itemSheetName('shelf', 0), /^Shelf 8 ft \u00d7 16" deep on Back wall$/);
   assert.deepEqual(buttons(c.itemSheetHTML('shelf', 0)), ['Replace', 'Remove', 'Cancel']);
-  assert.equal(c.itemSheetName('plight', 0), 'Porch light on Front wall');
+  assert.equal(c.itemSheetName('plight', 0), 'Porch light Modern Cylinder \u00b7 Matte black on Front wall');
   assert.deepEqual(buttons(c.itemSheetHTML('plight', 0)), ['Replace', 'Remove', 'Cancel']);
   for (const [k, list] of [['vent', c.ventsData], ['shelf', c.shelvesData], ['plight', c.porchLightsData]]) {
     const it = list[0];
@@ -109,21 +115,22 @@ test('vent colour: each vent can carry its own; without one it follows the shed-
   c.ventsData.push({ wall: 'front', pos: 0.5 }); c.ventsData.push({ wall: 'back', pos: 0.5 });
   c.VENT_COLOR = 'black';
   assert.equal(c.ventColorKey(c.ventsData[0]), 'black');
-  assert.deepEqual(buttons(c.ventColorPageHTML(0)), ['Black', 'White', 'Match trim', 'Match siding', 'Done']);
-  c.setVentColorIdx(0, 'siding');
-  assert.equal(c.ventsData[0].color, 'siding');
+  assert.deepEqual(buttons(c.ventColorPageHTML(0)), ['Black', 'White', 'Done']);
+  c.setVentColorIdx(0, 'white');
+  assert.equal(c.ventsData[0].color, 'white');
+  c.setVentColorIdx(0, 'siding'); assert.equal(c.ventsData[0].color, 'white', 'match siding is gone');
   assert.equal(c.ventsData[1].color, undefined, 'only that vent');
-  c.setVentColorIdx(0, 'purple'); assert.equal(c.ventsData[0].color, 'siding', 'unknown colour ignored');
+  c.setVentColorIdx(0, 'purple'); assert.equal(c.ventsData[0].color, 'white', 'unknown colour ignored');
   // built louvre uses siding colour on vent 0, black on vent 1
   const louvHex = (i) => { const m = c.ventMeshes.find((x) => x.index === i); let hx = null;
     m.group.traverse((o) => { if (o.isMesh && o.geometry.parameters && Math.abs(o.geometry.parameters.depth - 0.012) < 1e-9) hx = o.material.color.getHex(); }); return hx; };
-  assert.equal(louvHex(0), new c.THREE.Color(c.sc).getHex());
+  assert.equal(louvHex(0), 0xf5f5f2);
   assert.equal(louvHex(1), 0x333333);
   // saved and reopened
   const cfg = JSON.parse(JSON.stringify(c.getDesignConfig()));
-  assert.equal(cfg.vents[0].color, 'siding');
+  assert.equal(cfg.vents[0].color, 'white');
   c.applyDesignConfig(cfg);
-  assert.equal(c.ventsData[0].color, 'siding');
+  assert.equal(c.ventsData[0].color, 'white');
   assert.equal(c.ventColorKey(c.ventsData[1]), 'black');
 });
 
@@ -134,4 +141,44 @@ test('a design saved before per-vent colour opens unchanged (shed-wide White sti
   c.applyDesignConfig(cfg);
   assert.equal(c.ventsData[0].color, undefined);
   assert.equal(c.ventColorKey(c.ventsData[0]), 'white');
+});
+
+test('a vent saved with the dropped Match trim / Match siding follows the shed-wide colour', () => {
+  const c = setup();
+  c.VENT_COLOR = 'white';
+  assert.equal(c.ventColorKey({ wall: 'front', pos: 0.5, color: 'siding' }), 'white');
+  assert.equal(c.ventColorKey({ wall: 'front', pos: 0.5, color: 'trim' }), 'white');
+});
+
+test('size and colour everywhere: list rows, review sheet and the submitted item lines', () => {
+  const c = setup();
+  const nodes = {}; const orig = c.document.getElementById;
+  c.document.getElementById = (id) => (nodes[id] = nodes[id] || orig.call(c.document, id));
+  c.ventsData.length = 0; c.ventsData.push({ wall: 'front', pos: 0.5, color: 'black' });
+  c.porchLightsData.length = 0; c.porchLightsData.push({ wall: 'front', pos: 0.3, style: 'modern' });
+  c.renderPlacedWindows(); c.renderPlacedDoors();
+  const wl = String(nodes.placedWindows.innerHTML), dl = String(nodes.placedDoors.innerHTML);
+  assert.match(wl, /Transom window 12\u00d724 \u00b7 White frame \u00b7 [^<]+ trim &middot; Left wall/);
+  assert.match(wl, /Vent 16\u00d78 \u00b7 Black &middot; Front wall/);
+  assert.match(dl, /Double door 6\u00d76'4" \u00b7 Siding color/);
+  // door with its own factory colour
+  c.doorsData.push({ wall: 'right', pos: 0.5, style: 'res6B', w: 36, h: 82.5 });
+  assert.match(c.itemSpec('door', c.doorsData[2]).text, /^Door 3\u00d76'8" \u00b7 Black \u00b7 /);
+  c.doorsData.push({ wall: 'right', pos: 0.2, style: 'rollup', w: 96, h: 84, color: 'brown' });
+  assert.equal(c.itemSpec('door', c.doorsData[3]).text, "Roll-up door 8\u00d77 \u00b7 Brown");
+  // review sheet
+  c.buildShed = () => {};
+  const vm = await_import_vm();
+  vm.runInContext(DU_SRC, c, { filename: 'designer-upgrade.js' });
+  const row = (k) => (c.DU.specRows().find((r) => r[0] === k) || [])[1];
+  assert.match(row('Windows'), /^2\u00d7 Transom window 12\u00d724 \u00b7 White frame/);
+  assert.equal(row('Vents'), 'Vent 16\u00d78 \u00b7 Black');
+  assert.match(row('Doors'), /Double door 6\u00d76'4" \u00b7 Siding color/);
+  // submitted item lines
+  const lines = JSON.parse(JSON.stringify(c.itemSpecLines()));
+  assert.equal(lines.length, 4 + 2 + 1 + 1);
+  const v = lines.find((x) => x.kind === 'vent');
+  assert.deepEqual(v, { kind: 'vent', size: '16\u00d78', color: 'Black', wall: 'front', wallName: 'Front', text: 'Vent 16\u00d78 \u00b7 Black' });
+  // config itself is untouched by this
+  assert.equal(c.getDesignConfig().itemSpecs, undefined);
 });

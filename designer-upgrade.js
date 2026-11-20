@@ -141,15 +141,22 @@ DU.specRows = function(){
   var pcNames=null;
   try{ if(S.PC && S.PC.decorateConfig) pcNames=S.PC.decorateConfig({}).colorNames; }catch(e){}
   if(pcNames && pcNames.door) rows.push(['Door color', pcNames.door, 'Siding & color']);
-  rows.push(['Doors', (S.doorsData||[]).length ? countBy(S.doorsData, doorName).join(', ') : 'None', 'Doors']);
-  rows.push(['Windows', (S.windowsData||[]).length ? countBy(S.windowsData, function(w){ return w.type||(w.w+'×'+w.h); }).join(', ') : 'None', 'Windows & Vents']);
+  /* Size and colour of every item (Nando, 19 Nov 2026), worded by the
+     designer's itemSpec so this sheet, the list rows and the quote agree. */
+  var spec=function(kind){ return function(x){ var sp=(typeof S.itemSpec==='function') ? S.itemSpec(kind, x) : null; return sp ? sp.text : null; }; };
+  var hasSpec=(typeof S.itemSpec==='function');
+  rows.push(['Doors', (S.doorsData||[]).length ? countBy(S.doorsData, hasSpec ? spec('door') : doorName).join(', ') : 'None', 'Doors']);
+  rows.push(['Windows', (S.windowsData||[]).length ? countBy(S.windowsData, hasSpec ? spec('window') : function(w){ return w.type||(w.w+'×'+w.h); }).join(', ') : 'None', 'Windows & Vents']);
+  if((S.ventsData||[]).length && hasSpec) rows.push(['Vents', countBy(S.ventsData, spec('vent')).join(', '), 'Windows & Vents']);
   var inside=[];
   if(S.INT_FINISH && S.INT_FINISH!=='none') inside.push(cap(S.INT_FINISH)+' interior'+(S.INT_FINISH==='painted' && S.ipn ? ' ('+S.ipn+')' : ''));
   if(S.LOFT && S.LOFT!=='none') inside.push('Loft');
-  if((S.shelvesData||[]).length) inside.push(S.shelvesData.length+' shelf'+(S.shelvesData.length>1?'ves':''));
+  if((S.shelvesData||[]).length) inside.push(hasSpec ? countBy(S.shelvesData, spec('shelf')).join(', ')
+                                                     : S.shelvesData.length+' shelf'+(S.shelvesData.length>1?'ves':''));
   rows.push(['Interior', inside.length?inside.join(' · '):'Unfinished', 'Interior']);
   var el=ELEC_NAMES[S.ELEC]||S.ELEC;
-  if((S.porchLightsData||[]).length && S.ELEC!=='none') el+=' · '+S.porchLightsData.length+' porch light'+(S.porchLightsData.length>1?'s':'');
+  if((S.porchLightsData||[]).length && S.ELEC!=='none') el+=' · '+(hasSpec ? countBy(S.porchLightsData, spec('plight')).join(', ')
+                                                                          : S.porchLightsData.length+' porch light'+(S.porchLightsData.length>1?'s':''));
   rows.push(['Electrical', el, 'Electrical']);
   var ad=addonList();
   rows.push(['Add-ons', ad.length?ad.join(', '):'None', 'Add-Ons']);

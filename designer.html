@@ -1588,7 +1588,7 @@ function renderPlacedPorchLights(){
       var cur=pld.ret||'main', curLbl=(surfs.filter(function(x){ return x.id===cur; })[0]||{}).label;
       var where=(pld.ret && curLbl) ? curLbl.toLowerCase() : pld.wall;
       var row='<div class="placed-row" onclick="openItemSheet(\'plight\','+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-        '<span>'+(byKey[pld.style]||'Porch Light')+' &middot; '+where+
+        '<span>'+_sheetEsc(itemSpec('plight',pld).text)+' &middot; '+where+
         ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
         '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'plight\','+i+')">&times;</span></div>';
       if(!sel) return row;
@@ -2314,7 +2314,7 @@ var selectedPorchLight=-1;
 // permalink or saved quote from when they were offered keeps working —
 // they're just not in the picker any more.
 var PORCH_LIGHT_CATALOG=[
-  {key:'modern',     name:'Modern Cylinder',      desc:'Matte black, clean lines — modern builds'}
+  {key:'modern',     name:'Modern Cylinder',      desc:'Matte black, clean lines — modern builds', color:'Matte black'}
 ];
 var ROOFTYPE='metal';  // 'shingle' | 'metal'
 var LOFT='none';         // 'none' | "<depthFt>-<front|back|dual>"
@@ -12869,7 +12869,10 @@ function setVentColor(c){
   if(typeof buildShed==='function') buildShed();
   if(typeof saveState==='function') try{ saveState(); }catch(e){}
 }
-var VENT_COLOR_OPTS=[{k:'black',name:'Black'},{k:'white',name:'White'},{k:'trim',name:'Match trim'},{k:'siding',name:'Match siding'}];
+/* Black or White only (Nando, 19 Nov 2026). A vd.color that is anything else
+   (the short-lived 'trim'/'siding' on this preview branch) falls back to the
+   shed-wide VENT_COLOR. */
+var VENT_COLOR_OPTS=[{k:'black',name:'Black'},{k:'white',name:'White'}];
 function ventColorKey(vd){
   var k=vd && vd.color;
   return (k && VENT_COLOR_OPTS.some(function(o){ return o.k===k; })) ? k : VENT_COLOR;
@@ -12895,7 +12898,7 @@ function buildVents(){
   // VENT COLOR — the louvre itself is black or white (user choice); the casing
   // around it stays trim colour like every window, including a wood finish.
   /* PER-VENT COLOUR (19 Nov 2026). A vent may carry its own vd.color
-     (black, white, trim, siding), picked from its tap sheet. Without one it
+     (black or white), picked from its tap sheet. Without one it
      follows the shed-wide VENT_COLOR, so every design saved before this
      builds exactly as it did. One material pair per colour, built lazily. */
   var _vmats={};
@@ -12903,9 +12906,7 @@ function buildVents(){
     if(_vmats[k]) return _vmats[k];
     var body, slat;
     if(k==='white'){ body=0xd9d9d6; slat=0xf5f5f2; }
-    else if(k==='black'){ body=0x1f1f1f; slat=0x333333; }
-    else { var base=new THREE.Color(k==='siding'?sc:tc);
-           body=base.clone().multiplyScalar(0.82).getHex(); slat=base.getHex(); }
+    else { body=0x1f1f1f; slat=0x333333; }
     return (_vmats[k]={slat:new THREE.MeshStandardMaterial({color:body, roughness:0.7, metalness:0.1}),
                        louv:new THREE.MeshStandardMaterial({color:slat, roughness:0.6, metalness:0.1})});
   }
@@ -15854,7 +15855,7 @@ function renderPlacedWindows(){
   windowsData.forEach(function(wd,i){
     var sel=(selectedKind==='window' && selectedWindow===i);
     html+='<div class="placed-row" onclick="editWindowIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+((wd.type&&supplierWindowLabel(wd.type,wd.w,wd.h))||wd.type||'Window')+' &middot; '+wd.wall+
+      '<span>'+_sheetEsc(itemSpec('window',wd).text)+' &middot; '+wallLabelFor(wd.wall)+
       (isBifold(wd) ? (' &middot; '+(wd.open?'open':'closed')+', folds '+((wd.fold==='right')?'right':'left'))
        : isLiftUp(wd) ? (' &middot; '+(wd.open?'open':'closed')) : '')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
@@ -15863,7 +15864,7 @@ function renderPlacedWindows(){
   ventsData.forEach(function(vd,i){
     var selV=(selectedKind==='vent' && selectedVent===i);
     html+='<div class="placed-row" onclick="openItemSheet(\'vent\','+i+')" style="cursor:pointer'+(selV?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>Vent '+VENT_SIZE_LABEL+' &middot; '+vd.wall+' &middot; '+ventColorName(vd)+'</span>'+
+      '<span>'+_sheetEsc(itemSpec('vent',vd).text)+' &middot; '+wallLabelFor(vd.wall)+'</span>'+
       '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'vent\','+i+')">&times;</span></div>';
   });
   host.innerHTML = html
@@ -15890,7 +15891,7 @@ function renderPlacedShelves(){
     var sel=(selectedKind==='shelf' && selectedShelf===i);
     html+='<div class="placed-row" onclick="openItemSheet(\'shelf\','+i+')" style="cursor:pointer'+
       (sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+shelfRowLabel(sd, wallLen)+
+      '<span>'+_sheetEsc(itemSpec('shelf',sd).text)+' &middot; '+shelfRowLabel(sd, wallLen).replace(/ &middot; \d+ft &middot; \d+" deep/,'')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
       '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'shelf\','+i+')">&times;</span></div>';
   });
@@ -16626,7 +16627,7 @@ function renderPlacedDoors(){
                                   : (dd.w<=38?"3'":(dd.w<=64?"5'":"6'"));
     var sel=(selectedKind==='door' && selectedDoor===i);
     html+='<div class="placed-row" onclick="editDoorIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+(supplierDoorLabel(dd)||(szl+' '+(names[dd.style]||dd.style)))+colorSuffix(dd)+' &middot; '+dd.wall+
+      '<span>'+_sheetEsc(itemSpec('door',dd).text)+' &middot; '+wallLabelFor(dd.wall)+
       (dd.awning?' <span style="color:var(--blue);font-size:10px">&middot; overhang</span>':'')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
       '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'door\','+i+')">&times;</span></div>';
@@ -16657,6 +16658,82 @@ function removeDoorIdx(i){
   buildShed(); renderPlacedDoors();
 }
 
+/* ── SIZE AND COLOUR OF EVERY PLACED ITEM ────────────────────────────────
+   Nando, 19 Nov 2026: "state size and color of everything including vents".
+   One function, so the tap sheet, the list rows, the Review spec sheet and the
+   item lines sent with the quote all say the same thing:
+     Window 24×36 · Black frame · White trim
+     Door 6×6'4" · Siding color (Gray) · White trim
+     Vent 16×8 · Black
+     Shelf 8 ft × 16" deep
+     Porch light Modern Cylinder · Matte black
+   Colour comes from what actually paints the item in 3D: a window's frame is
+   in its catalog key and its casing is the trim; a shop-built door's leaf is
+   the door paint (or the siding when matched) with trim casing; residential,
+   sliding, roll-up and fairytale doors carry their own factory colour; cedar is
+   cedar. Display and a new submitted field only: nothing here is priced and no
+   saved field changes. */
+function _itemFtIn(inch){ var f=Math.floor(inch/12), r=Math.round(inch-f*12); return r ? f+"'"+r+'"' : String(f); }
+function _trimName(){
+  try{ return (typeof trimDisplayName==='function') ? trimDisplayName() : (tn||''); }catch(e){ return tn||''; }
+}
+function itemSpec(kind, it){
+  if(!it) return null;
+  var X='\u00d7', size='', color=[], name='';
+  if(kind==='window'){
+    var t=String(it.type||'');
+    var m=/^(White|Black|Brown)\s+(Vinyl|Aluminum|Transom|Bi-Fold Bar|Lift-Up Bar)\b/.exec(t);
+    name=(m && m[2]==='Transom') ? 'Transom window' : (m && /Bar$/.test(m[2])) ? (m[2]+' window') : 'Window';
+    size=it.w+X+it.h;
+    if(m) color.push((m[2]==='Vinyl' && m[1]==='Black') ? 'Black ext / White int frame' : m[1]+' frame');
+    var tr=_trimName(); if(tr) color.push(tr+' trim');
+  } else if(kind==='door'){
+    var st=String(it.style||'basic');
+    name=(it.w>46 || /Double|^cedar$/.test(st)) ? 'Double door' : 'Door';
+    if(st==='rollup') name='Roll-up door';
+    /* Prehung units are sold by their nominal size, the same numbers the
+       supplier label uses (the 3D draws the 82.5" frame): 3×6'8", 6×6'8",
+       sliding glass 5×6'8". */
+    var _wIn=it.w, _hIn=it.h;
+    if(typeof SUP_RES!=='undefined' && SUP_RES[st]){ _wIn=SUP_RES[st][1]; _hIn=80; }
+    else if(/^slideglassB?$/.test(st)){ _wIn=60; _hIn=80; }
+    size=_itemFtIn(_wIn)+X+_itemFtIn(_hIn);
+    var cs=(typeof doorColorSet==='function') ? doorColorSet(it) : null;
+    if(cs){ var k=doorColorKey(it); color.push(((cs.opts.filter(function(o){ return o.k===k; })[0])||{}).name||k); }
+    else if(/^(res(6|half|full)|resDouble(Full)?|slideglass)B$/.test(st)) color.push('Black');
+    else if(/^(res(6|half|full)|resDouble(Full)?|slideglass)$/.test(st)) color.push('White');
+    else if(st==='cedar' || st==='cedarSingle') color.push('Natural cedar');
+    else color.push((typeof DOOR_PAINT==='number' && typeof doorColorLabel==='function') ? doorColorLabel()
+                    : ('Siding color'+((SIDING!=='pine' && sn) ? ' ('+sn+')' : '')));
+    if(st!=='rollup'){ var tr2=_trimName(); if(tr2) color.push(tr2+' trim'); }
+  } else if(kind==='vent'){
+    name='Vent'; size=String(VENT_SIZE_LABEL).replace('x',X);
+    if(typeof ventColorName==='function') color.push(ventColorName(it));
+  } else if(kind==='shelf'){
+    var wl=(it.wall==='front'||it.wall==='back')?W:L;
+    name='Shelf'; size=Math.min(it.len||wl, wl)+' ft '+X+' '+(it.depth||16)+'" deep';
+  } else if(kind==='plight'){
+    var c=(typeof PORCH_LIGHT_CATALOG!=='undefined') ? PORCH_LIGHT_CATALOG.filter(function(x){ return x.key===it.style; })[0] : null;
+    name='Porch light'+(c ? ' '+c.name : '');
+    if(c && c.color) color.push(c.color);
+  }
+  var head=name+(size?' '+size:'');
+  return {kind:kind, name:name, size:size, color:color.join(' \u00b7 '), wall:it.wall||null,
+          head:head, text:head+(color.length?' \u00b7 '+color.join(' \u00b7 '):'')};
+}
+/* Every placed item, for the quote payload: what ShedPro reads on the order. */
+function itemSpecLines(){
+  var out=[];
+  [['door',doorsData],['window',windowsData],['vent',ventsData],['shelf',shelvesData],['plight',porchLightsData]].forEach(function(p){
+    (p[1]||[]).forEach(function(it){
+      var s=itemSpec(p[0], it); if(!s) return;
+      out.push({kind:s.kind, size:s.size, color:s.color, wall:s.wall,
+                wallName:(s.wall && typeof wallRelName==='function') ? wallRelName(s.wall) : null, text:s.text});
+    });
+  });
+  return out;
+}
+
 /* ── TAP A PLACED ITEM: REPLACE / REMOVE / CANCEL ───────────────────────
    Doors, windows, vents, shelves and porch lights. Tapping one (in 3D, or
    its list row) used to open the full options grid with Remove at the very
@@ -16683,17 +16760,12 @@ var SHEET_KINDS={
   plight: {word:'porch light', title:'Porch Light', list:function(){ return porchLightsData; }, rm:function(i){ removePorchLightIdx(i); }, redraw:function(){ renderPlacedPorchLights(); }}
 };
 function _ftIn(inch){ var f=Math.floor(inch/12), r=Math.round(inch-f*12); return r ? f+"'"+r+'"' : String(f); }
-// Short name: "Window 24×36 on Left wall", "Door 6×6'4" on Front wall".
+// Heading and toast: "Window 24×36 · Black frame · White trim on Left wall".
 function itemSheetName(kind, i){
   var K=SHEET_KINDS[kind]; if(!K) return '';
   var it=K.list()[i]; if(!it) return '';
-  var x='\u00d7', nm;
-  if(kind==='window') nm='Window '+it.w+x+it.h;
-  else if(kind==='door') nm='Door '+_ftIn(it.w)+x+_ftIn(it.h);
-  else if(kind==='vent') nm='Vent '+String(VENT_SIZE_LABEL).replace('x',x);
-  else if(kind==='shelf'){ var wl=(it.wall==='front'||it.wall==='back')?W:L; nm='Shelf '+Math.min(it.len||wl, wl)+' ft'; }
-  else nm='Porch light';
-  return nm+' on '+wallLabelFor(it.wall||'back');
+  var sp=itemSpec(kind, it);
+  return sp.text+' on '+wallLabelFor(it.wall||'back');
 }
 function itemSheetHasReplace(kind){ return kind!=='vent'; }
 /* A vent comes in one size, so it has nothing to replace; what you can change
@@ -16701,7 +16773,7 @@ function itemSheetHasReplace(kind){ return kind!=='vent'; }
 function ventColorPageHTML(i){
   var vd=ventsData[i]; if(!vd) return '';
   var cur=ventColorKey(vd);
-  var h='<div class="wstep-sub" style="font-size:14px;color:var(--w);font-weight:700;margin-bottom:4px">'+_sheetEsc(itemSheetName('vent',i))+'</div>';
+  var h=itemSheetHead('vent', i);
   h+='<div class="wstep-sub" style="margin-bottom:10px">Pick a color for this vent. The board around it always matches your trim.</div>';
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
   VENT_COLOR_OPTS.forEach(function(o){
@@ -16717,10 +16789,18 @@ function itemSheetVentColor(){
   var s=_sheetSelect(); if(!s || s.kind!=='vent') return;
   openSubPage('Vent Color', ventColorPageHTML(s.index));   // stacks: Back returns to the sheet
 }
+/* Two lines: size and wall, then colour. */
+function itemSheetHead(kind, i){
+  var it=SHEET_KINDS[kind].list()[i], sp=itemSpec(kind, it);
+  var h='<div class="wstep-sub" style="font-size:14px;color:var(--w);font-weight:700;margin-bottom:2px">'+_sheetEsc(sp.head+' on '+wallLabelFor(it.wall||'back'))+'</div>';
+  if(sp.color) h+='<div class="wstep-sub" style="color:var(--w);margin-bottom:4px">'+_sheetEsc(sp.color)+'</div>';
+  return h;
+}
 function itemSheetHTML(kind, i){
+  var h;
   var K=SHEET_KINDS[kind];
   var b='display:block;width:100%;margin-top:10px';
-  var h='<div class="wstep-sub" style="font-size:14px;color:var(--w);font-weight:700;margin-bottom:4px">'+_sheetEsc(itemSheetName(kind,i))+'</div>';
+  h=itemSheetHead(kind, i);
   h+='<div class="wstep-sub" style="margin-bottom:6px">What would you like to do with this '+K.word+'?</div>';
   if(kind==='vent') h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetVentColor()">Change color</button>';
   else if(itemSheetHasReplace(kind)) h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetReplace()">Replace</button>';
@@ -16728,7 +16808,8 @@ function itemSheetHTML(kind, i){
   h+='<button type="button" class="wbtn wbtn-back" style="'+b+';background:transparent" onclick="closeSubPage()">Cancel</button>';
   return h;
 }
-function _sheetEsc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+// Text content only (never an attribute), so inch marks stay plain " characters.
+function _sheetEsc(t){ return String(t==null?'':t).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
 var ITEM_SHEET=null;   // {kind, index} the open sheet is about
 function openItemSheet(kind, i){
   var K=SHEET_KINDS[kind]; if(!K || !K.list()[i]) return;
@@ -21235,6 +21316,9 @@ function submitQuote(){
       website: (document.getElementById('qWebsite')||{}).value || '',
       contact: contact,
       config: getDesignConfig(),
+      /* Size and colour of every placed item, already worded (itemSpec). New
+         field: the Worker ignores it until it reads it; config is unchanged. */
+      itemSpecs: (typeof itemSpecLines==='function') ? itemSpecLines() : undefined,
       permalink: shortLink,
       shedUse: (typeof SHED_USE!=='undefined' && SHED_USE) || null,   // v462
       heardAbout: heardAbout||null,
@@ -21260,7 +21344,10 @@ function submitQuote(){
       renders: captureRenders(),
       // designer-upgrade: lead source + session context ride inside page (the
       // Worker stores page verbatim; see DU.leadContext).
-      page: Object.assign({ url:location.href, ref:document.referrer||'', ua:navigator.userAgent },
+      page: Object.assign({ url:location.href, ref:document.referrer||'', ua:navigator.userAgent,
+                            /* the same lines as plain text; page is stored verbatim, so
+                               they reach the CRM record without a Worker change */
+                            items: (typeof itemSpecLines==='function') ? itemSpecLines().map(function(x){ return x.text+(x.wallName?' ('+x.wallName+' wall)':''); }) : undefined },
                           (window.DU && DU.leadContext) ? DU.leadContext() : {}, smsConsentInfo('qSms','designer-quote'))
     };
     _lastShortLink = shortLink;
