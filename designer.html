@@ -1587,10 +1587,10 @@ function renderPlacedPorchLights(){
       var surfs=(typeof plSurfaces==='function')?plSurfaces(pld.wall):[];
       var cur=pld.ret||'main', curLbl=(surfs.filter(function(x){ return x.id===cur; })[0]||{}).label;
       var where=(pld.ret && curLbl) ? curLbl.toLowerCase() : pld.wall;
-      var row='<div class="placed-row" onclick="editPorchLightIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-        '<span>'+(byKey[pld.style]||'Porch Light')+' &middot; '+where+
+      var row='<div class="placed-row" onclick="openItemSheet(\'plight\','+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
+        '<span>'+_sheetEsc(itemSpec('plight',pld).text)+' &middot; '+where+
         ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
-        '<span class="placed-x" onclick="event.stopPropagation();removePorchLightIdx('+i+')">&times;</span></div>';
+        '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'plight\','+i+')">&times;</span></div>';
       if(!sel) return row;
       /* Selected: which porch wall it hangs on, and a nudge either way — the
          same moves the drag makes, for a phone where a 2-inch fixture is a
@@ -2314,7 +2314,7 @@ var selectedPorchLight=-1;
 // permalink or saved quote from when they were offered keeps working —
 // they're just not in the picker any more.
 var PORCH_LIGHT_CATALOG=[
-  {key:'modern',     name:'Modern Cylinder',      desc:'Matte black, clean lines — modern builds'}
+  {key:'modern',     name:'Modern Cylinder',      desc:'Matte black, clean lines — modern builds', color:'Matte black'}
 ];
 var ROOFTYPE='metal';  // 'shingle' | 'metal'
 var LOFT='none';         // 'none' | "<depthFt>-<front|back|dual>"
@@ -3080,6 +3080,7 @@ function init(){
   var raycaster=new THREE.Raycaster();
   var ndc=new THREE.Vector2();
   var draggingWindow=false;     // true while moving a selected window
+  var pressHit=null;            // item grabbed on press; a still release opens its sheet
   var pressMoved=false;         // did the pointer move enough to count as a drag?
   var pressStart=null;          // {x,y} of press, to measure tap vs drag
 
@@ -3295,7 +3296,7 @@ function init(){
      can reuse it: both paths have to adopt the item's wall, open its options
      grid and show its measure guide, and a second copy of that is how one of
      them quietly stops doing one of the three. */
-  function selectHit(hit){
+  function selectHit(hit, noOpen){
         selectedKind=hit.kind;
         selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
         if(hit.kind==='window') selectedWindow=hit.index;
@@ -3321,9 +3322,12 @@ function init(){
         }
         buildShed();
         syncEditorPanel();
-        // Open the options grid for the selected item so it can be swapped.
-        if(hit.kind==='window' && typeof openOptionsForSelectedWindow==='function') openOptionsForSelectedWindow();
-        else if(hit.kind==='door' && typeof openOptionsForSelectedDoor==='function') openOptionsForSelectedDoor();
+        /* Placed items ask first: Replace / Remove / Cancel (openItemSheet).
+           The press that may turn into a drag passes noOpen, and the sheet
+           opens on release only if the pointer never moved. */
+        if(!noOpen){
+          if(typeof SHEET_KINDS!=='undefined' && SHEET_KINDS[hit.kind]) openItemSheet(hit.kind, hit.index);
+        }
         var selObj = hit.kind==='window'?windowsData[hit.index]:hit.kind==='door'?doorsData[hit.index]:null;
         if(selObj) showMeasureGuide(selObj);
   }
@@ -3334,11 +3338,13 @@ function init(){
     pressStart={x:clientX, y:clientY};
     pressMoved=false;
     draggingWindow=false;
+    pressHit=null;
     if(EDIT_MODE){
       setNDC(clientX, clientY);
       var hit=pickOpening();
       if(hit){
-        selectHit(hit);
+        selectHit(hit, true);
+        pressHit=hit;
         /* Only the press-to-grab path arms a drag. The jump path below must
            not: the pointer is already up by then. */
         draggingWindow=true;
@@ -3375,6 +3381,10 @@ function init(){
       var hadGuide=!!SNAP_GUIDE;
       hideMeasureGuide();
       if(hadGuide) buildShed();
+      // A tap, not a drag: ask what to do with it.
+      var _ph=pressHit; pressHit=null;
+      if(_ph && !pressMoved && typeof SHEET_KINDS!=='undefined' && SHEET_KINDS[_ph.kind])
+        openItemSheet(_ph.kind, _ph.index);
     }
     /* TAP AN ITEM WITH EDIT MODE OFF -> GO TO ITS STEP.
        Picking used to be gated entirely on EDIT_MODE, which only the Doors,
@@ -3407,8 +3417,11 @@ function init(){
            destination step, and toggleEditMode only clears the selection when
            it goes OFF - so the selection survives the trip and the editor
            panel opens already pointed at what was tapped. */
-        selectHit(jump);
+        selectHit(jump, true);
         if(dest && typeof wizGoTo==='function') wizGoTo(dest);
+        // wizGoTo closes any open page, so ask Replace / Move / Delete after it.
+        if(typeof SHEET_KINDS!=='undefined' && SHEET_KINDS[jump.kind]) openItemSheet(jump.kind, jump.index);
+        else selectHit(jump);
       }
       pressStart=null;
       return;
@@ -12856,6 +12869,25 @@ function setVentColor(c){
   if(typeof buildShed==='function') buildShed();
   if(typeof saveState==='function') try{ saveState(); }catch(e){}
 }
+/* Black or White only (Nando, 19 Nov 2026). A vd.color that is anything else
+   (the short-lived 'trim'/'siding' on this preview branch) falls back to the
+   shed-wide VENT_COLOR. */
+var VENT_COLOR_OPTS=[{k:'black',name:'Black'},{k:'white',name:'White'}];
+function ventColorKey(vd){
+  var k=vd && vd.color;
+  return (k && VENT_COLOR_OPTS.some(function(o){ return o.k===k; })) ? k : VENT_COLOR;
+}
+function ventColorName(vd){ var k=ventColorKey(vd); return (VENT_COLOR_OPTS.filter(function(o){ return o.k===k; })[0]||{}).name||''; }
+function setVentColorIdx(i, k){
+  var vd=ventsData[i]; if(!vd || !VENT_COLOR_OPTS.some(function(o){ return o.k===k; })) return;
+  vd.color=k;
+  if(typeof buildShed==='function') buildShed();
+  if(typeof renderPlacedWindows==='function') renderPlacedWindows();
+  if(typeof ventColorPageHTML==='function' && typeof _spStack!=='undefined' && _spStack.length){
+    _spStack[_spStack.length-1].b=ventColorPageHTML(i); _spRender(true);
+  }
+  if(typeof saveState==='function') try{ saveState(); }catch(e){}
+}
 function buildVents(){
   ventMeshes=[];
   if(ventsData.length===0) return;
@@ -12865,10 +12897,21 @@ function buildVents(){
     : new THREE.MeshStandardMaterial({color:tc, roughness:0.6, metalness:0.0});
   // VENT COLOR — the louvre itself is black or white (user choice); the casing
   // around it stays trim colour like every window, including a wood finish.
-  var _vw=(VENT_COLOR==='white');
-  var slatMat=new THREE.MeshStandardMaterial({color:_vw?0xd9d9d6:0x1f1f1f, roughness:0.7, metalness:0.1});
-  var louvMat=new THREE.MeshStandardMaterial({color:_vw?0xf5f5f2:0x333333, roughness:0.6, metalness:0.1});
+  /* PER-VENT COLOUR (19 Nov 2026). A vent may carry its own vd.color
+     (black or white), picked from its tap sheet. Without one it
+     follows the shed-wide VENT_COLOR, so every design saved before this
+     builds exactly as it did. One material pair per colour, built lazily. */
+  var _vmats={};
+  function ventMats(k){
+    if(_vmats[k]) return _vmats[k];
+    var body, slat;
+    if(k==='white'){ body=0xd9d9d6; slat=0xf5f5f2; }
+    else { body=0x1f1f1f; slat=0x333333; }
+    return (_vmats[k]={slat:new THREE.MeshStandardMaterial({color:body, roughness:0.7, metalness:0.1}),
+                       louv:new THREE.MeshStandardMaterial({color:slat, roughness:0.6, metalness:0.1})});
+  }
   ventsData.forEach(function(vd, idx){
+    var _vm=ventMats(ventColorKey(vd)), slatMat=_vm.slat, louvMat=_vm.louv;
     // Vents ride near the wall top. Measure "the top" from THIS wall's real
     // height — the lean-to's back wall is shorter than H, so (H*12)-12 sat
     // above its roof. ventCyIn() holds that arithmetic; see the note on it.
@@ -15496,11 +15539,7 @@ function setBifoldLedge(i, v){ _bfSet(i, function(wd){ wd.ledge = !!v; }); }
 
 function removeSelectedWindow(){
   if(selectedWindow<0||!windowsData[selectedWindow]) return;
-  var wall=windowsData[selectedWindow].wall;
-  removeWindowIdx(selectedWindow);
-  closeSubPage();
-  if(typeof syncEditorPanel==='function') syncEditorPanel();
-  showToast('Removed the window on the '+wall+' wall.');
+  deleteItem('window', selectedWindow);
 }
 var _toastTimer=null;
 function showNoRoom(msg, action){
@@ -15713,7 +15752,7 @@ function wallOpenings(wall){
     out.push({kind:'v', i:i, w:(vd.w||14), h:(vd.h||14), cy:vd.cy, pos:(vd.pos!=null?vd.pos:0.5), what:'vent'}); });
   return out;
 }
-function findWindowSlot(wall, wIn, newObj){
+function findWindowSlot(wall, wIn, newObj, targetIn){
   var wallLenIn = ((wall==='front'||wall==='back') ? W : L) * 12;
   // 3" from a corner clears the trim post; 2" between casings is a stud bay.
   var edge=3, gap=2;                       // clear inches between CASINGS
@@ -15740,7 +15779,14 @@ function findWindowSlot(wall, wIn, newObj){
      The occupancy spans above already use each opening's real kind; only the
      fit test was hardcoded. */
   var needFoot=openingFootprint(wIn, probe.kind||'w');
-  var centre=wallLenIn/2, half=wIn/2;
+  /* targetIn: aim for the point nearest THIS spot instead of the wall centre
+     (Duplicate puts the copy right next to its original). */
+  /* half is HALF THE CASING, not half the opening: the gaps above are
+     measured casing to casing, and clamping by wIn/2 let a new casing run
+     (needFoot-wIn)/2 = 3.3in into its neighbour's 2in gap (1.3in of overlap)
+     or past the 3in corner margin. Only openings pushed against something
+     move; one that lands at the centre of a clear wall is unchanged. */
+  var centre=(targetIn!=null) ? targetIn : wallLenIn/2, half=needFoot/2;
   var best=null, bestDist=Infinity, cursor=edge;
   // Walk every free gap (including the one past the last obstruction) and, in
   // each, take the legal point nearest the wall centre.
@@ -15816,17 +15862,17 @@ function renderPlacedWindows(){
   windowsData.forEach(function(wd,i){
     var sel=(selectedKind==='window' && selectedWindow===i);
     html+='<div class="placed-row" onclick="editWindowIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+((wd.type&&supplierWindowLabel(wd.type,wd.w,wd.h))||wd.type||'Window')+' &middot; '+wd.wall+
+      '<span>'+_sheetEsc(itemSpec('window',wd).text)+' &middot; '+wallLabelFor(wd.wall)+
       (isBifold(wd) ? (' &middot; '+(wd.open?'open':'closed')+', folds '+((wd.fold==='right')?'right':'left'))
        : isLiftUp(wd) ? (' &middot; '+(wd.open?'open':'closed')) : '')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
-      '<span class="placed-x" onclick="event.stopPropagation();removeWindowIdx('+i+')">&times;</span></div>';
+      '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'window\','+i+')">&times;</span></div>';
   });
   ventsData.forEach(function(vd,i){
     var selV=(selectedKind==='vent' && selectedVent===i);
-    html+='<div class="placed-row" onclick="editVentIdx('+i+')" style="cursor:pointer'+(selV?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>Vent '+VENT_SIZE_LABEL+' &middot; '+vd.wall+'</span>'+
-      '<span class="placed-x" onclick="event.stopPropagation();removeVentIdx('+i+')">&times;</span></div>';
+    html+='<div class="placed-row" onclick="openItemSheet(\'vent\','+i+')" style="cursor:pointer'+(selV?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
+      '<span>'+_sheetEsc(itemSpec('vent',vd).text)+' &middot; '+wallLabelFor(vd.wall)+'</span>'+
+      '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'vent\','+i+')">&times;</span></div>';
   });
   host.innerHTML = html
     ? '<div class="wstep-sub" style="margin-bottom:6px">Tap a window to change its type &mdash; or tap it in the 3D view to select, drag, or swap it.</div>'+html
@@ -15850,11 +15896,11 @@ function renderPlacedShelves(){
   shelvesData.forEach(function(sd,i){
     var wallLen=(sd.wall==='front'||sd.wall==='back')?W:L;
     var sel=(selectedKind==='shelf' && selectedShelf===i);
-    html+='<div class="placed-row" onclick="editShelfIdx('+i+')" style="cursor:pointer'+
+    html+='<div class="placed-row" onclick="openItemSheet(\'shelf\','+i+')" style="cursor:pointer'+
       (sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+shelfRowLabel(sd, wallLen)+
+      '<span>'+_sheetEsc(itemSpec('shelf',sd).text)+' &middot; '+shelfRowLabel(sd, wallLen).replace(/ &middot; \d+ft &middot; \d+" deep/,'')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
-      '<span class="placed-x" onclick="event.stopPropagation();removeShelfIdx('+i+')">&times;</span></div>';
+      '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'shelf\','+i+')">&times;</span></div>';
   });
   /* The count, said out loud. Shelving is priced by the foot, so four of them
      is real money and the customer should not have to infer it. */
@@ -15898,7 +15944,7 @@ function editWindowIdx(i){
   buildShed();
   if(typeof syncEditorPanel==='function') syncEditorPanel();
   renderPlacedWindows();
-  openOptionsForSelectedWindow();
+  openItemSheet('window', i);
 }
 // Vents have no styles to swap — "edit" selects it in the 3D view so it can be
 // dragged to a new spot (or deleted from the editor panel).
@@ -16563,11 +16609,7 @@ function openOptionsForSelectedDoor(){
 }
 function removeSelectedDoor(){
   if(selectedDoor<0||!doorsData[selectedDoor]) return;
-  var wall=doorsData[selectedDoor].wall;
-  removeDoorIdx(selectedDoor);
-  closeSubPage();
-  if(typeof syncEditorPanel==='function') syncEditorPanel();
-  showToast('Removed the '+wall+' door.');
+  deleteItem('door', selectedDoor);
 }
 function renderPlacedDoors(){
   var host=document.getElementById('placedDoors'); if(!host) return;
@@ -16592,10 +16634,10 @@ function renderPlacedDoors(){
                                   : (dd.w<=38?"3'":(dd.w<=64?"5'":"6'"));
     var sel=(selectedKind==='door' && selectedDoor===i);
     html+='<div class="placed-row" onclick="editDoorIdx('+i+')" style="cursor:pointer'+(sel?';border-color:#2BB5E8;background:rgba(43,181,232,.10)':'')+'">'+
-      '<span>'+(supplierDoorLabel(dd)||(szl+' '+(names[dd.style]||dd.style)))+colorSuffix(dd)+' &middot; '+dd.wall+
+      '<span>'+_sheetEsc(itemSpec('door',dd).text)+' &middot; '+wallLabelFor(dd.wall)+
       (dd.awning?' <span style="color:var(--blue);font-size:10px">&middot; overhang</span>':'')+
       ' <span style="color:var(--blue);font-size:10px;font-weight:700;margin-left:4px">EDIT</span></span>'+
-      '<span class="placed-x" onclick="event.stopPropagation();removeDoorIdx('+i+')">&times;</span></div>';
+      '<span class="placed-x" onclick="event.stopPropagation();deleteItem(\'door\','+i+')">&times;</span></div>';
   });
   var addBtn='<div onclick="startAnotherDoor()" style="cursor:pointer;text-align:center;'+
     'margin-top:8px;padding:11px;border-radius:9px;border:1px dashed rgba(43,181,232,.55);'+
@@ -16614,13 +16656,276 @@ function editDoorIdx(i){
   buildShed();
   if(typeof syncEditorPanel==='function') syncEditorPanel();
   renderPlacedDoors();
-  openOptionsForSelectedDoor();
+  openItemSheet('door', i);
 }
 function removeDoorIdx(i){
   doorsData.splice(i,1);
   if(selectedDoor===i){ selectedDoor=-1; selectedKind=null; }
   else if(selectedDoor>i){ selectedDoor--; }
   buildShed(); renderPlacedDoors();
+}
+
+/* ── SIZE AND COLOUR OF EVERY PLACED ITEM ────────────────────────────────
+   Nando, 19 Nov 2026: "state size and color of everything including vents".
+   One function, so the tap sheet, the list rows, the Review spec sheet and the
+   item lines sent with the quote all say the same thing:
+     Window 24×36 · Black frame · White trim
+     Door 6×6'4" · Siding color (Gray) · White trim
+     Vent 16×8 · Black
+     Shelf 8 ft × 16" deep
+     Porch light Modern Cylinder · Matte black
+   Colour comes from what actually paints the item in 3D: a window's frame is
+   in its catalog key and its casing is the trim; a shop-built door's leaf is
+   the door paint (or the siding when matched) with trim casing; residential,
+   sliding, roll-up and fairytale doors carry their own factory colour; cedar is
+   cedar. Display and a new submitted field only: nothing here is priced and no
+   saved field changes. */
+function _itemFtIn(inch){ var f=Math.floor(inch/12), r=Math.round(inch-f*12); return r ? f+"'"+r+'"' : String(f); }
+function _trimName(){
+  try{ return (typeof trimDisplayName==='function') ? trimDisplayName() : (tn||''); }catch(e){ return tn||''; }
+}
+function itemSpec(kind, it){
+  if(!it) return null;
+  var X='\u00d7', size='', color=[], name='';
+  if(kind==='window'){
+    var t=String(it.type||'');
+    var m=/^(White|Black|Brown)\s+(Vinyl|Aluminum|Transom|Bi-Fold Bar|Lift-Up Bar)\b/.exec(t);
+    name=(m && m[2]==='Transom') ? 'Transom window' : (m && /Bar$/.test(m[2])) ? (m[2]+' window') : 'Window';
+    size=it.w+X+it.h;
+    if(m) color.push((m[2]==='Vinyl' && m[1]==='Black') ? 'Black ext / White int frame' : m[1]+' frame');
+    var tr=_trimName(); if(tr) color.push(tr+' trim');
+  } else if(kind==='door'){
+    var st=String(it.style||'basic');
+    name=(it.w>46 || /Double|^cedar$/.test(st)) ? 'Double door' : 'Door';
+    if(st==='rollup') name='Roll-up door';
+    /* Prehung units are sold by their nominal size, the same numbers the
+       supplier label uses (the 3D draws the 82.5" frame): 3×6'8", 6×6'8",
+       sliding glass 5×6'8". */
+    var _wIn=it.w, _hIn=it.h;
+    if(typeof SUP_RES!=='undefined' && SUP_RES[st]){ _wIn=SUP_RES[st][1]; _hIn=80; }
+    else if(/^slideglassB?$/.test(st)){ _wIn=60; _hIn=80; }
+    size=_itemFtIn(_wIn)+X+_itemFtIn(_hIn);
+    var cs=(typeof doorColorSet==='function') ? doorColorSet(it) : null;
+    if(cs){ var k=doorColorKey(it); color.push(((cs.opts.filter(function(o){ return o.k===k; })[0])||{}).name||k); }
+    else if(/^(res(6|half|full)|resDouble(Full)?|slideglass)B$/.test(st)) color.push('Black');
+    else if(/^(res(6|half|full)|resDouble(Full)?|slideglass)$/.test(st)) color.push('White');
+    else if(st==='cedar' || st==='cedarSingle') color.push('Natural cedar');
+    else color.push((typeof DOOR_PAINT==='number' && typeof doorColorLabel==='function') ? doorColorLabel()
+                    : ('Siding color'+((SIDING!=='pine' && sn) ? ' ('+sn+')' : '')));
+    if(st!=='rollup'){ var tr2=_trimName(); if(tr2) color.push(tr2+' trim'); }
+  } else if(kind==='vent'){
+    name='Vent'; size=String(VENT_SIZE_LABEL).replace('x',X);
+    if(typeof ventColorName==='function') color.push(ventColorName(it));
+  } else if(kind==='shelf'){
+    var wl=(it.wall==='front'||it.wall==='back')?W:L;
+    name='Shelf'; size=Math.min(it.len||wl, wl)+' ft '+X+' '+(it.depth||16)+'" deep';
+  } else if(kind==='plight'){
+    var c=(typeof PORCH_LIGHT_CATALOG!=='undefined') ? PORCH_LIGHT_CATALOG.filter(function(x){ return x.key===it.style; })[0] : null;
+    name='Porch light'+(c ? ' '+c.name : '');
+    if(c && c.color) color.push(c.color);
+  }
+  var head=name+(size?' '+size:'');
+  return {kind:kind, name:name, size:size, color:color.join(' \u00b7 '), wall:it.wall||null,
+          head:head, text:head+(color.length?' \u00b7 '+color.join(' \u00b7 '):'')};
+}
+/* Every placed item, for the quote payload: what ShedPro reads on the order. */
+function itemSpecLines(){
+  var out=[];
+  [['door',doorsData],['window',windowsData],['vent',ventsData],['shelf',shelvesData],['plight',porchLightsData]].forEach(function(p){
+    (p[1]||[]).forEach(function(it){
+      var s=itemSpec(p[0], it); if(!s) return;
+      out.push({kind:s.kind, size:s.size, color:s.color, wall:s.wall,
+                wallName:(s.wall && typeof wallRelName==='function') ? wallRelName(s.wall) : null, text:s.text});
+    });
+  });
+  return out;
+}
+
+/* ── TAP A PLACED ITEM: REPLACE / REMOVE / CANCEL ───────────────────────
+   Doors, windows, vents, shelves and porch lights. Tapping one (in 3D, or
+   its list row) used to open the full options grid with Remove at the very
+   bottom, and the list row's x removed at once with no undo. Now a short
+   page asks first, with exactly three buttons:
+     Replace - the same swap the item had before (door/window options grid,
+               which swaps in place and keeps the position; for a porch light
+               the style tiles; for a shelf its length/depth controls).
+               Vents come in one size, so a vent has Change color instead.
+     Remove  - takes it off and offers Undo for a few seconds.
+     Cancel  - closes the page, nothing changes.
+   Moving is still a drag in the 3D view, outside this page.
+   THE MAIN DOOR (doorsData[0]) can be removed too (Nando, 19 Nov 2026). It
+   is the door that makes its wall the Front (doorFrontWall), so the next door
+   left becomes the front and the wall names follow it; with no doors left
+   doorFrontWall falls back to the shed's own front. Undo puts it back at
+   index 0, so it is the main door again. */
+var SHEET_KINDS={
+  door:   {word:'door',        title:'Door',        list:function(){ return doorsData; },        rm:function(i){ removeDoorIdx(i); },        redraw:function(){ renderPlacedDoors(); }},
+  window: {word:'window',      title:'Window',      list:function(){ return windowsData; },      rm:function(i){ removeWindowIdx(i); },      redraw:function(){ renderPlacedWindows(); }},
+  vent:   {word:'vent',        title:'Vent',        list:function(){ return ventsData; },        rm:function(i){ removeVentIdx(i); },        redraw:function(){ renderPlacedWindows(); }},
+  shelf:  {word:'shelf',       title:'Shelf',       list:function(){ return shelvesData; },      rm:function(i){ removeShelfIdx(i); },
+           redraw:function(){ if(typeof refreshInterior==='function') refreshInterior(); renderPlacedShelves(); }},
+  plight: {word:'porch light', title:'Porch Light', list:function(){ return porchLightsData; }, rm:function(i){ removePorchLightIdx(i); }, redraw:function(){ renderPlacedPorchLights(); }}
+};
+function _ftIn(inch){ var f=Math.floor(inch/12), r=Math.round(inch-f*12); return r ? f+"'"+r+'"' : String(f); }
+// Heading and toast: "Window 24×36 · Black frame · White trim on Left wall".
+function itemSheetName(kind, i){
+  var K=SHEET_KINDS[kind]; if(!K) return '';
+  var it=K.list()[i]; if(!it) return '';
+  var sp=itemSpec(kind, it);
+  return sp.text+' on '+wallLabelFor(it.wall||'back');
+}
+function itemSheetHasReplace(kind){ return kind!=='vent'; }
+/* A vent comes in one size, so it has nothing to replace; what you can change
+   is its colour (Nando: "Vents only needs remove or change color"). */
+function ventColorPageHTML(i){
+  var vd=ventsData[i]; if(!vd) return '';
+  var cur=ventColorKey(vd);
+  var h=itemSheetHead('vent', i);
+  h+='<div class="wstep-sub" style="margin-bottom:10px">Pick a color for this vent. The board around it always matches your trim.</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  VENT_COLOR_OPTS.forEach(function(o){
+    var on=(o.k===cur);
+    h+='<button type="button" class="wbtn wbtn-back vent-pick" data-vc="'+o.k+'" onclick="setVentColorIdx('+i+',\''+o.k+'\')" style="'+
+       (on?'border-color:#2BB5E8;background:rgba(43,181,232,.14)':'')+'">'+o.name+'</button>';
+  });
+  h+='</div>';
+  h+='<button type="button" class="wbtn wbtn-next" style="display:block;width:100%;margin-top:14px" onclick="closeSubPage()">Done</button>';
+  return h;
+}
+function itemSheetVentColor(){
+  var s=_sheetSelect(); if(!s || s.kind!=='vent') return;
+  openSubPage('Vent Color', ventColorPageHTML(s.index));   // stacks: Back returns to the sheet
+}
+/* Two lines: size and wall, then colour. */
+function itemSheetHead(kind, i){
+  var it=SHEET_KINDS[kind].list()[i], sp=itemSpec(kind, it);
+  var h='<div class="wstep-sub" style="font-size:14px;color:var(--w);font-weight:700;margin-bottom:2px">'+_sheetEsc(sp.head+' on '+wallLabelFor(it.wall||'back'))+'</div>';
+  if(sp.color) h+='<div class="wstep-sub" style="color:var(--w);margin-bottom:4px">'+_sheetEsc(sp.color)+'</div>';
+  return h;
+}
+function itemSheetHTML(kind, i){
+  var h;
+  var K=SHEET_KINDS[kind];
+  var b='display:block;width:100%;margin-top:10px';
+  h=itemSheetHead(kind, i);
+  h+='<div class="wstep-sub" style="margin-bottom:6px">What would you like to do with this '+K.word+'?</div>';
+  if(kind==='vent') h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetVentColor()">Change color</button>';
+  else if(itemSheetHasReplace(kind)) h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetReplace()">Replace</button>';
+  // Windows only (Nando, 20 Nov 2026: "Only duplicate windows").
+  if(kind==='window') h+='<button type="button" class="wbtn wbtn-back" style="'+b+'" onclick="itemSheetDuplicate()">Duplicate</button>';
+  h+='<button type="button" class="wbtn wbtn-back" style="'+b+';color:#ff6b6b" onclick="itemSheetRemove()">Remove</button>';
+  h+='<button type="button" class="wbtn wbtn-back" style="'+b+';background:transparent" onclick="closeSubPage()">Cancel</button>';
+  return h;
+}
+// Text content only (never an attribute), so inch marks stay plain " characters.
+function _sheetEsc(t){ return String(t==null?'':t).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+var ITEM_SHEET=null;   // {kind, index} the open sheet is about
+function openItemSheet(kind, i){
+  var K=SHEET_KINDS[kind]; if(!K || !K.list()[i]) return;
+  ITEM_SHEET={kind:kind, index:i};
+  _sheetSelect();
+  if(typeof closeSubPage==='function') closeSubPage();
+  openSubPage(K.title, itemSheetHTML(kind, i));
+}
+// Select the sheet's item (and adopt its wall), the same as tapping it did.
+function _sheetSelect(){
+  var s=ITEM_SHEET; if(!s) return null;
+  selectedKind=s.kind; selectedWindow=-1; selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
+  if(s.kind==='door') selectedDoor=s.index;
+  else if(s.kind==='window') selectedWindow=s.index;
+  else if(s.kind==='vent') selectedVent=s.index;
+  else if(s.kind==='shelf') selectedShelf=s.index;
+  else selectedPorchLight=s.index;
+  var it=SHEET_KINDS[s.kind].list()[s.index];
+  if(it && it.wall && s.kind!=='shelf' && it.wall!==ADD_WALL){ ADD_WALL=it.wall; WIZ_ADDWALL_DOOR=it.wall; if(typeof syncWallUI==='function') syncWallUI(); }
+  buildShed();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(s.kind==='shelf' && typeof populateShelfLengths==='function') populateShelfLengths();
+  SHEET_KINDS[s.kind].redraw();
+  return s;
+}
+function _scrollTo(id){ var el=document.getElementById(id); if(el && el.scrollIntoView) el.scrollIntoView({block:'center', behavior:'smooth'}); }
+function itemSheetReplace(){
+  var s=_sheetSelect(); if(!s) return;
+  if(s.kind==='door') openOptionsForSelectedDoor();          // stacks: Back returns to the sheet
+  else if(s.kind==='window') openOptionsForSelectedWindow();
+  else if(s.kind==='plight'){ closeSubPage(); _scrollTo('placedPorchLights'); showToast('Tap a style to swap this porch light.'); }
+  else if(s.kind==='shelf'){ closeSubPage(); _scrollTo('shelfSelControls'); showToast('Change the shelf length and depth below.'); }
+}
+/* DUPLICATE A WINDOW. An exact copy (type, size, height, fold/ledge state,
+   everything on the object) placed by the same slot rules a newly added window
+   uses (findWindowSlot: 3" off the corners, 2" between casings, clear of every
+   door, window and vent at that height), nearest the original on its own wall.
+   No room there: the first other wall with room, nearest its centre. No room
+   anywhere: a toast and nothing changes. The copy is just another entry in
+   windowsData, so it is priced, listed and quoted like any added window. */
+function duplicateWindowIdx(i){
+  var src=windowsData[i]; if(!src) return false;
+  var copy=JSON.parse(JSON.stringify(src));
+  delete copy.ret;                      // a porch-return copy goes on the main wall
+  var probe={kind:'w', h:copy.h, cy:copy.cy};
+  var lenIn=function(w){ return ((w==='front'||w==='back')?W:L)*12; };
+  var wall=src.wall, pos=null;
+  if(!winRetQ(src)) pos=findWindowSlot(wall, copy.w, probe, src.pos*lenIn(wall));
+  else pos=findWindowSlot(wall, copy.w, probe);
+  if(pos==null){
+    var alts=wallsThatFit(copy.w, src.wall, probe);
+    for(var k=0;k<alts.length && pos==null;k++){
+      pos=findWindowSlot(alts[k], copy.w, probe);
+      if(pos!=null) wall=alts[k];
+    }
+  }
+  if(pos==null){ showToast('No room for another window.'); return false; }
+  copy.wall=wall; copy.pos=pos;
+  windowsData.push(copy);
+  selectedKind='window'; selectedWindow=windowsData.length-1;
+  selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
+  if(wall!==ADD_WALL){ ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall; if(typeof syncWallUI==='function') syncWallUI(); }
+  buildShed(); renderPlacedWindows();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(typeof refreshPrice==='function') refreshPrice();
+  showToast('Added a copy on the '+wallLabelFor(wall)+'.');
+  return true;
+}
+function itemSheetDuplicate(){
+  var s=ITEM_SHEET; if(!s || s.kind!=='window') return;
+  if(duplicateWindowIdx(s.index)){ ITEM_SHEET=null; closeSubPage(); }
+}
+function itemSheetRemove(){ var s=ITEM_SHEET; if(s) deleteItem(s.kind, s.index); }
+/* Remove with Undo. Puts the same object back at the same index, so its
+   position, colour and every other field come back exactly. */
+var _undoItem=null;
+function deleteItem(kind, i){
+  var K=SHEET_KINDS[kind]; if(!K) return false;
+  var list=K.list();
+  if(!list[i]) return false;
+  var label=itemSheetName(kind, i);
+  _undoItem={kind:kind, index:i, item:list[i]};
+  K.rm(i);
+  ITEM_SHEET=null;
+  if(typeof closeSubPage==='function') closeSubPage();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(typeof refreshPrice==='function') refreshPrice();
+  showUndoToast('Removed '+label+'.');
+  return true;
+}
+function undoDelete(){
+  var u=_undoItem; _undoItem=null; if(!u) return;
+  var K=SHEET_KINDS[u.kind], list=K.list();
+  list.splice(Math.min(u.index, list.length), 0, u.item);
+  var sel={door:'selectedDoor', window:'selectedWindow', vent:'selectedVent', shelf:'selectedShelf', plight:'selectedPorchLight'}[u.kind];
+  if(window[sel]>=u.index) window[sel]++;
+  buildShed(); K.redraw();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(typeof refreshPrice==='function') refreshPrice();
+  showToast('Put it back.');
+}
+function showUndoToast(msg){
+  var t=document.getElementById('toast'); if(!t) return;
+  t.innerHTML=_sheetEsc(msg)+' <button type="button" onclick="undoDelete()" style="margin-left:8px;background:none;border:none;color:var(--blue);font:inherit;font-weight:800;text-decoration:underline;cursor:pointer;padding:0">Undo</button>';
+  t.style.display='block';
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(function(){ t.style.display='none'; _undoItem=null; }, 6000);
 }
 
 // separate wall picker for the doors step
@@ -21059,6 +21364,9 @@ function submitQuote(){
       website: (document.getElementById('qWebsite')||{}).value || '',
       contact: contact,
       config: getDesignConfig(),
+      /* Size and colour of every placed item, already worded (itemSpec). New
+         field: the Worker ignores it until it reads it; config is unchanged. */
+      itemSpecs: (typeof itemSpecLines==='function') ? itemSpecLines() : undefined,
       permalink: shortLink,
       shedUse: (typeof SHED_USE!=='undefined' && SHED_USE) || null,   // v462
       heardAbout: heardAbout||null,
@@ -21084,7 +21392,10 @@ function submitQuote(){
       renders: captureRenders(),
       // designer-upgrade: lead source + session context ride inside page (the
       // Worker stores page verbatim; see DU.leadContext).
-      page: Object.assign({ url:location.href, ref:document.referrer||'', ua:navigator.userAgent },
+      page: Object.assign({ url:location.href, ref:document.referrer||'', ua:navigator.userAgent,
+                            /* the same lines as plain text; page is stored verbatim, so
+                               they reach the CRM record without a Worker change */
+                            items: (typeof itemSpecLines==='function') ? itemSpecLines().map(function(x){ return x.text+(x.wallName?' ('+x.wallName+' wall)':''); }) : undefined },
                           (window.DU && DU.leadContext) ? DU.leadContext() : {}, smsConsentInfo('qSms','designer-quote'))
     };
     _lastShortLink = shortLink;
