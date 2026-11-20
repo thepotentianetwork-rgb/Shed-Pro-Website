@@ -15752,7 +15752,7 @@ function wallOpenings(wall){
     out.push({kind:'v', i:i, w:(vd.w||14), h:(vd.h||14), cy:vd.cy, pos:(vd.pos!=null?vd.pos:0.5), what:'vent'}); });
   return out;
 }
-function findWindowSlot(wall, wIn, newObj){
+function findWindowSlot(wall, wIn, newObj, targetIn){
   var wallLenIn = ((wall==='front'||wall==='back') ? W : L) * 12;
   // 3" from a corner clears the trim post; 2" between casings is a stud bay.
   var edge=3, gap=2;                       // clear inches between CASINGS
@@ -15779,7 +15779,14 @@ function findWindowSlot(wall, wIn, newObj){
      The occupancy spans above already use each opening's real kind; only the
      fit test was hardcoded. */
   var needFoot=openingFootprint(wIn, probe.kind||'w');
-  var centre=wallLenIn/2, half=wIn/2;
+  /* targetIn: aim for the point nearest THIS spot instead of the wall centre
+     (Duplicate puts the copy right next to its original). */
+  /* half is HALF THE CASING, not half the opening: the gaps above are
+     measured casing to casing, and clamping by wIn/2 let a new casing run
+     (needFoot-wIn)/2 = 3.3in into its neighbour's 2in gap (1.3in of overlap)
+     or past the 3in corner margin. Only openings pushed against something
+     move; one that lands at the centre of a clear wall is unchanged. */
+  var centre=(targetIn!=null) ? targetIn : wallLenIn/2, half=needFoot/2;
   var best=null, bestDist=Infinity, cursor=edge;
   // Walk every free gap (including the one past the last obstruction) and, in
   // each, take the legal point nearest the wall centre.
@@ -16804,6 +16811,8 @@ function itemSheetHTML(kind, i){
   h+='<div class="wstep-sub" style="margin-bottom:6px">What would you like to do with this '+K.word+'?</div>';
   if(kind==='vent') h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetVentColor()">Change color</button>';
   else if(itemSheetHasReplace(kind)) h+='<button type="button" class="wbtn wbtn-next" style="'+b+'" onclick="itemSheetReplace()">Replace</button>';
+  // Windows only (Nando, 20 Nov 2026: "Only duplicate windows").
+  if(kind==='window') h+='<button type="button" class="wbtn wbtn-back" style="'+b+'" onclick="itemSheetDuplicate()">Duplicate</button>';
   h+='<button type="button" class="wbtn wbtn-back" style="'+b+';color:#ff6b6b" onclick="itemSheetRemove()">Remove</button>';
   h+='<button type="button" class="wbtn wbtn-back" style="'+b+';background:transparent" onclick="closeSubPage()">Cancel</button>';
   return h;
@@ -16842,6 +16851,45 @@ function itemSheetReplace(){
   else if(s.kind==='window') openOptionsForSelectedWindow();
   else if(s.kind==='plight'){ closeSubPage(); _scrollTo('placedPorchLights'); showToast('Tap a style to swap this porch light.'); }
   else if(s.kind==='shelf'){ closeSubPage(); _scrollTo('shelfSelControls'); showToast('Change the shelf length and depth below.'); }
+}
+/* DUPLICATE A WINDOW. An exact copy (type, size, height, fold/ledge state,
+   everything on the object) placed by the same slot rules a newly added window
+   uses (findWindowSlot: 3" off the corners, 2" between casings, clear of every
+   door, window and vent at that height), nearest the original on its own wall.
+   No room there: the first other wall with room, nearest its centre. No room
+   anywhere: a toast and nothing changes. The copy is just another entry in
+   windowsData, so it is priced, listed and quoted like any added window. */
+function duplicateWindowIdx(i){
+  var src=windowsData[i]; if(!src) return false;
+  var copy=JSON.parse(JSON.stringify(src));
+  delete copy.ret;                      // a porch-return copy goes on the main wall
+  var probe={kind:'w', h:copy.h, cy:copy.cy};
+  var lenIn=function(w){ return ((w==='front'||w==='back')?W:L)*12; };
+  var wall=src.wall, pos=null;
+  if(!winRetQ(src)) pos=findWindowSlot(wall, copy.w, probe, src.pos*lenIn(wall));
+  else pos=findWindowSlot(wall, copy.w, probe);
+  if(pos==null){
+    var alts=wallsThatFit(copy.w, src.wall, probe);
+    for(var k=0;k<alts.length && pos==null;k++){
+      pos=findWindowSlot(alts[k], copy.w, probe);
+      if(pos!=null) wall=alts[k];
+    }
+  }
+  if(pos==null){ showToast('No room for another window.'); return false; }
+  copy.wall=wall; copy.pos=pos;
+  windowsData.push(copy);
+  selectedKind='window'; selectedWindow=windowsData.length-1;
+  selectedDoor=-1; selectedVent=-1; selectedShelf=-1; selectedPorchLight=-1;
+  if(wall!==ADD_WALL){ ADD_WALL=wall; WIZ_ADDWALL_DOOR=wall; if(typeof syncWallUI==='function') syncWallUI(); }
+  buildShed(); renderPlacedWindows();
+  if(typeof syncEditorPanel==='function') syncEditorPanel();
+  if(typeof refreshPrice==='function') refreshPrice();
+  showToast('Added a copy on the '+wallLabelFor(wall)+'.');
+  return true;
+}
+function itemSheetDuplicate(){
+  var s=ITEM_SHEET; if(!s || s.kind!=='window') return;
+  if(duplicateWindowIdx(s.index)){ ITEM_SHEET=null; closeSubPage(); }
 }
 function itemSheetRemove(){ var s=ITEM_SHEET; if(s) deleteItem(s.kind, s.index); }
 /* Remove with Undo. Puts the same object back at the same index, so its

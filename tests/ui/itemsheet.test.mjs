@@ -29,7 +29,7 @@ const buttons = (h) => [...h.matchAll(/<button[^>]*>([^<]+)<\/button>/g)].map((m
 test('a window sheet: short name by wall (door wall = Front), exactly Replace, Remove, Cancel', () => {
   const c = setup();
   assert.equal(c.itemSheetName('window', 0), 'Transom window 12\u00d724 \u00b7 White frame \u00b7 ' + c.trimDisplayName() + ' trim on Left wall');
-  assert.deepEqual(buttons(c.itemSheetHTML('window', 0)), ['Replace', 'Remove', 'Cancel']);
+  assert.deepEqual(buttons(c.itemSheetHTML('window', 0)), ['Replace', 'Duplicate', 'Remove', 'Cancel']);
   assert.ok(!/Move|Delete/.test(c.itemSheetHTML('window', 0)));
 });
 
@@ -181,4 +181,89 @@ test('size and colour everywhere: list rows, review sheet and the submitted item
   assert.deepEqual(v, { kind: 'vent', size: '16\u00d78', color: 'Black', wall: 'front', wallName: 'Front', text: 'Vent 16\u00d78 \u00b7 Black' });
   // config itself is untouched by this
   assert.equal(c.getDesignConfig().itemSpecs, undefined);
+});
+
+// ---- Duplicate (windows only) ----
+function clearOf(c, wall, idx) {
+  // the window at idx overlaps no other opening at its height, and sits off the corners
+  const lenIn = ((wall === 'front' || wall === 'back') ? c.W : c.L) * 12;
+  const me = c.windowsData[idx], fMe = c.openingFootprint(me.w, 'w');
+  const ctr = me.pos * lenIn;
+  assert.ok(ctr - fMe / 2 >= 3 - 1e-6 && ctr + fMe / 2 <= lenIn - 3 + 1e-6, 'off the corners');
+  for (const o of c.wallOpenings(wall)) {
+    if (o.kind === 'w' && o.i === idx) continue;
+    if (!c.vOverlap({ kind: 'w', h: me.h, cy: me.cy }, o)) continue;
+    const gapIn = Math.abs(o.pos * lenIn - ctr) - (c.openingFootprint(o.w, o.kind) + fMe) / 2;
+    assert.ok(gapIn >= 2 - 1e-6, 'clear of ' + o.what + ' by ' + gapIn.toFixed(2) + 'in');
+  }
+}
+
+test('only the window sheet has Duplicate; doors, vents, shelves, porch lights unchanged', () => {
+  const c = setup();
+  c.ventsData.length = 0; c.ventsData.push({ wall: 'front', pos: 0.5 });
+  c.shelvesData.length = 0; c.shelvesData.push({ wall: 'back', pos: 0.5, len: 8, depth: 16, cy: 48 });
+  c.porchLightsData.length = 0; c.porchLightsData.push({ wall: 'front', pos: 0.3, style: 'modern' });
+  assert.deepEqual(buttons(c.itemSheetHTML('door', 0)), ['Replace', 'Remove', 'Cancel']);
+  assert.deepEqual(buttons(c.itemSheetHTML('vent', 0)), ['Change color', 'Remove', 'Cancel']);
+  assert.deepEqual(buttons(c.itemSheetHTML('shelf', 0)), ['Replace', 'Remove', 'Cancel']);
+  assert.deepEqual(buttons(c.itemSheetHTML('plight', 0)), ['Replace', 'Remove', 'Cancel']);
+});
+
+test('Duplicate: an identical window next to the original on the same wall, clear of everything', () => {
+  const c = setup();
+  const e = c.WINDOW_CATALOG.find((x) => x.key === 'Black Vinyl 24x36');
+  // extra fields stand in for anything else on the window: all of it is copied
+  c.windowsData[0] = { wall: 'left', pos: 0.5, type: e.key, w: e.w, h: e.h, cy: 50, open: true, fold: 'right', ledge: true, grids: 'colonial' };
+  c.buildShed();
+  const src = JSON.parse(JSON.stringify(c.windowsData[0]));
+  assert.equal(c.duplicateWindowIdx(0), true);
+  assert.equal(c.windowsData.length, 3);
+  const cp = c.windowsData[2];
+  const strip = (o) => { const x = JSON.parse(JSON.stringify(o)); delete x.pos; return x; };
+  assert.equal(JSON.stringify(strip(cp)), JSON.stringify(strip(src)), 'same type, size, height and every other field');
+  assert.equal(cp.wall, 'left');
+  assert.notEqual(cp.pos, src.pos);
+  clearOf(c, 'left', 2);
+  // nearest free spot: the copy sits right beside the original (2" casing gap)
+  const lenIn = c.L * 12, f = c.openingFootprint(e.w, 'w');
+  assert.ok(Math.abs(Math.abs(cp.pos - src.pos) * lenIn - (f + 2)) < 0.01, 'right next to it');
+  assert.equal(c.selectedWindow, 2, 'the copy is selected');
+});
+
+test('Duplicate: full wall goes to another wall; no room anywhere changes nothing', () => {
+  const c = setup();
+  let n = 0;
+  while (c.windowsData.filter((w) => w.wall === 'left').length && n++ < 200) {
+    const before = c.windowsData.length;
+    c.duplicateWindowIdx(0);
+    if (c.windowsData[c.windowsData.length - 1].wall !== 'left' || c.windowsData.length === before) break;
+  }
+  const last = c.windowsData[c.windowsData.length - 1];
+  assert.notEqual(last.wall, 'left', 'once the left wall is full, the copy lands elsewhere');
+  c.windowsData.forEach((w, i) => clearOf(c, w.wall, i));
+  // fill everything
+  while (n++ < 400 && c.duplicateWindowIdx(0)) {}
+  const t = { textContent: '', style: {} }; const orig = c.document.getElementById;
+  c.document.getElementById = (id) => (id === 'toast' ? t : orig.call(c.document, id));
+  const snap = JSON.stringify(c.windowsData);
+  assert.equal(c.duplicateWindowIdx(0), false);
+  assert.equal(JSON.stringify(c.windowsData), snap, 'nothing changed');
+  assert.equal(t.textContent, 'No room for another window.');
+  c.windowsData.forEach((w, i) => clearOf(c, w.wall, i));
+});
+
+test('a duplicated window is saved, listed and reviewed like any added window', () => {
+  const c = setup();
+  c.duplicateWindowIdx(0);
+  const cfg = JSON.parse(JSON.stringify(c.getDesignConfig()));
+  assert.equal(cfg.windows.length, 3);
+  assert.equal(cfg.windows[2].type, cfg.windows[0].type);
+  const nodes = {}; const orig = c.document.getElementById;
+  c.document.getElementById = (id) => (nodes[id] = nodes[id] || orig.call(c.document, id));
+  c.renderPlacedWindows();
+  assert.equal((String(nodes.placedWindows.innerHTML).match(/Transom window 12\u00d724 \u00b7 White frame/g) || []).length, 3);
+  c.buildShed = () => {};
+  vmMod.runInContext(DU_SRC, c, { filename: 'designer-upgrade.js' });
+  assert.match(c.DU.specRows().find((r) => r[0] === 'Windows')[1], /^3\u00d7 Transom window 12\u00d724 \u00b7 White frame/);
+  assert.equal(c.itemSpecLines().filter((x) => x.kind === 'window').length, 3);
 });
