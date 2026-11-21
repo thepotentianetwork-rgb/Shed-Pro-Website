@@ -113,7 +113,17 @@ for (const [W, L, H, PITCH] of [[12,20,9,6], [8,12,8,4], [16,24,10,10], [10,16,7
     const ridgeY = c.gableRoof().ridgeY + lift;
     const mid = (h + lift + ridgeY) / 2;
     assert.ok(Math.abs(vx) < 1e-6, `horizontally centred (x = ${vx.toFixed(5)})`);
-    assert.ok(vy > h + lift, 'it is ON the gable, not down in the wall');
+    /* SQUARE VENTS (Nando, 20 Nov 2026: "even if they aren't in the gable
+       that's okay"). A gable too shallow to hold the casing with siding
+       showing under its sill now drops the vent onto the wall, clear of the
+       belt board, instead of laying the sill over the belt. */
+    const casingTop = Math.max(...v.map(p=>p.max.y)) - lift;
+    if (vy <= h + lift) {
+      assert.ok(casingTop <= h - 0.06 - 1e-6, `on the wall, its casing clears the belt (${((h-0.06-casingTop)/INCH).toFixed(2)}in)`);
+      return;
+    }
+    const casingBot = Math.min(...v.map(p=>p.min.y)) - lift;
+    assert.ok(casingBot >= h + 1e-6, `in the gable, its sill clears the belt (${((casingBot-h)/INCH).toFixed(2)}in)`);
 
     /* Dead centre — unless the triangle is too tight for it there. A gable
        narrows as it climbs, and on a small shallow-pitched shed the casing

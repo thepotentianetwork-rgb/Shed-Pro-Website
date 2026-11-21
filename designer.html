@@ -11215,9 +11215,10 @@ function buildWallWithOpenings(wall, fo){
     // The CASING is what the batten has to clear, not the louvre inside it.
     // Cut to the louvre, the strips ran across the trim boards — and being
     // 3/4in proud against an 0.018 board, they crossed in FRONT of them.
-    var vcy=ventCyIn(vd)*0.2/12;               // not vd.cy — it may not be set yet
-    ventBreaks.push({c:posToAxis(wall,vd.pos,16), half:ventHalfW(),
-                     top:vcy+ventHalfH(), bot:vcy-ventHalfH()});
+    var _vpl=ventPlace(vd), vcy=_vpl.cy*0.2/12;  // not vd.cy — it may not be set yet
+    var _vc=_vpl.caseIn*(0.2/12);
+    ventBreaks.push({c:posToAxis(wall,_vpl.pos,16), half:VENT_W/2+_vc,
+                     top:vcy+VENT_H/2+_vc, bot:vcy-VENT_H/2-_vc});
   });
   // local axis helper: place a wall panel of (segLen along axis, segH) centered at
   // axis coordinate ac and vertical center vy.
@@ -12697,44 +12698,208 @@ function ventHalfH(){ return VENT_H/2 + VENT_CASE; }
    and its casing still fit the width there. If it does not fit, it drops until
    it does rather than poking out through the rake. Returns null when this wall
    has no gable to sit on. */
-function ventGableCyIn(vd){
-  if(!vd) return null;
-  if(vd.wall!=='front' && vd.wall!=='back') return null;
-  if(typeof STYLE==='undefined' || !styleHasGableEnds()) return null;
-  var f=wallFrame(vd.wall);
-  var wallIn=f.height/(0.2/12);
-  /* The REAL rise, read off the roof that gets built. (PITCH*W)/2 measures the
-     run to the wall centreline, but the roof runs to the wall FACE, so it came
-     up short by WALL_FACE*PITCH — three quarters of an inch at 6/12, which is
-     exactly how far below true centre the vent sat. */
-  var gRiseIn;
-  if(STYLE==='barn'){ gRiseIn=barnProfile().barnH/(0.2/12); }
-  else if(typeof gableRoof==='function'){ gRiseIn=(gableRoof().ridgeY - H*0.2)/(0.2/12); }
-  else { gRiseIn=(PITCH*W)/2; }
-  if(!(gRiseIn>0)) return null;
-  var halfBaseIn=(f.len/2)/(0.2/12);
-  var needIn=ventHalfW()/(0.2/12);
-  /* Just the casing, plus a hair. This carried a further 2in of margin, which
-     sounds harmless and is not: on a 10x16 at 5/12 the vent fits dead centre
-     with room to spare, but the padded test said it did not and dropped it an
-     inch and a half. The constraint is the casing corner clearing the rake. */
-  var topPadIn=ventHalfH()/(0.2/12) + 0.5;    // keep the casing off the rake
-  /* TRUE VISUAL CENTRE (Nando, 2 Nov 2026). gRiseIn runs to the roof's ridge
-     line, but the rake trim covers the top ~3in of the gable at the peak
-     (measured off head-on renders: siding stops 0.048-0.053 units under
-     ridgeY at 8/10/16ft wide, 4/12 and 6/12). Halving the full rise sat the
-     vent that much high of the visible triangle's middle. Centre it between
-     the wall top and the underside of the rake at the peak instead. */
-  var RAKE_COVER_IN=3;
-  var visRiseIn=Math.max(gRiseIn-RAKE_COVER_IN, gRiseIn*0.5);
-  /* Centroid, not half height (Nando, 2 Nov 2026): a triangle's visual centre
-     is a third of the way up, so half height left the vent crowding the peak
-     with a big field of siding below it. */
-  for(var t=visRiseIn/3; t>0; t-=0.25){
-    var halfHereIn=halfBaseIn*(1 - (t+topPadIn)/gRiseIn);
-    if(halfHereIn>=needIn) return wallIn + t;
+/* SQUARE, EVENLY SPACED VENTS (Nando, 20 Nov 2026: "make sure they look
+   square even if they aren't in the gable that's okay just make the spacing
+   even").
+   What made a vent stop reading as a square frame was never its own geometry:
+   every board is level and square. It was where it sat. An auto-placed vent
+   was put with no siding between its casing and the white trim next to it, so
+   the boards fused into one shape:
+     - on 6ft and 8ft gables the centroid height put the casing SILL on (or
+       over) the belt board across the wall top: the vent and the belt read as
+       one T, not a framed square;
+     - on a 4ft gable (no room in the triangle) it dropped to wallIn-8, which
+       put the casing HEAD across the belt;
+     - on a side wall it sat at wallIn-12: casing head into the eave frieze,
+       and on the default 10x12 its sill into the window's head casing.
+   Now every auto-placed vent keeps VENT_REVEAL_IN of siding between its
+   casing and any other trim, in this order of preference:
+     1. in the gable, sill clear of the belt and top corners clear of the
+        rake trim: full 3.3in casing, or if the triangle is tight the casing
+        boards narrowed (all four alike, so it stays square), never below
+        VENT_CASE_MIN_IN;
+     2. if the gable has no room even then, on the wall under the belt /
+        frieze, clear of the door or window casing below (full casing first,
+        then narrowed); when that gap is tight it is centred in it, so the
+        siding above and below is the same. A side-wall vent with a window
+        right under it slides along the wall to the nearest spot with room;
+     3. otherwise centred between the trim above and below (even spacing,
+        narrowest casing).
+   Several auto vents on one gable end are spread with equal gaps (wall ends
+   included, or rake to rake in the triangle) instead of all landing on
+   pos 0.5 on top of each other. A vent the customer dragged or set with the
+   height slider is never moved. The louvre is still 16x8. */
+var VENT_REVEAL_IN=1;           // siding showing between a vent casing and any other trim
+var VENT_RAKE_TRIM_IN=4;      // rake fascia + soffit depth, square to the slope (measured)
+var VENT_CASE_MIN_IN=1.75;
+function ventCaseFullIn(){ return VENT_CASE/(0.2/12); }
+function ventIsAuto(vd){ return !!vd && (vd.cy==null || !!vd._autoCy); }
+/* A vent keeps the casing it was laid out with when the customer then drags
+   it, so the frame does not jump wider under their finger. */
+function ventCaseOf(vd){ return (vd && vd._caseIn>0) ? vd._caseIn*(0.2/12) : VENT_CASE; }
+function ventIsGableEnd(wall){ return (wall==='front'||wall==='back') && typeof STYLE!=='undefined' && styleHasGableEnds(); }
+function ventGableRiseIn(){
+  var IN=0.2/12, r;
+  if(STYLE==='barn') r=barnProfile().barnH/IN;
+  else if(typeof gableRoof==='function') r=(gableRoof().ridgeY - H*0.2)/IN;
+  else r=(PITCH*W)/2;
+  return (r>0) ? r : null;
+}
+/* The underside of the trim band across the top of a wall: the belt board on
+   a gable end, the eave frieze (dropped by the roof's underside) on a side
+   wall, or a porch ceiling if that is lower. */
+function ventBandBottomIn(wall){
+  var IN=0.2/12, f=wallFrame(wall), top=f.height;
+  if(typeof plWallTop==='function') top=Math.min(top, plWallTop(wall));
+  var drop=0.06;                                   // tw, the belt board on a gable end
+  /* Side walls: the eave frieze hangs below the roof's underside, and the
+     soffit return reaches lower still on some styles. Measured off the
+     built model (10x12, 6/12): 5.75in under the plate on Gable, 5.5in on
+     Barn, 3in on 3/4 Peak. 6in covers them all. */
+  if(wall==='left'||wall==='right') drop=6*IN;
+  return (top-drop)/IN;
+}
+/* Fit n vents of casing caseIn in the gable triangle. Returns {t, dx[]}: t is
+   the centre height above the wall top, dx the centre offsets in inches. */
+function ventGableFit(wall, n, caseIn, given){
+  if(!ventIsGableEnd(wall)) return null;
+  var rise=ventGableRiseIn(); if(rise==null) return null;
+  var IN=0.2/12, f=wallFrame(wall);
+  var halfBase=(f.len/2)/IN, hW=VENT_W_IN/2+caseIn, hH=VENT_H_IN/2+caseIn, wC=2*hW;
+  /* TRUE VISUAL CENTRE (Nando, 2 Nov 2026): a third of the way up the
+     triangle you can see (the rake trim covers ~3in at the peak). */
+  var visRise=Math.max(rise-3, rise*0.5);
+  var tMin=hH+VENT_REVEAL_IN;                      // sill clear of the belt
+  /* The rake trim (fascia plus the soffit under it) hangs ~4in deep,
+     measured square to the slope, below the roof line the rise is taken to.
+     Fitting the casing to the roof line left its top corners tucked under
+     that board on 6-8ft gables: the frame lost its corners. Fit it under the
+     trim instead, with the same reveal as everywhere else. */
+  var rakeV=VENT_RAKE_TRIM_IN/Math.cos(Math.atan2(rise, halfBase));
+  for(var t=Math.max(visRise/3, tMin); t>=tMin-1e-9; t-=0.25){
+    var chord=halfBase*(1-(t+hH+rakeV+VENT_REVEAL_IN)/rise);   // half width under the rake trim, less a reveal
+    if(given){
+      if(given.every(function(d){ return chord>=Math.abs(d)+hW; })) return {t:t, dx:given.slice()};
+      continue;
+    }
+    if(n===1){ if(chord>=hW) return {t:t, dx:[0]}; continue; }
+    var g=(2*chord-n*wC)/(n+1);
+    if(g>=VENT_REVEAL_IN){
+      var dx=[]; for(var k=0;k<n;k++) dx.push(-chord+g*(k+1)+wC*(k+0.5));
+      return {t:t, dx:dx};
+    }
   }
-  return null;                                 // no room on this gable
+  return null;
+}
+/* The vent's height on the wall face at s (scene units along the wall). */
+function ventWallFit(wall, sArr, caseIn, force, obs){
+  var IN=0.2/12, hW=VENT_W_IN/2+caseIn, hH=VENT_H_IN/2+caseIn, R=VENT_REVEAL_IN;
+  var band=ventBandBottomIn(wall), floorIn=null;
+  if(!obs) obs=(typeof plObstacles==='function') ? plObstacles(wall) : [];
+  sArr.forEach(function(sc){
+    var a=sc-(hW+R)*IN, b=sc+(hW+R)*IN;
+    obs.forEach(function(o){
+      if(o.kind==='vent') return;
+      var oa=o.a, ob=o.b, oy=o.y1;
+      if(o.awning){ oa=Math.min(oa,o.awA); ob=Math.max(ob,o.awB); oy=Math.max(oy,o.awTop); }
+      if(ob>a && oa<b) floorIn=Math.max(floorIn==null?-1e9:floorIn, oy/IN);
+    });
+  });
+  var hi=band-R-hH, minCy=hH+2;
+  if(floorIn==null) return (hi>=minCy || force) ? {cy:Math.max(minCy,hi)} : null;
+  var lo=floorIn+R+hH, mid=(floorIn+band)/2;
+  if(lo>hi) return force ? {cy:Math.max(minCy,mid)} : null;
+  // tight: centre it so the siding above and below match
+  return {cy:(hi-lo < 2*R) ? mid : hi};
+}
+function ventSpreadS(wall, n, caseIn){
+  var IN=0.2/12, f=wallFrame(wall), wC=(VENT_W_IN+2*caseIn)*IN;
+  var g=Math.max(0,(f.len-n*wC)/(n+1)), out=[];
+  for(var k=0;k<n;k++) out.push(g*(k+1)+wC*(k+0.5));
+  return out;
+}
+function ventSToPos(wall, s){
+  var f=wallFrame(wall), margin=(16*(0.2/12))/2+0.12, usable=f.len-2*margin;
+  return usable>0 ? Math.max(0, Math.min(1, (s-margin)/usable)) : 0.5;
+}
+/* Place every auto vent on a wall. Returns [{vd, pos, cy, caseIn}]. */
+function ventAutoLayout(wall, only){
+  var IN=0.2/12, f=wallFrame(wall);
+  var list=(typeof ventsData!=='undefined'?ventsData:[]).filter(function(v){ return v.wall===wall; });
+  var auto=only ? [only] : list.filter(ventIsAuto);
+  if(!auto.length) return [];
+  auto=auto.map(function(v,i){ return {v:v,i:i}; })
+           .sort(function(a,b){ return ((+a.v.pos||0)-(+b.v.pos||0)) || (a.i-b.i); })
+           .map(function(o){ return o.v; });
+  var n=auto.length, gEnd=ventIsGableEnd(wall);
+  var spread=gEnd && (only ? false : auto.length===list.length);   // all auto: spread them evenly
+  var full=ventCaseFullIn(), wallIn=f.height/IN;
+  var OBS=(typeof plObstacles==='function') ? plObstacles(wall).filter(function(o){ return o.kind!=='vent'; }) : [];
+  function sFor(caseIn){
+    if(gEnd && (only || (spread && n===1))) return [f.len/2];
+    if(spread) return ventSpreadS(wall, n, caseIn);
+    return auto.map(function(v){ return plWallS(f, (v.pos==null?0.5:+v.pos), 16*IN); });
+  }
+  function result(sArr, cy, caseIn){
+    return auto.map(function(v,k){ return {vd:v, pos:ventSToPos(wall, sArr[k]), cy:cy, caseIn:caseIn}; });
+  }
+  var cases=[full];
+  for(var c=full-0.25; c>=VENT_CASE_MIN_IN-1e-9; c-=0.25) cases.push(c);
+  if(spread || (gEnd && only)){
+    /* The gable first, at any casing down to the narrowest (a gable vent
+       belongs in the gable, and the front and back of one shed then match
+       whatever doors they carry); the wall only when the triangle has no
+       room even for that. */
+    if(gEnd) for(var gi=0; gi<cases.length; gi++){
+      var gf=ventGableFit(wall, n, cases[gi], null);
+      if(gf) return result(gf.dx.map(function(d){ return f.len/2+d*IN; }), wallIn+gf.t, cases[gi]);
+    }
+    for(var ci=0; ci<cases.length; ci++){
+      var cIn=cases[ci];
+      var sArr=sFor(cIn), wf=ventWallFit(wall, sArr, cIn, false, OBS);
+      if(wf) return result(sArr, wf.cy, cIn);
+    }
+    var sMin=sFor(VENT_CASE_MIN_IN);
+    return result(sMin, ventWallFit(wall, sMin, VENT_CASE_MIN_IN, true, OBS).cy, VENT_CASE_MIN_IN);
+  }
+  /* One at a time (a side wall, or a gable end that also has a vent placed by
+     hand). Keep its spot if it fits there; if a window or door casing below
+     leaves no room, slide it along the wall to the nearest place that does,
+     full casing first, rather than jam it between two trims. */
+  return auto.map(function(v){
+    var s0=plWallS(f, (v.pos==null?0.5:+v.pos), 16*IN);
+    var margin=(16*IN)/2+0.12, lo=margin, hi=f.len-margin;
+    if(gEnd) for(var gi=0; gi<cases.length; gi++){
+      var gf=ventGableFit(wall, 1, cases[gi], [s0/IN-f.len/2/IN]);
+      if(gf) return {vd:v, pos:ventSToPos(wall, s0), cy:wallIn+gf.t, caseIn:cases[gi]};
+    }
+    for(var ci=0; ci<cases.length; ci++){
+      var cIn=cases[ci];
+      var steps=(ci===0) ? Math.ceil(f.len/IN) : 0;    // slide only to keep the full casing
+      for(var k=0; k<=steps; k++){
+        for(var sg=0; sg<(k?2:1); sg++){
+          var sc=s0+(sg?-1:1)*k*IN;
+          if(sc<lo-1e-9 || sc>hi+1e-9) continue;
+          var wf=ventWallFit(wall, [sc], cIn, false, OBS);
+          if(wf) return {vd:v, pos:ventSToPos(wall, sc), cy:wf.cy, caseIn:cIn};
+        }
+      }
+    }
+    return {vd:v, pos:v.pos, cy:ventWallFit(wall, [s0], VENT_CASE_MIN_IN, true, OBS).cy, caseIn:VENT_CASE_MIN_IN};
+  });
+}
+function ventPlace(vd){
+  if(!ventIsAuto(vd)) return {pos:vd.pos, cy:ventCyIn(vd), caseIn:(vd._caseIn>0 ? vd._caseIn : ventCaseFullIn())};
+  var inList=(typeof ventsData!=='undefined') && ventsData.indexOf(vd)>=0;
+  var lay=ventAutoLayout(vd.wall, inList ? null : vd);
+  for(var i=0;i<lay.length;i++) if(lay[i].vd===vd) return lay[i];
+  return {pos:vd.pos, cy:ventCyIn({wall:vd.wall,pos:vd.pos,cy:vd.cy}), caseIn:ventCaseFullIn()};
+}
+/* Where a single auto vent would sit in this gable (cy, inches), or null. */
+function ventGableCyIn(vd){
+  if(!vd || !ventIsGableEnd(vd.wall)) return null;
+  var gf=ventGableFit(vd.wall, 1, ventCaseFullIn());
+  return gf ? wallFrame(vd.wall).height/(0.2/12)+gf.t : null;
 }
 /* STYLE-SWITCH VENT POLICY (Nando t1476u/t1477u). Gable vents need a gable
    end. Lean-To (shed roof) and Poolhouse (hip) have none, so they carry NO
@@ -12789,6 +12954,7 @@ function reconcileVents(){
   return restored ? ((restored===1?'Gable vent':restored+' gable vents')+' restored on the '+(STYLE_LABELS[STYLE]||STYLE)+' gable ends.') : '';
 }
 function ventCyIn(vd){
+  if(ventIsAuto(vd)) return ventPlace(vd).cy;
   var f=wallFrame(vd.wall);
   var wallIn=f.height/(0.2/12);
   var _g=(vd.cy==null) ? ventGableCyIn(vd) : null;
@@ -13001,6 +13167,7 @@ var VENT_LIP=0.010;          // ~0.6in lip round the opening
 var VENT_INSERT_Z=0.010;     // insert face, ~0.5in behind the 0.018 trim face
 var VENT_BLADES=6;
 var VENT_BLADE_TILT=0.80;    // rad (~46deg): front edge lower than back
+var VENT_BLADE_GAP=0;        // the even dark gap between blades (set by buildVentInsertGeo)
 function buildVentInsertGeo(vW, vH){
   var L=VENT_LIP, Z=VENT_INSERT_Z, iw=vW-2*L, ih=vH-2*L;
   var lip=_ventMerge([
@@ -13016,12 +13183,20 @@ function buildVentInsertGeo(vW, vH){
     _vBox(0.0035, vH-0.0055, 0.0004,  vW/2-0.00175, -0.00275, sz),
     _vBox(vW-0.007, 0.0015, 0.0004, 0, -vH/2+0.00075, sz)]);
   // blades: a slab tilted about x so its front edge drops, nosing on that edge
-  var n=VENT_BLADES, pitch=ih/n, bd=0.012, bt=0.0022, a=VENT_BLADE_TILT;
+  var n=VENT_BLADES, bd=0.012, bt=0.0022, a=VENT_BLADE_TILT;
   var bw=iw-0.0006, zc=0.0015+(bd*Math.cos(a))/2;
   var bl=[], ns=[];
+  /* EVEN SPACING (Nando, 20 Nov 2026). Each blade used to sit 12% high in an
+     ih/6 slot, ignoring how far the tilted blade and its nosing reach, so the
+     top blade crowded the head (~0.1in of dark) and the bottom one left a fat
+     gap over the sill (~0.4in). Now each blade + nosing is one piece of known
+     height and the n+1 dark gaps (head, between, sill) are all the same. */
+  var up=(bd/2)*Math.sin(a)+(bt/2)*Math.cos(a);            // blade top above its centre
+  var dn=Math.max(up, (bd/2)*Math.sin(a)+0.0006+0.0021);   // nosing bottom below it
+  var gap=(ih-n*(up+dn))/(n+1);
+  VENT_BLADE_GAP=gap;
   for(var i=0;i<n;i++){
-    // centred a touch high in its slot so the dark gap opens underneath
-    var yc=-ih/2+(i+0.5)*pitch+pitch*0.12;
+    var yc=-ih/2+gap*(i+1)+(up+dn)*i+dn;
     bl.push(_vBox(bw, bt, bd, 0, yc, zc, a));
     var fy=yc-(bd/2)*Math.sin(a), fz=zc+(bd/2)*Math.cos(a);
     ns.push(_vBox(bw, 0.0042, 0.0022, 0, fy-0.0006, Math.min(fz, Z-0.0012)));
@@ -13070,9 +13245,11 @@ function buildVents(){
        resize left it off the triangle's centre. _autoCy keeps re-centring it
        on every build until the customer drags it or uses the height slider. */
     if(vd.cy==null) vd._autoCy=true;
-    if(vd._autoCy && (vd.wall==='front'||vd.wall==='back')) vd.pos=0.5;
-    vd.cy=ventCyIn(vd._autoCy ? {wall:vd.wall, pos:vd.pos, cy:null} : vd);
+    var _vp=ventPlace(vd);
+    if(vd._autoCy){ vd.pos=_vp.pos; vd._caseIn=_vp.caseIn; }
+    vd.cy=_vp.cy;
     var cy=vd.cy*0.2/12;
+    var VC=ventCaseOf(vd);             // casing board width; narrower only when squeezed
     var grp=new THREE.Group();
     grp.userData={isVent:true, index:idx, wall:vd.wall};
     /* ON the wall, not in it. outZ was 0.02 against a wall face at 0.025, so
@@ -13089,10 +13266,10 @@ function buildVents(){
     function vboard(bw,bh,dx,dy){
       grp.add(mk(new THREE.BoxGeometry(bw,bh,vcD), frameMat, dx, cy+dy, WALL_Z+vcD/2));
     }
-    vboard(vW+VENT_CASE*2, VENT_CASE, 0,  vH/2+VENT_CASE/2);   // head
-    vboard(vW+VENT_CASE*2, VENT_CASE, 0, -vH/2-VENT_CASE/2);   // sill
-    vboard(VENT_CASE, vH, -vW/2-VENT_CASE/2, 0);               // left leg
-    vboard(VENT_CASE, vH,  vW/2+VENT_CASE/2, 0);               // right leg
+    vboard(vW+VC*2, VC, 0,  vH/2+VC/2);   // head
+    vboard(vW+VC*2, VC, 0, -vH/2-VC/2);   // sill
+    vboard(VC, vH, -vW/2-VC/2, 0);        // left leg
+    vboard(VC, vH,  vW/2+VC/2, 0);        // right leg
     /* THE INSERT (Nando, 20 Nov 2026). The casing above is the shed's trim and
        is untouched. Inside it the insert used to be a flat box with four
        painted stripes. Now, front to back:
@@ -19419,7 +19596,12 @@ function addVent(){
   var vpos=freeSlot(ventsData.filter(function(v){ return v.wall===wall; })
                              .map(function(v){ return v.pos; }), 0.5, 0.18, 0.08, 0.92);
   if(vpos==null){ showToast('No room for another vent on the '+wall+' wall.'); return; }
-  ventsData.push({wall:wall, pos:vpos, cy:cyIn});
+  /* Auto-placed (Nando, 20 Nov 2026): cy:null hands it to ventAutoLayout, so
+     it keeps a siding reveal off the belt, frieze and door/window casings and
+     a second vent on a gable end spreads the pair evenly. Dragging it or the
+     height slider pins it, as before. cyIn is still worked out above for the
+     slider's range. */
+  ventsData.push({wall:wall, pos:vpos, cy:null, _autoCy:true});
   selectedKind='vent'; selectedVent=ventsData.length-1;
   selectedWindow=-1; selectedDoor=-1; selectedShelf=-1;
   if(!EDIT_MODE) toggleEditMode(); else { buildShed(); syncEditorPanel(); }
