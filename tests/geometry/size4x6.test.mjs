@@ -84,10 +84,19 @@ for (const style of ['gable', 'barn', 'leanto', 'hip', '3peak', '4peak']) {
 test('at 4x6 the gable vent clears the man door instead of sitting on its casing', () => {
   base();
   build();
+  /* A 4ft gable has no room for the vent, and the wall between the man
+     door's head casing and the belt board is shorter than a full 3.3in
+     casing: the vent wears a narrower casing, square on all four sides, and
+     sits dead centre in that gap so the siding above and below match
+     (Nando, 20 Nov 2026). */
   const v = c.ventsData[0], d = c.doorsData[0];
-  const ventCasingBottom = v.cy - 4 - 3.3, doorCasingTop = d.h + 3.3;
+  const cs = v._caseIn;
+  assert.ok(cs >= c.VENT_CASE_MIN_IN && cs < 3.3, `narrowed casing ${cs}in`);
+  const ventCasingBottom = v.cy - 4 - cs, ventCasingTop = v.cy + 4 + cs;
+  const doorCasingTop = d.h + 3, beltBottom = c.H*12 - 3.6;
   assert.ok(ventCasingBottom > doorCasingTop, `vent casing ${ventCasingBottom}in vs door casing ${doorCasingTop}in`);
-  assert.ok(v.cy + 4 + 3.3 <= c.H*12, 'and stays under the plate');
+  assert.ok(ventCasingTop < beltBottom, `and under the belt board (${ventCasingTop} vs ${beltBottom})`);
+  assert.ok(Math.abs((ventCasingBottom - doorCasingTop) - (beltBottom - ventCasingTop)) < 0.05, 'evenly spaced between them');
 });
 
 test('gable 4x6 with a front porch still builds', () => {
